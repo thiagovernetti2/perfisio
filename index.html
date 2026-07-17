@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PerFisio — Encontre seu fisioterapeuta · CRM para clínicas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/app.css">
+  <style>
+    body { background: #fff; }
+    .lp-header {
+      display: flex; align-items: center; gap: 12px; padding: 18px 6vw;
+      border-bottom: 1px solid var(--line); position: sticky; top: 0; background: rgba(255,255,255,.92);
+      backdrop-filter: blur(8px); z-index: 50;
+    }
+    .lp-header .logo { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 1.15rem; color: var(--ink); }
+    .lp-header .logo .mark { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff; display: grid; place-items: center; font-size: 1rem; }
+    .lp-header nav { margin-left: auto; display: flex; align-items: center; gap: 22px; font-size: .9rem; font-weight: 600; color: var(--text-soft); }
+    .lp-header nav a:hover { color: var(--ink); }
+
+    .hero { padding: 72px 6vw 60px; text-align: center; background: linear-gradient(180deg, #F0FAF7 0%, #fff 100%); }
+    .hero h1 { font-size: clamp(1.9rem, 4.5vw, 3.1rem); font-weight: 900; color: var(--ink); letter-spacing: -1px; line-height: 1.15; }
+    .hero h1 em { color: var(--primary); font-style: normal; }
+    .hero p { color: var(--text-soft); font-size: 1.05rem; margin: 16px auto 0; max-width: 560px; }
+    .search-bar {
+      display: flex; gap: 8px; background: #fff; border: 1px solid var(--line); border-radius: 14px;
+      padding: 8px; max-width: 640px; margin: 30px auto 0; box-shadow: var(--shadow-lg); flex-wrap: wrap;
+    }
+    .search-bar select, .search-bar input { border: none; outline: none; padding: 12px 14px; font-size: .95rem; flex: 1; min-width: 150px; background: none; }
+    .search-bar .divider { width: 1px; background: var(--line); margin: 6px 0; }
+    .hero .tags { margin-top: 18px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+    .section { padding: 56px 6vw; }
+    .section h2 { font-size: 1.6rem; font-weight: 800; color: var(--ink); letter-spacing: -.4px; text-align: center; }
+    .section .sec-sub { text-align: center; color: var(--text-soft); margin: 8px auto 34px; max-width: 520px; font-size: .95rem; }
+
+    .perfil-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; max-width: 1180px; margin: 0 auto; }
+    .perfil-card { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); transition: transform .15s, box-shadow .15s; cursor: pointer; background: #fff; }
+    .perfil-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(15,42,46,.13); }
+    .perfil-card .pc-top { height: 88px; position: relative; }
+    .perfil-card .pc-avatar {
+      width: 62px; height: 62px; border-radius: 50%; border: 3px solid #fff; position: absolute;
+      bottom: -26px; left: 18px; display: grid; place-items: center; font-weight: 800; font-size: 1.1rem; color: #fff;
+    }
+    .perfil-card .pc-body { padding: 34px 18px 18px; }
+    .perfil-card .pc-nome { font-weight: 800; color: var(--ink); font-size: .98rem; }
+    .perfil-card .pc-esp { font-size: .78rem; color: var(--text-soft); margin-top: 2px; }
+    .perfil-card .pc-meta { display: flex; gap: 10px; margin-top: 10px; font-size: .76rem; color: var(--text-soft); flex-wrap: wrap; }
+    .perfil-card .pc-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; padding-top: 12px; border-top: 1px solid #EDF1F0; }
+    .perfil-card .pc-preco { font-size: .82rem; font-weight: 700; color: var(--ink); }
+
+    .feat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 18px; max-width: 1180px; margin: 0 auto; }
+    .feat { border: 1px solid var(--line); border-radius: 14px; padding: 24px; background: #fff; box-shadow: var(--shadow); }
+    .feat .f-ico { width: 44px; height: 44px; border-radius: 11px; background: var(--primary-soft); display: grid; place-items: center; font-size: 1.3rem; margin-bottom: 14px; }
+    .feat h3 { font-size: .98rem; font-weight: 800; color: var(--ink); }
+    .feat p { font-size: .84rem; color: var(--text-soft); margin-top: 6px; line-height: 1.55; }
+
+    .cta-band { background: var(--ink); color: #fff; text-align: center; padding: 60px 6vw; border-radius: 22px; margin: 0 6vw 56px; position: relative; overflow: hidden; }
+    .cta-band::after { content: ''; position: absolute; inset: 0; background: radial-gradient(560px 320px at 85% 20%, rgba(13,161,137,.35), transparent 60%); pointer-events: none; }
+    .cta-band h2 { font-size: 1.7rem; font-weight: 900; letter-spacing: -.4px; position: relative; z-index: 1; }
+    .cta-band p { color: #A9BCB9; margin: 12px auto 26px; max-width: 520px; position: relative; z-index: 1; }
+    .cta-band .btn { position: relative; z-index: 1; }
+
+    .lp-footer { border-top: 1px solid var(--line); padding: 28px 6vw; display: flex; align-items: center; gap: 16px; font-size: .8rem; color: var(--text-soft); flex-wrap: wrap; }
+    .lp-footer .spacer { flex: 1; }
+    @media (max-width: 720px) { .lp-header nav { display: none; } }
+  </style>
+</head>
+<body>
+
+  <header class="lp-header">
+    <div class="logo"><span class="mark">P</span> PerFisio</div>
+    <nav>
+      <a href="#profissionais">Encontrar fisioterapeuta</a>
+      <a href="#clinicas">Para clínicas</a>
+      <a href="app/dashboard.html" class="btn btn-ghost btn-sm">Entrar</a>
+      <a href="app/dashboard.html" class="btn btn-primary btn-sm">Criar perfil grátis</a>
+    </nav>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+    <h1>Encontre o <em>fisioterapeuta certo</em><br>perto de você</h1>
+    <p>Perfis verificados de fisioterapeutas e clínicas, com especialidades, avaliações de pacientes e agendamento de avaliação online.</p>
+    <div class="search-bar">
+      <select>
+        <option>Todas as especialidades</option>
+        <option>Ortopedia e Traumato</option>
+        <option>Fisioterapia Esportiva</option>
+        <option>Neurofuncional</option>
+        <option>Pilates Clínico / RPG</option>
+        <option>Respiratória</option>
+        <option>Pélvica</option>
+      </select>
+      <div class="divider"></div>
+      <input type="text" placeholder="Cidade ou bairro" value="Vila Mariana, São Paulo">
+      <button class="btn btn-primary" onclick="document.getElementById('profissionais').scrollIntoView({behavior:'smooth'})">🔍 Buscar</button>
+    </div>
+    <div class="tags">
+      <span class="badge primary">🏃 Esportiva</span>
+      <span class="badge blue">🦴 Ortopedia</span>
+      <span class="badge purple">🧘 Pilates</span>
+      <span class="badge green">🧠 Neuro</span>
+      <span class="badge amber">🏠 Domiciliar</span>
+    </div>
+  </section>
+
+  <!-- PERFIS EM DESTAQUE -->
+  <section class="section" id="profissionais">
+    <h2>Profissionais e clínicas em destaque</h2>
+    <p class="sec-sub">Perfis verificados com CREFITO ativo e avaliações reais de pacientes.</p>
+    <div class="perfil-grid">
+      <div class="perfil-card" onclick="alert('Perfil público do profissional (protótipo)')">
+        <div class="pc-top" style="background:linear-gradient(135deg,#0DA189,#0A8270);"><span class="pc-avatar" style="background:#0A8270;">CM</span></div>
+        <div class="pc-body">
+          <div class="pc-nome">Clínica Movimente</div>
+          <div class="pc-esp">Ortopedia · Esportiva · Pilates · Neuro</div>
+          <div class="pc-meta"><span>📍 Vila Mariana, SP</span><span>⭐ 4,9 (132)</span><span>✅ CREFITO verificado</span></div>
+          <div class="pc-foot"><span class="pc-preco">R$ 140–240</span><button class="btn btn-soft btn-sm">Agendar avaliação</button></div>
+        </div>
+      </div>
+      <div class="perfil-card" onclick="alert('Perfil público do profissional (protótipo)')">
+        <div class="pc-top" style="background:linear-gradient(135deg,#2D7DD2,#1F5FA8);"><span class="pc-avatar" style="background:#1F5FA8;">RN</span></div>
+        <div class="pc-body">
+          <div class="pc-nome">Dr. Rafael Nunes</div>
+          <div class="pc-esp">Fisioterapia Esportiva · Corredores</div>
+          <div class="pc-meta"><span>📍 Moema, SP</span><span>⭐ 4,8 (87)</span><span>✅ CREFITO verificado</span></div>
+          <div class="pc-foot"><span class="pc-preco">R$ 180</span><button class="btn btn-soft btn-sm">Agendar avaliação</button></div>
+        </div>
+      </div>
+      <div class="perfil-card" onclick="alert('Perfil público do profissional (protótipo)')">
+        <div class="pc-top" style="background:linear-gradient(135deg,#7C5CBF,#5D3FA0);"><span class="pc-avatar" style="background:#5D3FA0;">MA</span></div>
+        <div class="pc-body">
+          <div class="pc-nome">Dra. Marina Alves</div>
+          <div class="pc-esp">Pilates Clínico · RPG · Escoliose</div>
+          <div class="pc-meta"><span>📍 Pinheiros, SP</span><span>⭐ 5,0 (64)</span><span>✅ CREFITO verificado</span></div>
+          <div class="pc-foot"><span class="pc-preco">R$ 160</span><button class="btn btn-soft btn-sm">Agendar avaliação</button></div>
+        </div>
+      </div>
+      <div class="perfil-card" onclick="alert('Perfil público do profissional (protótipo)')">
+        <div class="pc-top" style="background:linear-gradient(135deg,#D9820B,#B26505);"><span class="pc-avatar" style="background:#B26505;">PS</span></div>
+        <div class="pc-body">
+          <div class="pc-nome">Dr. Pedro Sampaio</div>
+          <div class="pc-esp">Neurofuncional · AVC · Parkinson · Domiciliar</div>
+          <div class="pc-meta"><span>📍 Atende em domicílio, SP</span><span>⭐ 4,9 (51)</span><span>✅ CREFITO verificado</span></div>
+          <div class="pc-foot"><span class="pc-preco">R$ 240</span><button class="btn btn-soft btn-sm">Agendar avaliação</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PARA CLÍNICAS -->
+  <section class="section" id="clinicas" style="background:var(--bg);">
+    <h2>Gestão completa para sua clínica ou consultório</h2>
+    <p class="sec-sub">Muito além do perfil: o PerFisio é um CRM e sistema de gestão feito para fisioterapeutas.</p>
+    <div class="feat-grid">
+      <div class="feat"><div class="f-ico">🎯</div><h3>CRM de captação</h3><p>Leads do seu perfil público caem direto no funil. Acompanhe do primeiro contato até a conversão em paciente.</p></div>
+      <div class="feat"><div class="f-ico">📅</div><h3>Agenda inteligente</h3><p>Sessões recorrentes, turmas de pilates e lembretes automáticos por WhatsApp que reduzem faltas em até 40%.</p></div>
+      <div class="feat"><div class="f-ico">📋</div><h3>Prontuário eletrônico</h3><p>Evoluções SOAP, avaliações, anexos de exames e histórico completo — seguro e acessível de qualquer lugar.</p></div>
+      <div class="feat"><div class="f-ico">💪</div><h3>Prescrição de exercícios</h3><p>Biblioteca com vídeos, envio por WhatsApp e acompanhamento da adesão do paciente em casa.</p></div>
+      <div class="feat"><div class="f-ico">💳</div><h3>Financeiro e pacotes</h3><p>Pacotes de sessões, convênios, links de pagamento, cobranças automáticas e controle de repasses.</p></div>
+      <div class="feat"><div class="f-ico">📈</div><h3>Relatórios e equipe</h3><p>Ocupação da agenda, produção por profissional, comissões, taxa de faltas e retenção de pacientes.</p></div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section style="padding-top:56px;">
+    <div class="cta-band">
+      <h2>Comece grátis hoje</h2>
+      <p>Crie seu perfil no diretório, receba pacientes e gerencie sua clínica em um só lugar. Sem cartão de crédito.</p>
+      <a href="app/dashboard.html" class="btn btn-primary" style="padding:13px 28px;font-size:.95rem;">Criar minha conta →</a>
+    </div>
+  </section>
+
+  <footer class="lp-footer">
+    <span><b style="color:var(--ink);">PerFisio</b> © 2026 — Conectando pacientes e fisioterapeutas.</span>
+    <span class="spacer"></span>
+    <a href="#">Termos</a> · <a href="#">Privacidade</a> · <a href="#">Contato</a>
+  </footer>
+
+</body>
+</html>

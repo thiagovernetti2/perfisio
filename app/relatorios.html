@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relatórios — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body data-page="relatorios" data-title="Relatórios" data-subtitle="Indicadores da clínica · últimos 6 meses">
+
+  <div class="page-head">
+    <div style="display:flex;gap:8px;">
+      <button class="chip active">Últimos 6 meses</button>
+      <button class="chip" onclick="App.toast('Período customizado no protótipo completo', 'info')">Este ano</button>
+      <button class="chip" onclick="App.toast('Período customizado no protótipo completo', 'info')">Personalizado</button>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-ghost" onclick="App.toast('Relatório exportado em PDF (protótipo)', 'info')">⬇ PDF</button>
+      <button class="btn btn-ghost" onclick="App.toast('Planilha exportada (protótipo)', 'info')">⬇ Excel</button>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="s-top"><span class="s-label">Sessões no semestre</span><div class="s-ico" style="background:var(--primary-soft);">📅</div></div>
+      <div class="s-value">1.312</div>
+      <div class="s-delta up">▲ 22% <span class="muted">vs. semestre anterior</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="s-top"><span class="s-label">Novos pacientes</span><div class="s-ico" style="background:var(--blue-soft);">🆕</div></div>
+      <div class="s-value">87</div>
+      <div class="s-delta up">▲ 31% <span class="muted">34% vieram do site PerFisio</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="s-top"><span class="s-label">Taxa de faltas</span><div class="s-ico" style="background:var(--amber-soft);">🚫</div></div>
+      <div class="s-value">7,8%</div>
+      <div class="s-delta up">▼ 3,1 p.p. <span class="muted">após lembretes WhatsApp</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="s-top"><span class="s-label">Altas com objetivo atingido</span><div class="s-ico" style="background:var(--green-soft);">🎯</div></div>
+      <div class="s-value">89%</div>
+      <div class="s-delta up">▲ 4 p.p. <span class="muted">42 altas no semestre</span></div>
+    </div>
+  </div>
+
+  <div class="grid-2-eq">
+    <!-- SESSÕES POR MÊS -->
+    <div class="card card-pad">
+      <h3 style="font-size:.98rem;margin-bottom:18px;">Sessões realizadas por mês</h3>
+      <div class="bar-chart" id="chartSessoes"></div>
+    </div>
+
+    <!-- RECEITA POR MÊS -->
+    <div class="card card-pad">
+      <h3 style="font-size:.98rem;margin-bottom:18px;">Receita mensal (R$ mil)</h3>
+      <div class="bar-chart" id="chartReceita"></div>
+    </div>
+
+    <!-- RECEITA POR PROFISSIONAL -->
+    <div class="card card-pad">
+      <h3 style="font-size:.98rem;margin-bottom:18px;">Receita por profissional · julho</h3>
+      <div id="chartFisios"></div>
+    </div>
+
+    <!-- ORIGEM DOS PACIENTES -->
+    <div class="card card-pad">
+      <h3 style="font-size:.98rem;margin-bottom:18px;">Origem dos novos pacientes · semestre</h3>
+      <div id="chartOrigem"></div>
+    </div>
+
+    <!-- CONDIÇÕES MAIS TRATADAS -->
+    <div class="card card-pad">
+      <h3 style="font-size:.98rem;margin-bottom:18px;">Condições mais tratadas</h3>
+      <div id="chartCond"></div>
+    </div>
+
+    <!-- RETENÇÃO -->
+    <div class="card card-pad">
+      <h3 style="font-size:.98rem;margin-bottom:14px;">Retenção e renovação</h3>
+      <div class="day-list">
+        <div class="dl-item"><div class="dl-bar" style="background:var(--green);"></div><div style="flex:1;"><div class="dl-title">68% renovam o pacote após o primeiro ciclo</div><div class="dl-sub">Meta: 70% · melhor mês: maio (74%)</div></div></div>
+        <div class="dl-item"><div class="dl-bar" style="background:var(--blue);"></div><div style="flex:1;"><div class="dl-title">4,2 meses de permanência média</div><div class="dl-sub">Pacientes de pilates permanecem 7,1 meses em média</div></div></div>
+        <div class="dl-item"><div class="dl-bar" style="background:var(--amber);"></div><div style="flex:1;"><div class="dl-title">12 pacientes sem retorno há 60+ dias</div><div class="dl-sub">Campanha de reativação sugerida · <a href="crm.html" style="color:var(--primary);font-weight:600;">abrir CRM</a></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/sidebar.js"></script>
+  <script>
+    const meses = ['Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul'];
+
+    function barChart(el, valores, fmt = v => v, hoje = 5) {
+      const max = Math.max(...valores);
+      document.getElementById(el).innerHTML = valores.map((v, i) => `
+        <div class="bc-item">
+          <span class="bc-val">${fmt(v)}</span>
+          <div class="bc-bar${i === hoje ? '' : ' muted'}" style="height:${Math.round(v / max * 100)}%;"></div>
+          <span class="bc-label">${meses[i]}</span>
+        </div>`).join('');
+    }
+    barChart('chartSessoes', [186, 204, 221, 238, 226, 237]);
+    barChart('chartReceita', [29.4, 32.1, 35.8, 39.2, 37.1, 42.3], v => v.toLocaleString('pt-BR'));
+
+    /* Receita por fisio */
+    const porFisio = [ ['camila', 14280], ['rafael', 11890], ['marina', 9860], ['pedro', 8120] ];
+    const maxF = porFisio[0][1];
+    document.getElementById('chartFisios').innerHTML = porFisio.map(([id, v]) => {
+      const f = App.fisio(id);
+      return `<div class="hbar">
+        <div class="hb-top"><span class="hb-name">${f.nome}</span><span class="hb-val">${App.money(v)}</span></div>
+        <div class="hb-track"><div class="hb-fill" style="width:${Math.round(v / maxF * 100)}%;background:${f.cor};"></div></div>
+      </div>`;
+    }).join('');
+
+    /* Origem */
+    const origens = [ ['🌐 Site PerFisio', 30, 'var(--primary)'], ['🩺 Indicação médica', 22, 'var(--blue)'], ['🤝 Indicação de paciente', 15, 'var(--green)'], ['📸 Instagram', 11, 'var(--purple)'], ['🏥 Convênios', 9, 'var(--amber)'] ];
+    document.getElementById('chartOrigem').innerHTML = origens.map(([n, v, c]) => `
+      <div class="hbar">
+        <div class="hb-top"><span class="hb-name">${n}</span><span class="hb-val">${v} pacientes</span></div>
+        <div class="hb-track"><div class="hb-fill" style="width:${Math.round(v / 30 * 100)}%;background:${c};"></div></div>
+      </div>`).join('');
+
+    /* Condições */
+    const conds = [ ['Lombalgia / coluna', 28], ['Joelho (LCA, menisco, PFD)', 19], ['Ombro (manguito, capsulite)', 14], ['Neurofuncional (AVC, Parkinson)', 9], ['Escoliose / postural (RPG)', 8], ['Outras', 9] ];
+    document.getElementById('chartCond').innerHTML = conds.map(([n, v]) => `
+      <div class="hbar">
+        <div class="hb-top"><span class="hb-name">${n}</span><span class="hb-val">${v}%</span></div>
+        <div class="hb-track"><div class="hb-fill" style="width:${v / 28 * 100}%;background:var(--primary);"></div></div>
+      </div>`).join('');
+  </script>
+</body>
+</html>

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body data-page="dashboard" data-title="Dashboard" data-subtitle="Visão geral da Clínica Movimente · Julho 2026">
+
+  <!-- STATS -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="s-top">
+        <span class="s-label">Sessões hoje</span>
+        <div class="s-ico" style="background:var(--primary-soft);">📅</div>
+      </div>
+      <div class="s-value">18</div>
+      <div class="s-delta up">▲ 3 <span class="muted">vs. quarta passada</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="s-top">
+        <span class="s-label">Pacientes ativos</span>
+        <div class="s-ico" style="background:var(--blue-soft);">👥</div>
+      </div>
+      <div class="s-value">76</div>
+      <div class="s-delta up">▲ 8 <span class="muted">vs. junho</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="s-top">
+        <span class="s-label">Receita de julho</span>
+        <div class="s-ico" style="background:var(--green-soft);">💰</div>
+      </div>
+      <div class="s-value">R$ 42,3 mil</div>
+      <div class="s-delta up">▲ 14% <span class="muted">vs. junho</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="s-top">
+        <span class="s-label">Taxa de presença</span>
+        <div class="s-ico" style="background:var(--amber-soft);">✅</div>
+      </div>
+      <div class="s-value">91%</div>
+      <div class="s-delta down">▼ 2 p.p. <span class="muted">7 faltas na semana</span></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <!-- AGENDA DE HOJE -->
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-header">
+          <h3>Agenda de hoje · quinta, 16 de julho</h3>
+          <a class="link" href="agenda.html">Ver agenda completa →</a>
+        </div>
+        <div class="card-pad day-list" id="todayList"></div>
+      </div>
+
+      <!-- PACIENTES RECENTES -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Pacientes com sessão recente</h3>
+          <a class="link" href="pacientes.html">Todos os pacientes →</a>
+        </div>
+        <div class="table-wrap" style="padding-top:10px;">
+          <table class="data">
+            <thead>
+              <tr><th>Paciente</th><th>Condição</th><th>Fisioterapeuta</th><th>Sessões</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr onclick="location.href='prontuarios.html'">
+                <td><div class="cell-person"><span class="avatar-sm" style="background:#0DA189;">MT</span><div><div class="p-name">Marcos Teixeira</div><div class="p-sub">42 anos · Unimed</div></div></div></td>
+                <td>Lombalgia crônica</td>
+                <td>Camila Rocha</td>
+                <td><div class="progress" style="width:90px;"><div style="width:70%;"></div></div><span style="font-size:.72rem;color:var(--text-soft);">7/10</span></td>
+                <td><span class="badge green">Em tratamento</span></td>
+              </tr>
+              <tr onclick="location.href='prontuarios.html'">
+                <td><div class="cell-person"><span class="avatar-sm" style="background:#2D7DD2;">LF</span><div><div class="p-name">Larissa Fontes</div><div class="p-sub">29 anos · Particular</div></div></div></td>
+                <td>Pós-op. LCA (joelho D)</td>
+                <td>Rafael Nunes</td>
+                <td><div class="progress" style="width:90px;"><div style="width:35%;"></div></div><span style="font-size:.72rem;color:var(--text-soft);">7/20</span></td>
+                <td><span class="badge green">Em tratamento</span></td>
+              </tr>
+              <tr onclick="location.href='prontuarios.html'">
+                <td><div class="cell-person"><span class="avatar-sm" style="background:#7C5CBF;">HG</span><div><div class="p-name">Helena Garcia</div><div class="p-sub">63 anos · Bradesco Saúde</div></div></div></td>
+                <td>Osteoartrose de quadril</td>
+                <td>Marina Alves</td>
+                <td><div class="progress" style="width:90px;"><div style="width:90%;"></div></div><span style="font-size:.72rem;color:var(--text-soft);">18/20</span></td>
+                <td><span class="badge amber">Alta próxima</span></td>
+              </tr>
+              <tr onclick="location.href='prontuarios.html'">
+                <td><div class="cell-person"><span class="avatar-sm" style="background:#D9820B;">JP</span><div><div class="p-name">João Paulo Dias</div><div class="p-sub">55 anos · Particular</div></div></div></td>
+                <td>AVC · reabilitação motora</td>
+                <td>Pedro Sampaio</td>
+                <td><div class="progress" style="width:90px;"><div style="width:20%;"></div></div><span style="font-size:.72rem;color:var(--text-soft);">6/30</span></td>
+                <td><span class="badge green">Em tratamento</span></td>
+              </tr>
+              <tr onclick="location.href='crm.html'">
+                <td><div class="cell-person"><span class="avatar-sm" style="background:#64737A;">RC</span><div><div class="p-name">Renata Campos</div><div class="p-sub">35 anos · SulAmérica</div></div></div></td>
+                <td>Cervicalgia + cefaleia tensional</td>
+                <td>—</td>
+                <td><span style="font-size:.72rem;color:var(--text-soft);">Avaliação sexta 10h</span></td>
+                <td><span class="badge blue">Avaliação</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <!-- PENDÊNCIAS -->
+      <div class="card card-pad" style="margin-bottom:20px;">
+        <h3 style="font-size:.98rem;margin-bottom:14px;">⚠️ Pendências</h3>
+        <div class="day-list">
+          <div class="dl-item">
+            <div class="dl-bar" style="background:var(--red);"></div>
+            <div>
+              <div class="dl-title">4 evoluções não registradas</div>
+              <div class="dl-sub">Sessões de ontem sem evolução no prontuário</div>
+            </div>
+          </div>
+          <div class="dl-item">
+            <div class="dl-bar" style="background:var(--amber);"></div>
+            <div>
+              <div class="dl-title">3 pacotes terminando</div>
+              <div class="dl-sub">Helena G., Sérgio M. e Paula R. — propor renovação</div>
+            </div>
+          </div>
+          <div class="dl-item">
+            <div class="dl-bar" style="background:var(--amber);"></div>
+            <div>
+              <div class="dl-title">R$ 2.840 a receber vencidos</div>
+              <div class="dl-sub">5 cobranças em atraso · <a href="financeiro.html" style="color:var(--primary);font-weight:600;">ver financeiro</a></div>
+            </div>
+          </div>
+          <div class="dl-item">
+            <div class="dl-bar" style="background:var(--blue);"></div>
+            <div>
+              <div class="dl-title">6 leads sem resposta</div>
+              <div class="dl-sub">Contatos do site PerFisio aguardando retorno · <a href="crm.html" style="color:var(--primary);font-weight:600;">abrir CRM</a></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OCUPAÇÃO DA EQUIPE -->
+      <div class="card card-pad" style="margin-bottom:20px;">
+        <h3 style="font-size:.98rem;margin-bottom:16px;">Ocupação da equipe (semana)</h3>
+        <div id="teamBars"></div>
+      </div>
+
+      <!-- PERFIL PÚBLICO -->
+      <div class="card card-pad">
+        <h3 style="font-size:.98rem;margin-bottom:10px;">🌐 Perfil no PerFisio</h3>
+        <div style="font-size:.83rem;color:var(--text-soft);line-height:1.5;">Seu perfil público recebeu <b style="color:var(--ink);">214 visitas</b> e gerou <b style="color:var(--ink);">9 contatos</b> nos últimos 30 dias.</div>
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          <button class="btn btn-soft btn-sm" onclick="location.href='configuracoes.html'">Editar perfil</button>
+          <button class="btn btn-ghost btn-sm" onclick="App.toast('Perfil público aberto em nova aba (protótipo)', 'info')">Ver como paciente</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/sidebar.js"></script>
+  <script>
+    // Agenda de hoje
+    const hoje = [
+      { h: '08:00', pac: 'Marcos Teixeira', tipo: 'Sessão 8/10 · Lombalgia', fisio: 'camila' },
+      { h: '09:00', pac: 'Larissa Fontes', tipo: 'Sessão 8/20 · Pós-op LCA', fisio: 'rafael' },
+      { h: '10:00', pac: 'Helena Garcia', tipo: 'Sessão 19/20 · Osteoartrose', fisio: 'marina' },
+      { h: '11:00', pac: 'Avaliação — Tiago Prado', tipo: 'Primeira avaliação · dor no ombro', fisio: 'camila' },
+      { h: '14:00', pac: 'João Paulo Dias', tipo: 'Sessão 7/30 · Neurofuncional', fisio: 'pedro' },
+      { h: '15:00', pac: 'Pilates — turma das 15h', tipo: '4 alunos · estúdio', fisio: 'marina' },
+      { h: '16:00', pac: 'Sérgio Meireles', tipo: 'Sessão 10/10 · Tendinopatia', fisio: 'rafael' },
+    ];
+    document.getElementById('todayList').innerHTML = hoje.map(s => {
+      const f = App.fisio(s.fisio);
+      return `<div class="dl-item">
+        <div class="dl-time">${s.h}</div>
+        <div class="dl-bar" style="background:${f.cor};"></div>
+        <div style="flex:1;">
+          <div class="dl-title">${s.pac}</div>
+          <div class="dl-sub">${s.tipo} · ${f.nome}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="App.toast('Check-in registrado para ${s.pac}')">Check-in</button>
+      </div>`;
+    }).join('');
+
+    // Ocupação da equipe
+    const ocup = [ ['camila', 92], ['rafael', 84], ['marina', 76], ['pedro', 58] ];
+    document.getElementById('teamBars').innerHTML = ocup.map(([id, pct]) => {
+      const f = App.fisio(id);
+      return `<div class="hbar">
+        <div class="hb-top"><span class="hb-name">${f.nome}</span><span class="hb-val">${pct}%</span></div>
+        <div class="hb-track"><div class="hb-fill" style="width:${pct}%;background:${f.cor};"></div></div>
+      </div>`;
+    }).join('');
+  </script>
+</body>
+</html>

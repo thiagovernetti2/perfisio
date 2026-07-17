@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Financeiro — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body data-page="financeiro" data-title="Financeiro" data-subtitle="Pagamentos, pacotes, convênios e contas a receber">
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="s-top"><span class="s-label">Receita de julho</span><div class="s-ico" style="background:var(--green-soft);">💰</div></div>
+      <div class="s-value">R$ 42.320</div>
+      <div class="s-delta up">▲ 14% <span class="muted">vs. junho</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="s-top"><span class="s-label">A receber</span><div class="s-ico" style="background:var(--blue-soft);">📥</div></div>
+      <div class="s-value">R$ 9.640</div>
+      <div class="s-delta"><span class="muted">12 cobranças em aberto</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="s-top"><span class="s-label">Em atraso</span><div class="s-ico" style="background:var(--red-soft);">⚠️</div></div>
+      <div class="s-value">R$ 2.840</div>
+      <div class="s-delta down">5 cobranças <span class="muted">· enviar lembretes</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="s-top"><span class="s-label">Ticket médio / paciente</span><div class="s-ico" style="background:var(--amber-soft);">🎯</div></div>
+      <div class="s-value">R$ 557</div>
+      <div class="s-delta up">▲ 6% <span class="muted">pacotes maiores</span></div>
+    </div>
+  </div>
+
+  <div class="page-head" style="margin-bottom:0;">
+    <div class="tabs" data-auto style="margin-bottom:20px;flex:1;">
+      <button class="tab active" data-tab="pagamentos">Pagamentos</button>
+      <button class="tab" data-tab="pacotes">Pacotes & Planos</button>
+      <button class="tab" data-tab="convenios">Convênios</button>
+    </div>
+    <button class="btn btn-primary" style="margin-bottom:20px;" onclick="App.openModal('mPagamento')">+ Registrar pagamento</button>
+  </div>
+
+  <!-- PAGAMENTOS -->
+  <div data-tab-panel="pagamentos">
+    <div class="card">
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Paciente</th><th>Descrição</th><th>Forma</th><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div class="cell-person"><span class="avatar-sm" style="background:#0DA189;">MT</span><span class="p-name">Marcos Teixeira</span></div></td>
+              <td>Pacote 10 sessões · Ortopedia</td><td>Pix</td><td>02/07/2026</td><td style="font-weight:700;">R$ 1.400</td>
+              <td><span class="badge green">Pago</span></td><td></td>
+            </tr>
+            <tr>
+              <td><div class="cell-person"><span class="avatar-sm" style="background:#2D7DD2;">LF</span><span class="p-name">Larissa Fontes</span></div></td>
+              <td>Pacote 20 sessões · Pós-op (2/4)</td><td>Cartão 4x</td><td>10/07/2026</td><td style="font-weight:700;">R$ 700</td>
+              <td><span class="badge green">Pago</span></td><td></td>
+            </tr>
+            <tr>
+              <td><div class="cell-person"><span class="avatar-sm" style="background:#D64545;">PR</span><span class="p-name">Paula Ribeiro</span></div></td>
+              <td>Mensalidade Pilates · julho</td><td>Boleto</td><td>10/07/2026</td><td style="font-weight:700;">R$ 680</td>
+              <td><span class="badge red">Em atraso</span></td>
+              <td><button class="btn btn-soft btn-sm" onclick="event.stopPropagation(); App.toast('Lembrete de cobrança enviado por WhatsApp 📲')">Cobrar</button></td>
+            </tr>
+            <tr>
+              <td><div class="cell-person"><span class="avatar-sm" style="background:#D9820B;">JP</span><span class="p-name">João Paulo Dias</span></div></td>
+              <td>Pacote 30 sessões · Neuro (1/3)</td><td>Pix</td><td>15/07/2026</td><td style="font-weight:700;">R$ 1.200</td>
+              <td><span class="badge amber">Vence hoje</span></td>
+              <td><button class="btn btn-soft btn-sm" onclick="event.stopPropagation(); App.toast('Link de pagamento enviado 📲')">Enviar link</button></td>
+            </tr>
+            <tr>
+              <td><div class="cell-person"><span class="avatar-sm" style="background:#7C5CBF;">HG</span><span class="p-name">Helena Garcia</span></div></td>
+              <td>Coparticipação Bradesco · junho</td><td>Repasse convênio</td><td>20/07/2026</td><td style="font-weight:700;">R$ 1.960</td>
+              <td><span class="badge blue">Aguardando repasse</span></td><td></td>
+            </tr>
+            <tr>
+              <td><div class="cell-person"><span class="avatar-sm" style="background:#1E9E6A;">AF</span><span class="p-name">Antônio Ferraz</span></div></td>
+              <td>Pacote 30 sessões · Neuro (3/3)</td><td>Cartão</td><td>25/07/2026</td><td style="font-weight:700;">R$ 1.200</td>
+              <td><span class="badge gray">Agendado</span></td><td></td>
+            </tr>
+            <tr>
+              <td><div class="cell-person"><span class="avatar-sm" style="background:#2D7DD2;">SM</span><span class="p-name">Sérgio Meireles</span></div></td>
+              <td>Renovação pacote 10 sessões</td><td>—</td><td>—</td><td style="font-weight:700;">R$ 1.400</td>
+              <td><span class="badge purple">Proposta enviada</span></td>
+              <td><button class="btn btn-soft btn-sm" onclick="event.stopPropagation(); App.toast('Proposta reenviada 📲')">Reenviar</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PACOTES -->
+  <div data-tab-panel="pacotes" style="display:none;">
+    <div class="ex-grid">
+      <div class="ex-card" onclick="App.toast('Edição de pacote no protótipo completo', 'info')">
+        <div class="e-img" style="background:var(--primary-soft);height:90px;">🎫</div>
+        <div class="e-body">
+          <div class="e-title">Sessão avulsa</div>
+          <div class="e-sub">Fisioterapia ortopédica / esportiva</div>
+          <div style="font-size:1.3rem;font-weight:800;color:var(--ink);margin-top:10px;">R$ 160</div>
+          <div class="e-specs"><span>50 min</span><span>32 vendas no mês</span></div>
+        </div>
+      </div>
+      <div class="ex-card" onclick="App.toast('Edição de pacote no protótipo completo', 'info')">
+        <div class="e-img" style="background:var(--green-soft);height:90px;">📦</div>
+        <div class="e-body">
+          <div class="e-title">Pacote 10 sessões <span class="badge green" style="margin-left:4px;">mais vendido</span></div>
+          <div class="e-sub">R$ 140/sessão · validade 3 meses</div>
+          <div style="font-size:1.3rem;font-weight:800;color:var(--ink);margin-top:10px;">R$ 1.400</div>
+          <div class="e-specs"><span>50 min</span><span>18 vendas no mês</span></div>
+        </div>
+      </div>
+      <div class="ex-card" onclick="App.toast('Edição de pacote no protótipo completo', 'info')">
+        <div class="e-img" style="background:var(--blue-soft);height:90px;">📦</div>
+        <div class="e-body">
+          <div class="e-title">Pacote 20 sessões</div>
+          <div class="e-sub">R$ 130/sessão · validade 5 meses</div>
+          <div style="font-size:1.3rem;font-weight:800;color:var(--ink);margin-top:10px;">R$ 2.600</div>
+          <div class="e-specs"><span>50 min</span><span>7 vendas no mês</span></div>
+        </div>
+      </div>
+      <div class="ex-card" onclick="App.toast('Edição de pacote no protótipo completo', 'info')">
+        <div class="e-img" style="background:var(--purple-soft);height:90px;">🧘</div>
+        <div class="e-body">
+          <div class="e-title">Mensal Pilates · 2x/semana</div>
+          <div class="e-sub">Turmas de até 5 alunos</div>
+          <div style="font-size:1.3rem;font-weight:800;color:var(--ink);margin-top:10px;">R$ 680<span style="font-size:.8rem;font-weight:600;color:var(--text-soft);">/mês</span></div>
+          <div class="e-specs"><span>55 min</span><span>21 alunos ativos</span></div>
+        </div>
+      </div>
+      <div class="ex-card" onclick="App.toast('Edição de pacote no protótipo completo', 'info')">
+        <div class="e-img" style="background:var(--amber-soft);height:90px;">🏠</div>
+        <div class="e-body">
+          <div class="e-title">Atendimento domiciliar</div>
+          <div class="e-sub">Por sessão · região central</div>
+          <div style="font-size:1.3rem;font-weight:800;color:var(--ink);margin-top:10px;">R$ 240</div>
+          <div class="e-specs"><span>60 min</span><span>9 vendas no mês</span></div>
+        </div>
+      </div>
+      <div class="ex-card" style="display:grid;place-items:center;min-height:220px;border-style:dashed;" onclick="App.toast('Criação de pacote no protótipo completo', 'info')">
+        <div style="text-align:center;color:var(--text-soft);"><div style="font-size:2rem;">＋</div><div style="font-weight:600;font-size:.9rem;margin-top:6px;">Criar novo pacote</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONVÊNIOS -->
+  <div data-tab-panel="convenios" style="display:none;">
+    <div class="card">
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Convênio</th><th>Pacientes ativos</th><th>Valor/sessão</th><th>Produção julho</th><th>Repasse previsto</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td style="font-weight:600;">Unimed</td><td>14</td><td>R$ 85</td><td>R$ 6.630</td><td>25/08/2026</td><td><span class="badge green">Em dia</span></td></tr>
+            <tr><td style="font-weight:600;">Bradesco Saúde</td><td>9</td><td>R$ 92</td><td>R$ 4.140</td><td>20/07/2026</td><td><span class="badge blue">Aguardando</span></td></tr>
+            <tr><td style="font-weight:600;">SulAmérica</td><td>6</td><td>R$ 88</td><td>R$ 2.376</td><td>30/08/2026</td><td><span class="badge green">Em dia</span></td></tr>
+            <tr><td style="font-weight:600;">Amil</td><td>4</td><td>R$ 80</td><td>R$ 1.440</td><td>15/07/2026</td><td><span class="badge red">Glosa em análise</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card card-pad" style="margin-top:18px;">
+      <h3 style="font-size:.95rem;margin-bottom:8px;">💡 Particular vs. Convênio</h3>
+      <div style="font-size:.85rem;color:var(--text-soft);line-height:1.6;">Atendimentos particulares representam <b style="color:var(--ink);">66% da receita</b> com <b style="color:var(--ink);">52% das sessões</b>. O valor médio por sessão particular (R$ 148) é 71% maior que o repasse médio dos convênios (R$ 86,50).</div>
+    </div>
+  </div>
+
+  <!-- MODAL REGISTRAR PAGAMENTO -->
+  <div class="modal-overlay" id="mPagamento">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Registrar pagamento</h3>
+        <button class="close" onclick="App.closeModal('mPagamento')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field"><label>Paciente</label>
+            <select><option>Marcos Teixeira</option><option>Larissa Fontes</option><option>Paula Ribeiro</option><option>João Paulo Dias</option><option>Sérgio Meireles</option></select>
+          </div>
+          <div class="field"><label>Referente a</label>
+            <select><option>Pacote 10 sessões</option><option>Pacote 20 sessões</option><option>Sessão avulsa</option><option>Mensal Pilates</option><option>Domiciliar</option></select>
+          </div>
+          <div class="field"><label>Valor</label><input type="text" placeholder="R$ 0,00" value="R$ 1.400"></div>
+          <div class="field"><label>Forma de pagamento</label>
+            <select><option>Pix</option><option>Cartão de crédito</option><option>Cartão de débito</option><option>Dinheiro</option><option>Boleto</option><option>Repasse convênio</option></select>
+          </div>
+          <div class="field"><label>Data</label><input type="date" value="2026-07-16"></div>
+          <div class="field"><label>Parcelas</label>
+            <select><option>À vista</option><option>2x</option><option>3x</option><option>4x</option></select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal('mPagamento')">Cancelar</button>
+        <button class="btn btn-primary" onclick="App.closeModal('mPagamento'); App.toast('Pagamento registrado e recibo enviado!')">Registrar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/sidebar.js"></script>
+</body>
+</html>

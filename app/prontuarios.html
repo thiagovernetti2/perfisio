@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prontuários — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body data-page="prontuarios" data-title="Prontuários" data-subtitle="Prontuário eletrônico com evoluções, avaliações e anexos">
+
+  <div class="grid-2" style="grid-template-columns:300px 1fr;">
+    <!-- LISTA DE PACIENTES -->
+    <div class="card">
+      <div class="card-pad" style="padding-bottom:12px;">
+        <div class="topbar-search" style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:8px 12px;">
+          🔍 <input id="patSearch" type="text" placeholder="Buscar paciente..." style="border:none;background:none;outline:none;width:100%;font-size:.85rem;">
+        </div>
+      </div>
+      <div class="pat-list" id="patList"></div>
+    </div>
+
+    <!-- PRONTUÁRIO -->
+    <div>
+      <div class="card card-pad" style="margin-bottom:18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+        <span class="avatar-sm" id="pHeadAvatar" style="width:52px;height:52px;font-size:1rem;background:#0DA189;">MT</span>
+        <div style="flex:1;min-width:200px;">
+          <div id="pHeadNome" style="font-size:1.1rem;font-weight:800;color:var(--ink);">Marcos Teixeira</div>
+          <div id="pHeadSub" style="font-size:.8rem;color:var(--text-soft);margin-top:2px;">42 anos · Unimed · Lombalgia crônica · Dra. Camila Rocha</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <span class="badge green" id="pHeadStatus">Em tratamento · 7/10</span>
+          <button class="btn btn-ghost btn-sm" onclick="App.toast('Prontuário exportado em PDF (protótipo)', 'info')">⬇ Exportar PDF</button>
+        </div>
+      </div>
+
+      <div class="tabs" data-auto>
+        <button class="tab active" data-tab="evolucoes">Evoluções</button>
+        <button class="tab" data-tab="avaliacao">Avaliação inicial</button>
+        <button class="tab" data-tab="exercicios">Exercícios prescritos</button>
+        <button class="tab" data-tab="anexos">Anexos</button>
+      </div>
+
+      <!-- EVOLUÇÕES -->
+      <div data-tab-panel="evolucoes">
+        <div class="card card-pad" style="margin-bottom:18px;">
+          <h3 style="font-size:.95rem;margin-bottom:12px;">Nova evolução (SOAP)</h3>
+          <div class="form-grid">
+            <div class="field"><label>S — Subjetivo</label><textarea id="evS" placeholder="Relato do paciente. Ex.: refere melhora da dor, EVA 3..."></textarea></div>
+            <div class="field"><label>O — Objetivo</label><textarea id="evO" placeholder="Achados do fisioterapeuta. Ex.: ADM de flexão 80°..."></textarea></div>
+            <div class="field"><label>A — Avaliação</label><textarea id="evA" placeholder="Análise. Ex.: evolução dentro do esperado..."></textarea></div>
+            <div class="field"><label>P — Plano</label><textarea id="evP" placeholder="Conduta. Ex.: progredir carga, incluir prancha..."></textarea></div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+            <button class="btn btn-primary" onclick="salvarEvolucao()">Salvar evolução</button>
+          </div>
+        </div>
+
+        <div id="soapList">
+          <div class="soap-block">
+            <div class="sp-head"><span class="sp-date">14/07/2026 · Sessão 7 · Camila Rocha</span><span class="badge green">EVA 4</span></div>
+            <div class="sp-row"><b>S</b> Paciente refere redução importante da dor ao sentar por períodos longos. Dormiu bem.</div>
+            <div class="sp-row"><b>O</b> Flexão de tronco sem dor até 70°. Teste de Lasègue negativo bilateral. Boa ativação de core.</div>
+            <div class="sp-row"><b>A</b> Evolução acima do esperado. Dor migrando de EVA 6 para 4 em 3 semanas.</div>
+            <div class="sp-row"><b>P</b> Progredir fortalecimento de CORE, iniciar exercícios com carga leve. Manter 2x/semana.</div>
+          </div>
+          <div class="soap-block">
+            <div class="sp-head"><span class="sp-date">09/07/2026 · Sessão 6 · Camila Rocha</span><span class="badge amber">EVA 5</span></div>
+            <div class="sp-row"><b>S</b> Relata desconforto após viagem de carro no fim de semana (4h dirigindo).</div>
+            <div class="sp-row"><b>O</b> Leve aumento de tensão em paravertebrais lombares. ADM preservada.</div>
+            <div class="sp-row"><b>A</b> Recidiva leve associada à postura prolongada, sem sinais de piora estrutural.</div>
+            <div class="sp-row"><b>P</b> Liberação miofascial + mobilidade. Orientado sobre pausas em viagens longas.</div>
+          </div>
+          <div class="soap-block">
+            <div class="sp-head"><span class="sp-date">07/07/2026 · Sessão 5 · Camila Rocha</span><span class="badge amber">EVA 5</span></div>
+            <div class="sp-row"><b>S</b> Refere dor estável, sem irradiação para membros inferiores.</div>
+            <div class="sp-row"><b>O</b> Melhora do padrão de movimento no agachamento. Prancha 40s com boa técnica.</div>
+            <div class="sp-row"><b>A</b> Ganho consistente de estabilidade lombopélvica.</div>
+            <div class="sp-row"><b>P</b> Manter protocolo, aumentar tempo de prancha e incluir bird-dog com resistência.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AVALIAÇÃO -->
+      <div data-tab-panel="avaliacao" style="display:none;">
+        <div class="card card-pad">
+          <h3 style="font-size:.95rem;margin-bottom:14px;">Avaliação inicial · 28/06/2026 · Camila Rocha</h3>
+          <div class="form-grid">
+            <div><div class="tl-date">QUEIXA PRINCIPAL</div><div style="font-size:.87rem;margin-top:3px;">Dor lombar há 4 meses, piora ao sentar por longos períodos. EVA inicial: 7.</div></div>
+            <div><div class="tl-date">HISTÓRIA</div><div style="font-size:.87rem;margin-top:3px;">Trabalho em escritório (8h/dia sentado). Sedentário há 2 anos. Sem cirurgias prévias. RM: protrusão discal L4-L5 sem compressão radicular.</div></div>
+            <div><div class="tl-date">EXAME FÍSICO</div><div style="font-size:.87rem;margin-top:3px;">Flexão de tronco limitada a 50° com dor. Fraqueza de glúteo médio bilateral. Encurtamento de isquiotibiais. Lasègue negativo.</div></div>
+            <div><div class="tl-date">DIAGNÓSTICO CINÉTICO-FUNCIONAL</div><div style="font-size:.87rem;margin-top:3px;">Lombalgia mecânica crônica com déficit de estabilização lombopélvica.</div></div>
+            <div class="full"><div class="tl-date">PLANO DE TRATAMENTO</div><div style="font-size:.87rem;margin-top:3px;">10 sessões, 2x/semana · Fase 1: analgesia e mobilidade (sessões 1–3) · Fase 2: estabilização de core (4–7) · Fase 3: fortalecimento global e retorno à atividade física (8–10). Meta: EVA ≤ 2 e retorno à musculação.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EXERCÍCIOS -->
+      <div data-tab-panel="exercicios" style="display:none;">
+        <div class="card">
+          <div class="card-header">
+            <h3>Prescrição atual (casa)</h3>
+            <a class="link" href="exercicios.html">Abrir biblioteca →</a>
+          </div>
+          <div class="table-wrap" style="padding-top:8px;">
+            <table class="data">
+              <thead><tr><th>Exercício</th><th>Séries × Reps</th><th>Frequência</th><th>Adesão do paciente</th></tr></thead>
+              <tbody>
+                <tr><td>🧘 Ponte de glúteos</td><td>3 × 12</td><td>Diária</td><td><div class="progress" style="width:110px;"><div style="width:85%;"></div></div><span style="font-size:.72rem;color:var(--text-soft);">85%</span></td></tr>
+                <tr><td>🐦 Bird-dog</td><td>3 × 10 (cada lado)</td><td>Diária</td><td><div class="progress" style="width:110px;"><div style="width:70%;"></div></div><span style="font-size:.72rem;color:var(--text-soft);">70%</span></td></tr>
+                <tr><td>🪵 Prancha frontal</td><td>3 × 30s</td><td>Diária</td><td><div class="progress" style="width:110px;"><div style="width:92%;"></div></div><span style="font-size:.72rem;color:var(--text-soft);">92%</span></td></tr>
+                <tr><td>🦵 Alongamento de isquiotibiais</td><td>3 × 30s</td><td>2x ao dia</td><td><div class="progress" style="width:110px;"><div style="width:60%;"></div></div><span style="font-size:.72rem;color:var(--text-soft);">60%</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANEXOS -->
+      <div data-tab-panel="anexos" style="display:none;">
+        <div class="card card-pad">
+          <div class="day-list">
+            <div class="dl-item"><div style="font-size:1.4rem;">📄</div><div style="flex:1;"><div class="dl-title">RM_coluna_lombar_jun2026.pdf</div><div class="dl-sub">Ressonância magnética · enviado em 28/06/2026 · 4,2 MB</div></div><button class="btn btn-ghost btn-sm" onclick="App.toast('Download iniciado (protótipo)', 'info')">Baixar</button></div>
+            <div class="dl-item"><div style="font-size:1.4rem;">📄</div><div style="flex:1;"><div class="dl-title">Encaminhamento_ortopedista.pdf</div><div class="dl-sub">Dr. Fábio Landim (CRM 88.123) · enviado em 26/06/2026 · 320 KB</div></div><button class="btn btn-ghost btn-sm" onclick="App.toast('Download iniciado (protótipo)', 'info')">Baixar</button></div>
+            <div class="dl-item"><div style="font-size:1.4rem;">🖼️</div><div style="flex:1;"><div class="dl-title">avaliacao_postural_frente.jpg</div><div class="dl-sub">Foto de avaliação postural · 28/06/2026 · 1,8 MB</div></div><button class="btn btn-ghost btn-sm" onclick="App.toast('Download iniciado (protótipo)', 'info')">Baixar</button></div>
+          </div>
+          <button class="btn btn-soft" style="margin-top:14px;" onclick="App.toast('Upload de anexos no protótipo completo', 'info')">+ Adicionar anexo</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/sidebar.js"></script>
+  <script>
+    const PACS = [
+      { nome: 'Marcos Teixeira', sub: 'Lombalgia crônica · 7/10', cor: '#0DA189', head: '42 anos · Unimed · Lombalgia crônica · Dra. Camila Rocha', status: 'Em tratamento · 7/10' },
+      { nome: 'Larissa Fontes', sub: 'Pós-op. LCA · 7/20', cor: '#2D7DD2', head: '29 anos · Particular · Pós-op. LCA (joelho D) · Dr. Rafael Nunes', status: 'Em tratamento · 7/20' },
+      { nome: 'Helena Garcia', sub: 'Osteoartrose · 18/20', cor: '#7C5CBF', head: '63 anos · Bradesco Saúde · Osteoartrose de quadril · Dra. Marina Alves', status: 'Alta próxima · 18/20' },
+      { nome: 'João Paulo Dias', sub: 'AVC · 6/30', cor: '#D9820B', head: '55 anos · Particular · AVC, reabilitação motora · Dr. Pedro Sampaio', status: 'Em tratamento · 6/30' },
+      { nome: 'Paula Ribeiro', sub: 'Fibromialgia · Pilates', cor: '#D64545', head: '51 anos · Amil · Fibromialgia · Dra. Marina Alves', status: 'Em tratamento · mensal' },
+      { nome: 'Antônio Ferraz', sub: 'Parkinson · 22/30', cor: '#1E9E6A', head: '71 anos · Bradesco Saúde · Parkinson, equilíbrio · Dr. Pedro Sampaio', status: 'Em tratamento · 22/30' },
+      { nome: 'Beatriz Nogueira', sub: 'Escoliose · RPG · 3/8', cor: '#2D7DD2', head: '27 anos · Unimed · Escoliose, RPG · Dra. Marina Alves', status: 'Em tratamento · 3/8' },
+    ];
+    let sel = 0;
+
+    function renderList(q = '') {
+      const list = document.getElementById('patList');
+      list.innerHTML = PACS
+        .map((p, i) => ({ p, i }))
+        .filter(({ p }) => p.nome.toLowerCase().includes(q.toLowerCase()))
+        .map(({ p, i }) => `
+          <div class="pat-item${i === sel ? ' active' : ''}" onclick="selPac(${i})">
+            <span class="avatar-sm" style="background:${p.cor};">${App.iniciais(p.nome)}</span>
+            <div><div class="pt-name">${p.nome}</div><div class="pt-sub">${p.sub}</div></div>
+          </div>`).join('') || '<div class="empty">Nenhum paciente encontrado.</div>';
+    }
+
+    function selPac(i) {
+      sel = i;
+      const p = PACS[i];
+      document.getElementById('pHeadNome').textContent = p.nome;
+      document.getElementById('pHeadSub').textContent = p.head;
+      document.getElementById('pHeadStatus').textContent = p.status;
+      const av = document.getElementById('pHeadAvatar');
+      av.textContent = App.iniciais(p.nome);
+      av.style.background = p.cor;
+      renderList(document.getElementById('patSearch').value);
+    }
+
+    function salvarEvolucao() {
+      const s = document.getElementById('evS').value.trim();
+      const o = document.getElementById('evO').value.trim();
+      const a = document.getElementById('evA').value.trim();
+      const pl = document.getElementById('evP').value.trim();
+      if (!s && !o && !a && !pl) { App.toast('Preencha ao menos um campo da evolução', 'error'); return; }
+      const bloco = document.createElement('div');
+      bloco.className = 'soap-block';
+      bloco.style.borderColor = 'var(--primary)';
+      bloco.innerHTML = `
+        <div class="sp-head"><span class="sp-date">16/07/2026 · Nova sessão · Camila Rocha</span><span class="badge primary">Agora</span></div>
+        ${s ? `<div class="sp-row"><b>S</b> ${s}</div>` : ''}
+        ${o ? `<div class="sp-row"><b>O</b> ${o}</div>` : ''}
+        ${a ? `<div class="sp-row"><b>A</b> ${a}</div>` : ''}
+        ${pl ? `<div class="sp-row"><b>P</b> ${pl}</div>` : ''}`;
+      document.getElementById('soapList').prepend(bloco);
+      ['evS', 'evO', 'evA', 'evP'].forEach(id => document.getElementById(id).value = '');
+      App.toast('Evolução registrada no prontuário!');
+    }
+
+    document.getElementById('patSearch').addEventListener('input', e => renderList(e.target.value));
+    renderList();
+  </script>
+</body>
+</html>

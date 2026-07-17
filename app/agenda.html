@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agenda — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body data-page="agenda" data-title="Agenda" data-subtitle="Sessões, avaliações e turmas da clínica">
+
+  <div class="cal-toolbar">
+    <div class="cal-nav">
+      <button onclick="App.toast('Navegação entre meses no protótipo completo', 'info')">‹</button>
+      <button onclick="App.toast('Navegação entre meses no protótipo completo', 'info')">›</button>
+    </div>
+    <div class="cal-month">julho 2026</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;" id="fisioChips"></div>
+    <div style="flex:1;"></div>
+    <button class="btn btn-primary" onclick="App.openModal('mSessao')">+ Nova sessão</button>
+  </div>
+
+  <div class="grid-2">
+    <div class="cal-grid" id="calGrid"></div>
+
+    <div class="card">
+      <div class="card-header"><h3 id="dayTitle">Quinta, 16 de julho</h3></div>
+      <div class="card-pad day-list" id="dayList"></div>
+    </div>
+  </div>
+
+  <!-- MODAL NOVA SESSÃO -->
+  <div class="modal-overlay" id="mSessao">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Nova sessão</h3>
+        <button class="close" onclick="App.closeModal('mSessao')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field full"><label>Paciente</label>
+            <select><option>Marcos Teixeira</option><option>Larissa Fontes</option><option>Helena Garcia</option><option>João Paulo Dias</option><option>Sérgio Meireles</option><option>+ Novo paciente…</option></select>
+          </div>
+          <div class="field"><label>Fisioterapeuta</label>
+            <select><option>Camila Rocha</option><option>Rafael Nunes</option><option>Marina Alves</option><option>Pedro Sampaio</option></select>
+          </div>
+          <div class="field"><label>Tipo</label>
+            <select><option>Sessão de tratamento</option><option>Avaliação inicial</option><option>Reavaliação</option><option>Pilates (turma)</option><option>Domiciliar</option></select>
+          </div>
+          <div class="field"><label>Data</label><input type="date" value="2026-07-17"></div>
+          <div class="field"><label>Horário</label><input type="time" value="09:00"></div>
+          <div class="field"><label>Duração</label>
+            <select><option>50 min</option><option>30 min</option><option>1h</option></select>
+          </div>
+          <div class="field"><label>Repetir</label>
+            <select><option>Não repete</option><option>2x por semana</option><option>3x por semana</option><option>Semanal</option></select>
+          </div>
+          <div class="field full"><label>Observações</label><textarea placeholder="Ex.: focar em mobilidade de quadril"></textarea></div>
+          <div class="check-row full"><input type="checkbox" checked id="ckLembrete"><label for="ckLembrete" style="margin:0;font-weight:500;">Enviar lembrete por WhatsApp 24h antes</label></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal('mSessao')">Cancelar</button>
+        <button class="btn btn-primary" onclick="App.closeModal('mSessao'); App.toast('Sessão agendada com sucesso!')">Agendar sessão</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/sidebar.js"></script>
+  <script>
+    /* ---- Eventos de julho/2026 (mock) ---- */
+    const EV = [
+      { d: 1,  h: '09:00', pac: 'Larissa Fontes', tipo: 'Sessão 3/20', fisio: 'rafael' },
+      { d: 2,  h: '08:00', pac: 'Marcos Teixeira', tipo: 'Sessão 3/10', fisio: 'camila' },
+      { d: 3,  h: '15:00', pac: 'Pilates — turma', tipo: '4 alunos', fisio: 'marina' },
+      { d: 6,  h: '08:00', pac: 'Marcos Teixeira', tipo: 'Sessão 4/10', fisio: 'camila' },
+      { d: 6,  h: '14:00', pac: 'João Paulo Dias', tipo: 'Sessão 3/30', fisio: 'pedro' },
+      { d: 7,  h: '09:00', pac: 'Larissa Fontes', tipo: 'Sessão 4/20', fisio: 'rafael' },
+      { d: 7,  h: '10:00', pac: 'Helena Garcia', tipo: 'Sessão 15/20', fisio: 'marina' },
+      { d: 8,  h: '11:00', pac: 'Avaliação — R. Campos', tipo: 'Avaliação', fisio: 'camila' },
+      { d: 9,  h: '08:00', pac: 'Marcos Teixeira', tipo: 'Sessão 5/10', fisio: 'camila' },
+      { d: 9,  h: '16:00', pac: 'Sérgio Meireles', tipo: 'Sessão 8/10', fisio: 'rafael' },
+      { d: 10, h: '15:00', pac: 'Pilates — turma', tipo: '5 alunos', fisio: 'marina' },
+      { d: 13, h: '08:00', pac: 'Marcos Teixeira', tipo: 'Sessão 6/10', fisio: 'camila' },
+      { d: 13, h: '14:00', pac: 'João Paulo Dias', tipo: 'Sessão 5/30', fisio: 'pedro' },
+      { d: 14, h: '09:00', pac: 'Larissa Fontes', tipo: 'Sessão 6/20', fisio: 'rafael' },
+      { d: 14, h: '10:00', pac: 'Helena Garcia', tipo: 'Sessão 17/20', fisio: 'marina' },
+      { d: 15, h: '08:00', pac: 'Marcos Teixeira', tipo: 'Sessão 7/10', fisio: 'camila' },
+      { d: 15, h: '14:00', pac: 'João Paulo Dias', tipo: 'Sessão 6/30', fisio: 'pedro' },
+      { d: 16, h: '08:00', pac: 'Marcos Teixeira', tipo: 'Sessão 8/10', fisio: 'camila' },
+      { d: 16, h: '09:00', pac: 'Larissa Fontes', tipo: 'Sessão 8/20', fisio: 'rafael' },
+      { d: 16, h: '10:00', pac: 'Helena Garcia', tipo: 'Sessão 19/20', fisio: 'marina' },
+      { d: 16, h: '11:00', pac: 'Avaliação — T. Prado', tipo: 'Avaliação', fisio: 'camila' },
+      { d: 16, h: '14:00', pac: 'João Paulo Dias', tipo: 'Sessão 7/30', fisio: 'pedro' },
+      { d: 16, h: '15:00', pac: 'Pilates — turma', tipo: '4 alunos', fisio: 'marina' },
+      { d: 16, h: '16:00', pac: 'Sérgio Meireles', tipo: 'Sessão 10/10 · última', fisio: 'rafael' },
+      { d: 17, h: '10:00', pac: 'Avaliação — R. Campos', tipo: 'Avaliação', fisio: 'camila' },
+      { d: 17, h: '15:00', pac: 'Pilates — turma', tipo: '5 alunos', fisio: 'marina' },
+      { d: 20, h: '08:00', pac: 'Marcos Teixeira', tipo: 'Sessão 9/10', fisio: 'camila' },
+      { d: 20, h: '14:00', pac: 'João Paulo Dias', tipo: 'Sessão 8/30', fisio: 'pedro' },
+      { d: 21, h: '09:00', pac: 'Larissa Fontes', tipo: 'Sessão 9/20', fisio: 'rafael' },
+      { d: 21, h: '10:00', pac: 'Helena Garcia', tipo: 'Sessão 20/20 · alta', fisio: 'marina' },
+      { d: 23, h: '08:00', pac: 'Marcos Teixeira', tipo: 'Sessão 10/10 · reavaliação', fisio: 'camila' },
+      { d: 24, h: '15:00', pac: 'Pilates — turma', tipo: '5 alunos', fisio: 'marina' },
+      { d: 27, h: '14:00', pac: 'João Paulo Dias', tipo: 'Sessão 9/30', fisio: 'pedro' },
+      { d: 28, h: '09:00', pac: 'Larissa Fontes', tipo: 'Sessão 10/20', fisio: 'rafael' },
+      { d: 30, h: '11:00', pac: 'Avaliação — nova', tipo: 'Avaliação', fisio: 'pedro' },
+    ];
+
+    const HOJE = 16;
+    let filtro = 'todos';
+    let diaSel = HOJE;
+
+    /* Chips de filtro por fisioterapeuta */
+    const chipsEl = document.getElementById('fisioChips');
+    chipsEl.innerHTML = `<button class="chip active" data-f="todos">Todos</button>` +
+      App.FISIOS.map(f => `<button class="chip" data-f="${f.id}"><span class="dot" style="background:${f.cor};"></span>${f.nome.split(' ')[0]}</button>`).join('');
+    chipsEl.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => {
+      chipsEl.querySelectorAll('.chip').forEach(x => x.classList.remove('active'));
+      c.classList.add('active');
+      filtro = c.dataset.f;
+      renderCal(); renderDay();
+    }));
+
+    /* Calendário de julho/2026: dia 1 = quarta-feira */
+    function renderCal() {
+      const grid = document.getElementById('calGrid');
+      const dows = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+      let html = dows.map(d => `<div class="cal-dow">${d}</div>`).join('');
+      const firstDow = 3; // 1/jul/2026 = quarta
+      const daysPrev = [28, 29, 30]; // junho
+      daysPrev.forEach(d => html += `<div class="cal-cell other"><div class="c-day">${d}</div></div>`);
+      for (let d = 1; d <= 31; d++) {
+        const evs = EV.filter(e => e.d === d && (filtro === 'todos' || e.fisio === filtro));
+        const shown = evs.slice(0, 3);
+        const extra = evs.length - shown.length;
+        html += `<div class="cal-cell${d === HOJE ? ' today' : ''}" onclick="selDay(${d})" style="cursor:pointer;">
+          <div class="c-day">${d}</div>
+          ${shown.map(e => `<span class="cal-ev" style="background:${App.fisio(e.fisio).cor};">${e.h} ${e.pac}</span>`).join('')}
+          ${extra > 0 ? `<span class="cal-more">+${extra} sessões</span>` : ''}
+        </div>`;
+      }
+      const total = 7 + 3 + 31;
+      const rest = Math.ceil(total / 7) * 7 - total;
+      for (let d = 1; d <= rest; d++) html += `<div class="cal-cell other"><div class="c-day">${d}</div></div>`;
+      grid.innerHTML = html;
+    }
+
+    function selDay(d) { diaSel = d; renderDay(); }
+
+    function renderDay() {
+      const dows = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+      const dow = dows[new Date(2026, 6, diaSel).getDay()];
+      document.getElementById('dayTitle').textContent =
+        `${dow.charAt(0).toUpperCase() + dow.slice(1)}, ${diaSel} de julho`;
+      const evs = EV.filter(e => e.d === diaSel && (filtro === 'todos' || e.fisio === filtro))
+        .sort((a, b) => a.h.localeCompare(b.h));
+      const list = document.getElementById('dayList');
+      if (!evs.length) { list.innerHTML = `<div class="empty">Nenhuma sessão neste dia.</div>`; return; }
+      list.innerHTML = evs.map(e => {
+        const f = App.fisio(e.fisio);
+        return `<div class="dl-item">
+          <div class="dl-time">${e.h}</div>
+          <div class="dl-bar" style="background:${f.cor};"></div>
+          <div>
+            <div class="dl-title">${e.pac}</div>
+            <div class="dl-sub">${e.tipo} · ${f.nome}</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    renderCal(); renderDay();
+  </script>
+</body>
+</html>

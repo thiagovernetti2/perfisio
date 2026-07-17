@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Equipe — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body data-page="equipe" data-title="Equipe" data-subtitle="Fisioterapeutas da clínica, agenda e produtividade">
+
+  <div class="page-head">
+    <div style="display:flex;gap:8px;">
+      <span class="badge primary">4 profissionais ativos</span>
+      <span class="badge green">Ocupação média: 78%</span>
+    </div>
+    <button class="btn btn-primary" onclick="App.openModal('mPro')">+ Novo profissional</button>
+  </div>
+
+  <div class="ex-grid" id="proGrid" style="grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));"></div>
+
+  <div class="card" style="margin-top:24px;">
+    <div class="card-header"><h3>Produção de julho por profissional</h3></div>
+    <div class="table-wrap" style="padding-top:8px;">
+      <table class="data">
+        <thead><tr><th>Profissional</th><th>Sessões realizadas</th><th>Faltas de pacientes</th><th>Receita gerada</th><th>Comissão (40%)</th><th>Avaliação média</th></tr></thead>
+        <tbody id="prodRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- MODAL NOVO PROFISSIONAL -->
+  <div class="modal-overlay" id="mPro">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Novo profissional</h3>
+        <button class="close" onclick="App.closeModal('mPro')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field"><label>Nome completo</label><input type="text" placeholder="Nome do fisioterapeuta"></div>
+          <div class="field"><label>CREFITO</label><input type="text" placeholder="CREFITO-3 00.000-F"></div>
+          <div class="field"><label>Especialidade principal</label>
+            <select><option>Ortopedia e Traumato</option><option>Esportiva</option><option>Neurofuncional</option><option>Pilates / RPG</option><option>Respiratória</option><option>Pélvica</option></select>
+          </div>
+          <div class="field"><label>Modelo de remuneração</label>
+            <select><option>Comissão 40%</option><option>Comissão 50%</option><option>Fixo + comissão</option><option>Aluguel de sala</option></select>
+          </div>
+          <div class="field"><label>E-mail de acesso</label><input type="email" placeholder="email@clinica.com"></div>
+          <div class="field"><label>Perfil de acesso</label>
+            <select><option>Fisioterapeuta (agenda própria + prontuários)</option><option>Gestor (acesso total)</option><option>Recepção (agenda + pagamentos)</option></select>
+          </div>
+          <div class="check-row full"><input type="checkbox" checked id="ckPerfil"><label for="ckPerfil" style="margin:0;font-weight:500;">Criar perfil público no diretório PerFisio</label></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal('mPro')">Cancelar</button>
+        <button class="btn btn-primary" onclick="App.closeModal('mPro'); App.toast('Convite enviado por e-mail!')">Adicionar à equipe</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/sidebar.js"></script>
+  <script>
+    const DADOS = {
+      camila: { ocup: 92, sessoes: 68, faltas: 4, receita: 14280, nota: 4.9, pacientes: 24 },
+      rafael: { ocup: 84, sessoes: 61, faltas: 6, receita: 11890, nota: 4.8, pacientes: 21 },
+      marina: { ocup: 76, sessoes: 74, faltas: 3, receita: 9860, nota: 5.0, pacientes: 26 },
+      pedro:  { ocup: 58, sessoes: 39, faltas: 2, receita: 8120, nota: 4.9, pacientes: 11 },
+    };
+
+    document.getElementById('proGrid').innerHTML = App.FISIOS.map(f => {
+      const d = DADOS[f.id];
+      return `<div class="pro-card">
+        <div class="avatar-lg" style="background:${f.cor};">${App.iniciais(f.nome)}</div>
+        <div class="pro-name">${f.nome}</div>
+        <div class="pro-crefito">${f.crefito}</div>
+        <div class="pro-esp"><span class="badge primary">${f.esp}</span></div>
+        <div style="margin-top:14px;">
+          <div class="hb-top" style="display:flex;justify-content:space-between;font-size:.74rem;margin-bottom:5px;">
+            <span style="color:var(--text-soft);font-weight:600;">Ocupação da agenda</span>
+            <span style="font-weight:700;color:var(--ink);">${d.ocup}%</span>
+          </div>
+          <div class="progress"><div style="width:${d.ocup}%;background:${f.cor};"></div></div>
+        </div>
+        <div class="pro-stats">
+          <div><div class="n">${d.pacientes}</div><div class="l">Pacientes</div></div>
+          <div><div class="n">${d.sessoes}</div><div class="l">Sessões/mês</div></div>
+          <div><div class="n">⭐ ${d.nota}</div><div class="l">Avaliação</div></div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:15px;">
+          <button class="btn btn-ghost btn-sm" onclick="location.href='agenda.html'">Ver agenda</button>
+          <button class="btn btn-soft btn-sm" onclick="App.toast('Perfil público de ${f.nome} aberto (protótipo)', 'info')">Perfil público</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    document.getElementById('prodRows').innerHTML = App.FISIOS.map(f => {
+      const d = DADOS[f.id];
+      return `<tr>
+        <td><div class="cell-person"><span class="avatar-sm" style="background:${f.cor};">${App.iniciais(f.nome)}</span><div><div class="p-name">${f.nome}</div><div class="p-sub">${f.esp}</div></div></div></td>
+        <td>${d.sessoes}</td>
+        <td>${d.faltas}</td>
+        <td style="font-weight:700;">${App.money(d.receita)}</td>
+        <td style="font-weight:600;color:var(--primary-dark);">${App.money(d.receita * 0.4)}</td>
+        <td>⭐ ${d.nota.toFixed(1)}</td>
+      </tr>`;
+    }).join('');
+  </script>
+</body>
+</html>
