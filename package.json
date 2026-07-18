@@ -1,11 +1,17 @@
 {
   "name": "perfisio",
-  "version": "1.0.0",
-  "description": "PerFisio — diretório de fisioterapeutas e clínicas + CRM e gestão completa",
+  "version": "2.0.0",
+  "description": "PerFisio — diretório de fisioterapeutas e clínicas + CRM e gestão completa (full-stack)",
   "scripts": {
-    "start": "serve . -l ${PORT:-3000}"
+    "start": "node server/server.js"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "dependencies": {
-    "serve": "^14.2.4"
+    "bcryptjs": "^2.4.3",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.12.0"
   }
 }

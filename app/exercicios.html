@@ -7,25 +7,17 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../assets/css/app.css">
 </head>
-<body data-page="exercicios" data-title="Biblioteca de Exercícios" data-subtitle="Monte prescrições e envie para o paciente por WhatsApp">
+<body data-page="exercicios" data-title="Biblioteca de Exercícios" data-subtitle="Monte prescrições e registre no prontuário do paciente">
 
   <div class="page-head">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;" id="catChips">
-      <button class="chip active" data-c="todos">Todos</button>
-      <button class="chip" data-c="coluna">Coluna</button>
-      <button class="chip" data-c="joelho">Joelho</button>
-      <button class="chip" data-c="ombro">Ombro</button>
-      <button class="chip" data-c="quadril">Quadril</button>
-      <button class="chip" data-c="neuro">Neuro</button>
-      <button class="chip" data-c="pilates">Pilates</button>
-    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;" id="catChips"></div>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-soft" id="btnPrescrever" onclick="prescrever()">📤 Prescrever selecionados (0)</button>
       <button class="btn btn-primary" onclick="App.openModal('mExercicio')">+ Novo exercício</button>
     </div>
   </div>
 
-  <div class="ex-grid" id="exGrid"></div>
+  <div class="ex-grid" id="exGrid"><div class="empty">Carregando...</div></div>
 
   <!-- MODAL NOVO EXERCÍCIO -->
   <div class="modal-overlay" id="mExercicio">
@@ -36,21 +28,22 @@
       </div>
       <div class="modal-body">
         <div class="form-grid">
-          <div class="field full"><label>Nome do exercício</label><input type="text" placeholder="Ex.: Agachamento isométrico na parede"></div>
+          <div class="field full"><label>Nome do exercício *</label><input type="text" id="xNome" placeholder="Ex.: Agachamento isométrico na parede"></div>
           <div class="field"><label>Categoria</label>
-            <select><option>Coluna</option><option>Joelho</option><option>Ombro</option><option>Quadril</option><option>Neuro</option><option>Pilates</option></select>
+            <select id="xCat"><option value="coluna">Coluna</option><option value="joelho">Joelho</option><option value="ombro">Ombro</option><option value="quadril">Quadril</option><option value="neuro">Neuro</option><option value="pilates">Pilates</option></select>
           </div>
           <div class="field"><label>Nível</label>
-            <select><option>Iniciante</option><option>Intermediário</option><option>Avançado</option></select>
+            <select id="xNivel"><option>Iniciante</option><option>Intermediário</option><option>Avançado</option></select>
           </div>
-          <div class="field"><label>Séries × repetições padrão</label><input type="text" placeholder="3 × 12"></div>
-          <div class="field"><label>Vídeo (link)</label><input type="url" placeholder="https://youtube.com/..."></div>
-          <div class="field full"><label>Instruções para o paciente</label><textarea placeholder="Descreva a execução em linguagem simples..."></textarea></div>
+          <div class="field"><label>Séries × repetições</label><input type="text" id="xReps" placeholder="3 × 12"></div>
+          <div class="field"><label>Emoji</label><input type="text" id="xEmoji" placeholder="💪" maxlength="4"></div>
+          <div class="field full"><label>Vídeo (link)</label><input type="url" id="xVideo" placeholder="https://youtube.com/..."></div>
+          <div class="field full"><label>Instruções para o paciente</label><textarea id="xInstr" placeholder="Descreva a execução em linguagem simples..."></textarea></div>
         </div>
       </div>
       <div class="modal-foot">
         <button class="btn btn-ghost" onclick="App.closeModal('mExercicio')">Cancelar</button>
-        <button class="btn btn-primary" onclick="App.closeModal('mExercicio'); App.toast('Exercício adicionado à biblioteca!')">Salvar exercício</button>
+        <button class="btn btn-primary" id="btnEx" onclick="salvarExercicio()">Salvar exercício</button>
       </div>
     </div>
   </div>
@@ -64,96 +57,114 @@
       </div>
       <div class="modal-body">
         <div class="form-grid">
-          <div class="field full"><label>Paciente</label>
-            <select><option>Marcos Teixeira</option><option>Larissa Fontes</option><option>Helena Garcia</option><option>João Paulo Dias</option><option>Paula Ribeiro</option></select>
-          </div>
+          <div class="field full"><label>Paciente *</label><select id="prPaciente"></select></div>
           <div class="field"><label>Frequência</label>
-            <select><option>Diária</option><option>2x ao dia</option><option>3x por semana</option><option>Dias de sessão</option></select>
+            <select id="prFreq"><option>Diária</option><option>2x ao dia</option><option>3x por semana</option><option>Dias de sessão</option></select>
           </div>
           <div class="field"><label>Duração do programa</label>
-            <select><option>2 semanas</option><option>4 semanas</option><option>Até reavaliação</option></select>
+            <select id="prDur"><option>2 semanas</option><option>4 semanas</option><option>Até reavaliação</option></select>
           </div>
-          <div class="check-row full"><input type="checkbox" checked id="ckWpp"><label for="ckWpp" style="margin:0;font-weight:500;">Enviar por WhatsApp com vídeos e lembretes diários</label></div>
         </div>
-        <div id="presList" style="margin-top:8px;font-size:.85rem;color:var(--text-soft);"></div>
+        <div id="prItens" style="margin-top:12px;font-size:.85rem;color:var(--text-soft);"></div>
       </div>
       <div class="modal-foot">
         <button class="btn btn-ghost" onclick="App.closeModal('mPrescricao')">Cancelar</button>
-        <button class="btn btn-primary" onclick="App.closeModal('mPrescricao'); App.toast('Prescrição enviada ao paciente! 📲'); limpar()">Enviar prescrição</button>
+        <button class="btn btn-primary" id="btnPr" onclick="salvarPrescricao()">Salvar prescrição</button>
       </div>
     </div>
   </div>
 
   <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/api.js"></script>
   <script src="../assets/js/sidebar.js"></script>
   <script>
-    const EX = [
-      { nome: 'Ponte de glúteos', cat: 'coluna', nivel: 'Iniciante', reps: '3 × 12', emoji: '🧘', bg: '#E1F4F0' },
-      { nome: 'Bird-dog', cat: 'coluna', nivel: 'Iniciante', reps: '3 × 10/lado', emoji: '🐦', bg: '#E7F0FA' },
-      { nome: 'Prancha frontal', cat: 'coluna', nivel: 'Intermediário', reps: '3 × 30s', emoji: '🪵', bg: '#FCF1DE' },
-      { nome: 'Gato-camelo', cat: 'coluna', nivel: 'Iniciante', reps: '2 × 15', emoji: '🐈', bg: '#F0EBFA' },
-      { nome: 'Agachamento na parede', cat: 'joelho', nivel: 'Iniciante', reps: '3 × 45s', emoji: '🦵', bg: '#E3F5ED' },
-      { nome: 'Cadeira extensora elástica', cat: 'joelho', nivel: 'Intermediário', reps: '3 × 12', emoji: '🪑', bg: '#E1F4F0' },
-      { nome: 'Step-up com controle', cat: 'joelho', nivel: 'Avançado', reps: '3 × 10/perna', emoji: '🪜', bg: '#FBE9E9' },
-      { nome: 'Rotação externa c/ elástico', cat: 'ombro', nivel: 'Iniciante', reps: '3 × 15', emoji: '💪', bg: '#E7F0FA' },
-      { nome: 'Deslizamento na parede', cat: 'ombro', nivel: 'Iniciante', reps: '3 × 12', emoji: '🧗', bg: '#FCF1DE' },
-      { nome: 'Y-T-W no solo', cat: 'ombro', nivel: 'Intermediário', reps: '2 × 10 cada', emoji: '🔤', bg: '#F0EBFA' },
-      { nome: 'Concha (clam shell)', cat: 'quadril', nivel: 'Iniciante', reps: '3 × 15/lado', emoji: '🦪', bg: '#E3F5ED' },
-      { nome: 'Abdução em pé c/ elástico', cat: 'quadril', nivel: 'Intermediário', reps: '3 × 12/lado', emoji: '🩰', bg: '#E1F4F0' },
-      { nome: 'Marcha estacionária', cat: 'neuro', nivel: 'Iniciante', reps: '3 × 1 min', emoji: '🚶', bg: '#E7F0FA' },
-      { nome: 'Treino de equilíbrio unipodal', cat: 'neuro', nivel: 'Intermediário', reps: '3 × 30s/lado', emoji: '⚖️', bg: '#FCF1DE' },
-      { nome: 'Alcance funcional sentado', cat: 'neuro', nivel: 'Iniciante', reps: '3 × 10', emoji: '🫳', bg: '#FBE9E9' },
-      { nome: 'The Hundred', cat: 'pilates', nivel: 'Intermediário', reps: '1 × 100', emoji: '💯', bg: '#F0EBFA' },
-      { nome: 'Roll-up', cat: 'pilates', nivel: 'Intermediário', reps: '2 × 8', emoji: '🌀', bg: '#E1F4F0' },
-      { nome: 'Swan (extensão torácica)', cat: 'pilates', nivel: 'Avançado', reps: '2 × 8', emoji: '🦢', bg: '#E3F5ED' },
-    ];
     const NIVEL_BADGE = { 'Iniciante': 'green', 'Intermediário': 'amber', 'Avançado': 'red' };
-    let cat = 'todos';
+    const BGS = { coluna: '#E1F4F0', joelho: '#E3F5ED', ombro: '#E7F0FA', quadril: '#FCF1DE', neuro: '#F0EBFA', pilates: '#FBE9E9' };
+    let EX = [], PACS = [], cat = 'todos';
     const selecionados = new Set();
+
+    async function boot() {
+      [EX, PACS] = await Promise.all([PF.get('exercicios'), PF.get('pacientes')]);
+      document.getElementById('prPaciente').innerHTML = PACS.filter(p => p.status !== 'inativo')
+        .map(p => `<option value="${p.id}">${p.nome}</option>`).join('') || '<option value="">Nenhum paciente cadastrado</option>';
+      renderChips(); render();
+    }
+
+    function renderChips() {
+      const cats = [['todos','Todos'],['coluna','Coluna'],['joelho','Joelho'],['ombro','Ombro'],['quadril','Quadril'],['neuro','Neuro'],['pilates','Pilates']];
+      const el = document.getElementById('catChips');
+      el.innerHTML = cats.map(([c, l]) => `<button class="chip${cat === c ? ' active' : ''}" data-c="${c}">${l}</button>`).join('');
+      el.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => { cat = c.dataset.c; renderChips(); render(); }));
+    }
 
     function render() {
       const items = EX.filter(e => cat === 'todos' || e.cat === cat);
       document.getElementById('exGrid').innerHTML = items.map(e => {
-        const i = EX.indexOf(e);
-        const on = selecionados.has(i);
-        return `<div class="ex-card" onclick="toggleSel(${i})" style="${on ? 'outline:2px solid var(--primary);' : ''}">
-          <div class="e-img" style="background:${e.bg};">
-            ${e.emoji}
-            <span class="e-badge badge ${NIVEL_BADGE[e.nivel]}">${e.nivel}</span>
-            ${on ? '<span class="e-badge badge primary" style="left:auto;right:10px;">✓ Selecionado</span>' : ''}
+        const on = selecionados.has(e.id);
+        return `<div class="ex-card" onclick="toggleSel('${e.id}')" style="${on ? 'outline:2px solid var(--primary);' : ''}">
+          <div class="e-img" style="background:${BGS[e.cat] || '#E1F4F0'};">
+            ${e.emoji || '💪'}
+            <span class="e-badge badge ${NIVEL_BADGE[e.nivel] || 'gray'}">${e.nivel}</span>
+            ${on ? '<span class="e-badge badge primary" style="left:auto;right:10px;">✓</span>' : ''}
           </div>
           <div class="e-body">
-            <div class="e-title">${e.nome}</div>
-            <div class="e-sub">${e.cat.charAt(0).toUpperCase() + e.cat.slice(1)}</div>
-            <div class="e-specs"><span>🔁 ${e.reps}</span><span>🎥 vídeo</span></div>
+            <div class="e-title">${e.nome} <button style="float:right;background:none;border:none;color:var(--text-soft);font-size:.78rem;" title="Excluir" onclick="excluirEx(event,'${e.id}')">✕</button></div>
+            <div class="e-sub">${e.cat.charAt(0).toUpperCase() + e.cat.slice(1)}${e.instrucoes ? ' · ' + e.instrucoes.slice(0, 60) : ''}</div>
+            <div class="e-specs"><span>🔁 ${e.reps || '—'}</span>${e.video ? `<a href="${e.video}" target="_blank" onclick="event.stopPropagation()" style="color:var(--primary);font-weight:600;">🎥 vídeo</a>` : ''}</div>
           </div>
         </div>`;
-      }).join('');
+      }).join('') || '<div class="empty">Nenhum exercício nesta categoria. Clique em <b>+ Novo exercício</b>.</div>';
       document.getElementById('btnPrescrever').textContent = `📤 Prescrever selecionados (${selecionados.size})`;
     }
 
-    function toggleSel(i) {
-      selecionados.has(i) ? selecionados.delete(i) : selecionados.add(i);
-      render();
-    }
+    function toggleSel(id) { selecionados.has(id) ? selecionados.delete(id) : selecionados.add(id); render(); }
 
     function prescrever() {
       if (!selecionados.size) { App.toast('Selecione ao menos um exercício clicando nos cards', 'info'); return; }
-      document.getElementById('presList').innerHTML =
-        '<b style="color:var(--ink);">Exercícios:</b> ' + [...selecionados].map(i => EX[i].nome).join(' · ');
+      if (!PACS.length) { App.toast('Cadastre um paciente primeiro', 'error'); return; }
+      document.getElementById('prItens').innerHTML = '<b style="color:var(--ink);">Exercícios:</b> ' +
+        [...selecionados].map(id => EX.find(e => e.id === id).nome).join(' · ');
       App.openModal('mPrescricao');
     }
 
-    function limpar() { selecionados.clear(); render(); }
+    async function salvarPrescricao() {
+      const btn = document.getElementById('btnPr'); btn.disabled = true;
+      try {
+        const itens = [...selecionados].map(id => { const e = EX.find(x => x.id === id); return { id: e.id, nome: e.nome, reps: e.reps }; });
+        await PF.post('prescricoes', { paciente_id: prPaciente.value, itens, freq: prFreq.value, duracao: prDur.value });
+        App.closeModal('mPrescricao');
+        App.toast('Prescrição salva no prontuário do paciente!');
+        selecionados.clear(); render();
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false;
+    }
 
-    document.querySelectorAll('#catChips .chip').forEach(c => c.addEventListener('click', () => {
-      document.querySelectorAll('#catChips .chip').forEach(x => x.classList.remove('active'));
-      c.classList.add('active');
-      cat = c.dataset.c;
-      render();
-    }));
+    async function salvarExercicio() {
+      if (!xNome.value.trim()) { App.toast('Informe o nome do exercício', 'error'); return; }
+      const btn = document.getElementById('btnEx'); btn.disabled = true;
+      try {
+        await PF.post('exercicios', {
+          nome: xNome.value.trim(), cat: xCat.value, nivel: xNivel.value,
+          reps: xReps.value.trim() || null, emoji: xEmoji.value.trim() || '💪',
+          video: xVideo.value.trim() || null, instrucoes: xInstr.value.trim() || null,
+        });
+        App.closeModal('mExercicio');
+        ['xNome','xReps','xEmoji','xVideo','xInstr'].forEach(id => document.getElementById(id).value = '');
+        App.toast('Exercício adicionado à biblioteca!');
+        EX = await PF.get('exercicios');
+        render();
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false;
+    }
 
-    render();
+    async function excluirEx(ev, id) {
+      ev.stopPropagation();
+      if (!confirm('Excluir este exercício da biblioteca?')) return;
+      try { await PF.del('exercicios', id); selecionados.delete(id); EX = await PF.get('exercicios'); render(); }
+      catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    boot().catch(e => App.toast(e.message, 'error'));
   </script>
 </body>
 </html>

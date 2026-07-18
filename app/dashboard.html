@@ -7,41 +7,29 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../assets/css/app.css">
 </head>
-<body data-page="dashboard" data-title="Dashboard" data-subtitle="Visão geral da Clínica Movimente · Julho 2026">
+<body data-page="dashboard" data-title="Dashboard" data-subtitle="Visão geral da clínica">
 
   <!-- STATS -->
   <div class="stats-grid">
     <div class="stat-card">
-      <div class="s-top">
-        <span class="s-label">Sessões hoje</span>
-        <div class="s-ico" style="background:var(--primary-soft);">📅</div>
-      </div>
-      <div class="s-value">18</div>
-      <div class="s-delta up">▲ 3 <span class="muted">vs. quarta passada</span></div>
+      <div class="s-top"><span class="s-label">Sessões hoje</span><div class="s-ico" style="background:var(--primary-soft);">📅</div></div>
+      <div class="s-value" id="stSessoes">—</div>
+      <div class="s-delta"><span class="muted" id="stSessoesSub"></span></div>
     </div>
     <div class="stat-card">
-      <div class="s-top">
-        <span class="s-label">Pacientes ativos</span>
-        <div class="s-ico" style="background:var(--blue-soft);">👥</div>
-      </div>
-      <div class="s-value">76</div>
-      <div class="s-delta up">▲ 8 <span class="muted">vs. junho</span></div>
+      <div class="s-top"><span class="s-label">Pacientes em tratamento</span><div class="s-ico" style="background:var(--blue-soft);">👥</div></div>
+      <div class="s-value" id="stPacientes">—</div>
+      <div class="s-delta"><span class="muted" id="stPacientesSub"></span></div>
     </div>
     <div class="stat-card">
-      <div class="s-top">
-        <span class="s-label">Receita de julho</span>
-        <div class="s-ico" style="background:var(--green-soft);">💰</div>
-      </div>
-      <div class="s-value">R$ 42,3 mil</div>
-      <div class="s-delta up">▲ 14% <span class="muted">vs. junho</span></div>
+      <div class="s-top"><span class="s-label">Receita do mês</span><div class="s-ico" style="background:var(--green-soft);">💰</div></div>
+      <div class="s-value" id="stReceita">—</div>
+      <div class="s-delta"><span class="muted" id="stReceitaSub"></span></div>
     </div>
     <div class="stat-card">
-      <div class="s-top">
-        <span class="s-label">Taxa de presença</span>
-        <div class="s-ico" style="background:var(--amber-soft);">✅</div>
-      </div>
-      <div class="s-value">91%</div>
-      <div class="s-delta down">▼ 2 p.p. <span class="muted">7 faltas na semana</span></div>
+      <div class="s-top"><span class="s-label">Taxa de presença (mês)</span><div class="s-ico" style="background:var(--amber-soft);">✅</div></div>
+      <div class="s-value" id="stPresenca">—</div>
+      <div class="s-delta"><span class="muted" id="stPresencaSub"></span></div>
     </div>
   </div>
 
@@ -50,60 +38,22 @@
       <!-- AGENDA DE HOJE -->
       <div class="card" style="margin-bottom:20px;">
         <div class="card-header">
-          <h3>Agenda de hoje · quinta, 16 de julho</h3>
+          <h3 id="tituloHoje">Agenda de hoje</h3>
           <a class="link" href="agenda.html">Ver agenda completa →</a>
         </div>
-        <div class="card-pad day-list" id="todayList"></div>
+        <div class="card-pad day-list" id="todayList"><div class="empty">Carregando...</div></div>
       </div>
 
       <!-- PACIENTES RECENTES -->
       <div class="card">
         <div class="card-header">
-          <h3>Pacientes com sessão recente</h3>
+          <h3>Pacientes recentes</h3>
           <a class="link" href="pacientes.html">Todos os pacientes →</a>
         </div>
         <div class="table-wrap" style="padding-top:10px;">
           <table class="data">
-            <thead>
-              <tr><th>Paciente</th><th>Condição</th><th>Fisioterapeuta</th><th>Sessões</th><th>Status</th></tr>
-            </thead>
-            <tbody>
-              <tr onclick="location.href='prontuarios.html'">
-                <td><div class="cell-person"><span class="avatar-sm" style="background:#0DA189;">MT</span><div><div class="p-name">Marcos Teixeira</div><div class="p-sub">42 anos · Unimed</div></div></div></td>
-                <td>Lombalgia crônica</td>
-                <td>Camila Rocha</td>
-                <td><div class="progress" style="width:90px;"><div style="width:70%;"></div></div><span style="font-size:.72rem;color:var(--text-soft);">7/10</span></td>
-                <td><span class="badge green">Em tratamento</span></td>
-              </tr>
-              <tr onclick="location.href='prontuarios.html'">
-                <td><div class="cell-person"><span class="avatar-sm" style="background:#2D7DD2;">LF</span><div><div class="p-name">Larissa Fontes</div><div class="p-sub">29 anos · Particular</div></div></div></td>
-                <td>Pós-op. LCA (joelho D)</td>
-                <td>Rafael Nunes</td>
-                <td><div class="progress" style="width:90px;"><div style="width:35%;"></div></div><span style="font-size:.72rem;color:var(--text-soft);">7/20</span></td>
-                <td><span class="badge green">Em tratamento</span></td>
-              </tr>
-              <tr onclick="location.href='prontuarios.html'">
-                <td><div class="cell-person"><span class="avatar-sm" style="background:#7C5CBF;">HG</span><div><div class="p-name">Helena Garcia</div><div class="p-sub">63 anos · Bradesco Saúde</div></div></div></td>
-                <td>Osteoartrose de quadril</td>
-                <td>Marina Alves</td>
-                <td><div class="progress" style="width:90px;"><div style="width:90%;"></div></div><span style="font-size:.72rem;color:var(--text-soft);">18/20</span></td>
-                <td><span class="badge amber">Alta próxima</span></td>
-              </tr>
-              <tr onclick="location.href='prontuarios.html'">
-                <td><div class="cell-person"><span class="avatar-sm" style="background:#D9820B;">JP</span><div><div class="p-name">João Paulo Dias</div><div class="p-sub">55 anos · Particular</div></div></div></td>
-                <td>AVC · reabilitação motora</td>
-                <td>Pedro Sampaio</td>
-                <td><div class="progress" style="width:90px;"><div style="width:20%;"></div></div><span style="font-size:.72rem;color:var(--text-soft);">6/30</span></td>
-                <td><span class="badge green">Em tratamento</span></td>
-              </tr>
-              <tr onclick="location.href='crm.html'">
-                <td><div class="cell-person"><span class="avatar-sm" style="background:#64737A;">RC</span><div><div class="p-name">Renata Campos</div><div class="p-sub">35 anos · SulAmérica</div></div></div></td>
-                <td>Cervicalgia + cefaleia tensional</td>
-                <td>—</td>
-                <td><span style="font-size:.72rem;color:var(--text-soft);">Avaliação sexta 10h</span></td>
-                <td><span class="badge blue">Avaliação</span></td>
-              </tr>
-            </tbody>
+            <thead><tr><th>Paciente</th><th>Queixa</th><th>Fisioterapeuta</th><th>Sessões</th><th>Status</th></tr></thead>
+            <tbody id="patRows"><tr><td colspan="5" class="empty">Carregando...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -113,91 +63,141 @@
       <!-- PENDÊNCIAS -->
       <div class="card card-pad" style="margin-bottom:20px;">
         <h3 style="font-size:.98rem;margin-bottom:14px;">⚠️ Pendências</h3>
-        <div class="day-list">
-          <div class="dl-item">
-            <div class="dl-bar" style="background:var(--red);"></div>
-            <div>
-              <div class="dl-title">4 evoluções não registradas</div>
-              <div class="dl-sub">Sessões de ontem sem evolução no prontuário</div>
-            </div>
-          </div>
-          <div class="dl-item">
-            <div class="dl-bar" style="background:var(--amber);"></div>
-            <div>
-              <div class="dl-title">3 pacotes terminando</div>
-              <div class="dl-sub">Helena G., Sérgio M. e Paula R. — propor renovação</div>
-            </div>
-          </div>
-          <div class="dl-item">
-            <div class="dl-bar" style="background:var(--amber);"></div>
-            <div>
-              <div class="dl-title">R$ 2.840 a receber vencidos</div>
-              <div class="dl-sub">5 cobranças em atraso · <a href="financeiro.html" style="color:var(--primary);font-weight:600;">ver financeiro</a></div>
-            </div>
-          </div>
-          <div class="dl-item">
-            <div class="dl-bar" style="background:var(--blue);"></div>
-            <div>
-              <div class="dl-title">6 leads sem resposta</div>
-              <div class="dl-sub">Contatos do site PerFisio aguardando retorno · <a href="crm.html" style="color:var(--primary);font-weight:600;">abrir CRM</a></div>
-            </div>
-          </div>
-        </div>
+        <div class="day-list" id="pendList"><div class="empty">Carregando...</div></div>
       </div>
 
       <!-- OCUPAÇÃO DA EQUIPE -->
       <div class="card card-pad" style="margin-bottom:20px;">
-        <h3 style="font-size:.98rem;margin-bottom:16px;">Ocupação da equipe (semana)</h3>
-        <div id="teamBars"></div>
+        <h3 style="font-size:.98rem;margin-bottom:16px;">Sessões da semana por profissional</h3>
+        <div id="teamBars"><div class="empty">Carregando...</div></div>
       </div>
 
       <!-- PERFIL PÚBLICO -->
       <div class="card card-pad">
         <h3 style="font-size:.98rem;margin-bottom:10px;">🌐 Perfil no PerFisio</h3>
-        <div style="font-size:.83rem;color:var(--text-soft);line-height:1.5;">Seu perfil público recebeu <b style="color:var(--ink);">214 visitas</b> e gerou <b style="color:var(--ink);">9 contatos</b> nos últimos 30 dias.</div>
+        <div style="font-size:.83rem;color:var(--text-soft);line-height:1.5;" id="perfilInfo">Carregando...</div>
         <div style="display:flex;gap:8px;margin-top:14px;">
           <button class="btn btn-soft btn-sm" onclick="location.href='configuracoes.html'">Editar perfil</button>
-          <button class="btn btn-ghost btn-sm" onclick="App.toast('Perfil público aberto em nova aba (protótipo)', 'info')">Ver como paciente</button>
+          <button class="btn btn-ghost btn-sm" onclick="window.open('../index.html','_blank')">Ver site público</button>
         </div>
       </div>
     </div>
   </div>
 
   <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/api.js"></script>
   <script src="../assets/js/sidebar.js"></script>
   <script>
-    // Agenda de hoje
-    const hoje = [
-      { h: '08:00', pac: 'Marcos Teixeira', tipo: 'Sessão 8/10 · Lombalgia', fisio: 'camila' },
-      { h: '09:00', pac: 'Larissa Fontes', tipo: 'Sessão 8/20 · Pós-op LCA', fisio: 'rafael' },
-      { h: '10:00', pac: 'Helena Garcia', tipo: 'Sessão 19/20 · Osteoartrose', fisio: 'marina' },
-      { h: '11:00', pac: 'Avaliação — Tiago Prado', tipo: 'Primeira avaliação · dor no ombro', fisio: 'camila' },
-      { h: '14:00', pac: 'João Paulo Dias', tipo: 'Sessão 7/30 · Neurofuncional', fisio: 'pedro' },
-      { h: '15:00', pac: 'Pilates — turma das 15h', tipo: '4 alunos · estúdio', fisio: 'marina' },
-      { h: '16:00', pac: 'Sérgio Meireles', tipo: 'Sessão 10/10 · Tendinopatia', fisio: 'rafael' },
-    ];
-    document.getElementById('todayList').innerHTML = hoje.map(s => {
-      const f = App.fisio(s.fisio);
-      return `<div class="dl-item">
-        <div class="dl-time">${s.h}</div>
-        <div class="dl-bar" style="background:${f.cor};"></div>
-        <div style="flex:1;">
-          <div class="dl-title">${s.pac}</div>
-          <div class="dl-sub">${s.tipo} · ${f.nome}</div>
-        </div>
-        <button class="btn btn-ghost btn-sm" onclick="App.toast('Check-in registrado para ${s.pac}')">Check-in</button>
-      </div>`;
-    }).join('');
+    const hoje = PF.hojeISO();
+    const mesIni = hoje.slice(0, 8) + '01';
+    const dow = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'][new Date().getDay()];
+    document.getElementById('tituloHoje').textContent =
+      `Agenda de hoje · ${dow}, ${new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}`;
 
-    // Ocupação da equipe
-    const ocup = [ ['camila', 92], ['rafael', 84], ['marina', 76], ['pedro', 58] ];
-    document.getElementById('teamBars').innerHTML = ocup.map(([id, pct]) => {
-      const f = App.fisio(id);
-      return `<div class="hbar">
-        <div class="hb-top"><span class="hb-name">${f.nome}</span><span class="hb-val">${pct}%</span></div>
-        <div class="hb-track"><div class="hb-fill" style="width:${pct}%;background:${f.cor};"></div></div>
-      </div>`;
-    }).join('');
+    async function carregar() {
+      const [fisios, pacientes, sessoesMes, pagamentos, leads, clinica] = await Promise.all([
+        PF.get('fisios'), PF.get('pacientes'), PF.get('sessoes', { from: mesIni.slice(0,8)+'01', to: hoje.slice(0,8)+'31' }),
+        PF.get('pagamentos'), PF.get('leads'), PF.api('/api/clinica'),
+      ]);
+      const fisioById = id => fisios.find(f => f.id === id);
+      const pacById = id => pacientes.find(p => p.id === id);
+
+      /* ---- stats ---- */
+      const sessHoje = sessoesMes.filter(s => s.data.slice(0,10) === hoje && s.status !== 'cancelada');
+      document.getElementById('stSessoes').textContent = sessHoje.length;
+      document.getElementById('stSessoesSub').textContent = sessHoje.filter(s => s.status === 'realizada').length + ' já realizadas';
+
+      const emTrat = pacientes.filter(p => p.status === 'tratamento');
+      document.getElementById('stPacientes').textContent = emTrat.length;
+      document.getElementById('stPacientesSub').textContent = pacientes.length + ' cadastrados no total';
+
+      const pagosMes = pagamentos.filter(p => p.status === 'pago' && (p.vencimento || p.criado_em || '').slice(0,7) === hoje.slice(0,7));
+      const receita = pagosMes.reduce((a,p) => a + Number(p.valor), 0);
+      document.getElementById('stReceita').textContent = App.money(receita);
+      document.getElementById('stReceitaSub').textContent = pagosMes.length + ' pagamentos recebidos';
+
+      const real = sessoesMes.filter(s => s.status === 'realizada').length;
+      const faltas = sessoesMes.filter(s => s.status === 'falta').length;
+      document.getElementById('stPresenca').textContent = (real + faltas) ? Math.round(real / (real + faltas) * 100) + '%' : '—';
+      document.getElementById('stPresencaSub').textContent = faltas + ' faltas no mês';
+
+      /* ---- agenda de hoje ---- */
+      const tl = document.getElementById('todayList');
+      tl.innerHTML = sessHoje.sort((a,b) => a.hora.localeCompare(b.hora)).map(s => {
+        const f = fisioById(s.fisio_id); const p = pacById(s.paciente_id);
+        const nome = p ? p.nome : (s.titulo || s.tipo);
+        const feito = s.status === 'realizada';
+        return `<div class="dl-item">
+          <div class="dl-time">${s.hora.slice(0,5)}</div>
+          <div class="dl-bar" style="background:${f ? f.cor : '#94A8A5'};"></div>
+          <div style="flex:1;">
+            <div class="dl-title">${nome} ${s.status==='falta' ? '<span class="badge red">falta</span>' : feito ? '<span class="badge green">✓</span>' : ''}</div>
+            <div class="dl-sub">${s.tipo}${f ? ' · ' + f.nome : ''}</div>
+          </div>
+          ${!feito && s.status !== 'falta' ? `<button class="btn btn-ghost btn-sm" onclick="checkin('${s.id}')">Check-in</button>` : ''}
+        </div>`;
+      }).join('') || '<div class="empty">Nenhuma sessão hoje. <a href="agenda.html" style="color:var(--primary);font-weight:600;">Agendar →</a></div>';
+
+      /* ---- pacientes recentes ---- */
+      const CORES = ['#0DA189','#2D7DD2','#7C5CBF','#D9820B','#D64545','#1E9E6A'];
+      const STATUS = { tratamento:'<span class="badge green">Em tratamento</span>', avaliacao:'<span class="badge blue">Avaliação</span>', alta:'<span class="badge purple">Alta</span>', inativo:'<span class="badge gray">Inativo</span>' };
+      document.getElementById('patRows').innerHTML = pacientes.slice(0, 6).map((p, i) => {
+        const f = fisioById(p.fisio_id);
+        const pct = p.sessoes_total ? Math.round(p.sessoes_feitas / p.sessoes_total * 100) : 0;
+        return `<tr onclick="location.href='prontuarios.html?p=${p.id}'">
+          <td><div class="cell-person"><span class="avatar-sm" style="background:${CORES[i%6]};">${App.iniciais(p.nome)}</span><div><div class="p-name">${p.nome}</div><div class="p-sub">${PF.idade(p.nascimento) ? PF.idade(p.nascimento)+' anos · ' : ''}${p.convenio||'Particular'}</div></div></div></td>
+          <td>${p.queixa || '—'}</td>
+          <td>${f ? f.nome : '—'}</td>
+          <td>${p.sessoes_total ? `<div class="progress" style="width:90px;"><div style="width:${pct}%;"></div></div><span style="font-size:.72rem;color:var(--text-soft);">${p.sessoes_feitas}/${p.sessoes_total}</span>` : '—'}</td>
+          <td>${STATUS[p.status] || p.status}</td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="5" class="empty">Nenhum paciente ainda. <a href="pacientes.html" style="color:var(--primary);font-weight:600;">Cadastrar o primeiro →</a></td></tr>';
+
+      /* ---- pendências ---- */
+      const pend = [];
+      const atraso = pagamentos.filter(p => p.status === 'atraso' || (p.status === 'aberto' && p.vencimento && p.vencimento.slice(0,10) < hoje));
+      if (atraso.length) pend.push(['var(--red)', `${App.money(atraso.reduce((a,p)=>a+Number(p.valor),0))} a receber vencidos`, `${atraso.length} cobranças em atraso · <a href="financeiro.html" style="color:var(--primary);font-weight:600;">ver financeiro</a>`]);
+      const terminando = pacientes.filter(p => p.status === 'tratamento' && p.sessoes_total > 0 && p.sessoes_total - p.sessoes_feitas <= 2);
+      if (terminando.length) pend.push(['var(--amber)', `${terminando.length} pacote(s) terminando`, terminando.map(p=>p.nome.split(' ')[0]).slice(0,3).join(', ') + ' — propor renovação']);
+      const tresDias = Date.now() - 3 * 86400000;
+      const semResp = leads.filter(l => l.col === 'novo' && new Date(l.criado_em) < tresDias);
+      if (semResp.length) pend.push(['var(--blue)', `${semResp.length} lead(s) sem resposta há 3+ dias`, `<a href="crm.html" style="color:var(--primary);font-weight:600;">abrir CRM</a>`]);
+      const emAval = pacientes.filter(p => p.status === 'avaliacao');
+      if (emAval.length) pend.push(['var(--purple)', `${emAval.length} paciente(s) aguardando avaliação`, 'Agende a avaliação inicial na agenda']);
+      document.getElementById('pendList').innerHTML = pend.map(([cor, t, s]) =>
+        `<div class="dl-item"><div class="dl-bar" style="background:${cor};"></div><div><div class="dl-title">${t}</div><div class="dl-sub">${s}</div></div></div>`
+      ).join('') || '<div class="empty">Tudo em dia! 🎉</div>';
+
+      /* ---- sessões da semana por fisio ---- */
+      const d = new Date(); const dia = d.getDay();
+      const segunda = new Date(d); segunda.setDate(d.getDate() - ((dia + 6) % 7));
+      const segISO = segunda.toISOString().slice(0,10);
+      const semana = sessoesMes.filter(s => s.data.slice(0,10) >= segISO && s.status !== 'cancelada');
+      document.getElementById('teamBars').innerHTML = fisios.filter(f => f.ativo).map(f => {
+        const n = semana.filter(s => s.fisio_id === f.id).length;
+        const pct = Math.min(Math.round(n / 40 * 100), 100);
+        return `<div class="hbar">
+          <div class="hb-top"><span class="hb-name">${f.nome}</span><span class="hb-val">${n} sessões</span></div>
+          <div class="hb-track"><div class="hb-fill" style="width:${pct}%;background:${f.cor};"></div></div>
+        </div>`;
+      }).join('') || '<div class="empty">Cadastre sua equipe em <a href="equipe.html" style="color:var(--primary);font-weight:600;">Equipe</a></div>';
+
+      /* ---- perfil público ---- */
+      const vis = clinica.perfil && clinica.perfil.visivel;
+      document.getElementById('perfilInfo').innerHTML = vis
+        ? `Sua clínica <b style="color:var(--ink);">está visível</b> no diretório público do PerFisio. Solicitações de avaliação viram leads no CRM automaticamente.`
+        : `Seu perfil público está <b style="color:var(--ink);">desativado</b>. Ative em Configurações → Perfil público para receber pacientes pelo diretório.`;
+    }
+
+    async function checkin(id) {
+      try {
+        await PF.api(`/api/sessoes/${id}/status`, { method: 'PATCH', body: { status: 'realizada' } });
+        App.toast('Sessão marcada como realizada!');
+        carregar();
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    carregar().catch(e => App.toast(e.message, 'error'));
   </script>
 </body>
 </html>

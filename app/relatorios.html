@@ -10,125 +10,146 @@
 <body data-page="relatorios" data-title="Relatórios" data-subtitle="Indicadores da clínica · últimos 6 meses">
 
   <div class="page-head">
-    <div style="display:flex;gap:8px;">
-      <button class="chip active">Últimos 6 meses</button>
-      <button class="chip" onclick="App.toast('Período customizado no protótipo completo', 'info')">Este ano</button>
-      <button class="chip" onclick="App.toast('Período customizado no protótipo completo', 'info')">Personalizado</button>
-    </div>
-    <div style="display:flex;gap:8px;">
-      <button class="btn btn-ghost" onclick="App.toast('Relatório exportado em PDF (protótipo)', 'info')">⬇ PDF</button>
-      <button class="btn btn-ghost" onclick="App.toast('Planilha exportada (protótipo)', 'info')">⬇ Excel</button>
-    </div>
+    <div style="font-size:.85rem;color:var(--text-soft);" id="periodo"></div>
+    <button class="btn btn-ghost" onclick="window.print()">🖨 Imprimir / PDF</button>
   </div>
 
   <div class="stats-grid">
     <div class="stat-card">
-      <div class="s-top"><span class="s-label">Sessões no semestre</span><div class="s-ico" style="background:var(--primary-soft);">📅</div></div>
-      <div class="s-value">1.312</div>
-      <div class="s-delta up">▲ 22% <span class="muted">vs. semestre anterior</span></div>
+      <div class="s-top"><span class="s-label">Sessões realizadas (6m)</span><div class="s-ico" style="background:var(--primary-soft);">📅</div></div>
+      <div class="s-value" id="stSessoes">—</div>
+      <div class="s-delta"><span class="muted" id="stSessoesSub"></span></div>
     </div>
     <div class="stat-card">
-      <div class="s-top"><span class="s-label">Novos pacientes</span><div class="s-ico" style="background:var(--blue-soft);">🆕</div></div>
-      <div class="s-value">87</div>
-      <div class="s-delta up">▲ 31% <span class="muted">34% vieram do site PerFisio</span></div>
+      <div class="s-top"><span class="s-label">Novos pacientes (6m)</span><div class="s-ico" style="background:var(--blue-soft);">🆕</div></div>
+      <div class="s-value" id="stNovos">—</div>
+      <div class="s-delta"><span class="muted" id="stNovosSub"></span></div>
     </div>
     <div class="stat-card">
       <div class="s-top"><span class="s-label">Taxa de faltas</span><div class="s-ico" style="background:var(--amber-soft);">🚫</div></div>
-      <div class="s-value">7,8%</div>
-      <div class="s-delta up">▼ 3,1 p.p. <span class="muted">após lembretes WhatsApp</span></div>
+      <div class="s-value" id="stFaltas">—</div>
+      <div class="s-delta"><span class="muted" id="stFaltasSub"></span></div>
     </div>
     <div class="stat-card">
-      <div class="s-top"><span class="s-label">Altas com objetivo atingido</span><div class="s-ico" style="background:var(--green-soft);">🎯</div></div>
-      <div class="s-value">89%</div>
-      <div class="s-delta up">▲ 4 p.p. <span class="muted">42 altas no semestre</span></div>
+      <div class="s-top"><span class="s-label">Receita total (6m)</span><div class="s-ico" style="background:var(--green-soft);">💰</div></div>
+      <div class="s-value" id="stReceita">—</div>
+      <div class="s-delta"><span class="muted" id="stReceitaSub"></span></div>
     </div>
   </div>
 
   <div class="grid-2-eq">
-    <!-- SESSÕES POR MÊS -->
     <div class="card card-pad">
       <h3 style="font-size:.98rem;margin-bottom:18px;">Sessões realizadas por mês</h3>
       <div class="bar-chart" id="chartSessoes"></div>
     </div>
-
-    <!-- RECEITA POR MÊS -->
     <div class="card card-pad">
-      <h3 style="font-size:.98rem;margin-bottom:18px;">Receita mensal (R$ mil)</h3>
+      <h3 style="font-size:.98rem;margin-bottom:18px;">Receita por mês</h3>
       <div class="bar-chart" id="chartReceita"></div>
     </div>
-
-    <!-- RECEITA POR PROFISSIONAL -->
     <div class="card card-pad">
-      <h3 style="font-size:.98rem;margin-bottom:18px;">Receita por profissional · julho</h3>
+      <h3 style="font-size:.98rem;margin-bottom:18px;">Receita por profissional (6m)</h3>
       <div id="chartFisios"></div>
     </div>
-
-    <!-- ORIGEM DOS PACIENTES -->
     <div class="card card-pad">
-      <h3 style="font-size:.98rem;margin-bottom:18px;">Origem dos novos pacientes · semestre</h3>
+      <h3 style="font-size:.98rem;margin-bottom:18px;">Origem dos leads</h3>
       <div id="chartOrigem"></div>
     </div>
-
-    <!-- CONDIÇÕES MAIS TRATADAS -->
     <div class="card card-pad">
-      <h3 style="font-size:.98rem;margin-bottom:18px;">Condições mais tratadas</h3>
-      <div id="chartCond"></div>
+      <h3 style="font-size:.98rem;margin-bottom:18px;">Status dos pacientes</h3>
+      <div id="chartStatus"></div>
     </div>
-
-    <!-- RETENÇÃO -->
     <div class="card card-pad">
-      <h3 style="font-size:.98rem;margin-bottom:14px;">Retenção e renovação</h3>
-      <div class="day-list">
-        <div class="dl-item"><div class="dl-bar" style="background:var(--green);"></div><div style="flex:1;"><div class="dl-title">68% renovam o pacote após o primeiro ciclo</div><div class="dl-sub">Meta: 70% · melhor mês: maio (74%)</div></div></div>
-        <div class="dl-item"><div class="dl-bar" style="background:var(--blue);"></div><div style="flex:1;"><div class="dl-title">4,2 meses de permanência média</div><div class="dl-sub">Pacientes de pilates permanecem 7,1 meses em média</div></div></div>
-        <div class="dl-item"><div class="dl-bar" style="background:var(--amber);"></div><div style="flex:1;"><div class="dl-title">12 pacientes sem retorno há 60+ dias</div><div class="dl-sub">Campanha de reativação sugerida · <a href="crm.html" style="color:var(--primary);font-weight:600;">abrir CRM</a></div></div></div>
-      </div>
+      <h3 style="font-size:.98rem;margin-bottom:14px;">Funil de captação (CRM)</h3>
+      <div id="chartFunil"></div>
     </div>
   </div>
 
   <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/api.js"></script>
   <script src="../assets/js/sidebar.js"></script>
   <script>
-    const meses = ['Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul'];
+    const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const agora = new Date();
+    // últimos 6 meses (inclui o atual)
+    const meses = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+      meses.push({ y: d.getFullYear(), m: d.getMonth(), key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` });
+    }
+    const from = `${meses[0].key}-01`;
+    const to = PF.hojeISO().slice(0, 8) + '31';
+    document.getElementById('periodo').textContent =
+      `Período: ${MESES_ABREV[meses[0].m]}/${meses[0].y} a ${MESES_ABREV[meses[5].m]}/${meses[5].y}`;
 
-    function barChart(el, valores, fmt = v => v, hoje = 5) {
-      const max = Math.max(...valores);
+    function barChart(el, valores, fmt = v => v) {
+      const max = Math.max(...valores, 1);
       document.getElementById(el).innerHTML = valores.map((v, i) => `
         <div class="bc-item">
           <span class="bc-val">${fmt(v)}</span>
-          <div class="bc-bar${i === hoje ? '' : ' muted'}" style="height:${Math.round(v / max * 100)}%;"></div>
-          <span class="bc-label">${meses[i]}</span>
+          <div class="bc-bar${i === 5 ? '' : ' muted'}" style="height:${Math.max(Math.round(v / max * 100), 2)}%;"></div>
+          <span class="bc-label">${MESES_ABREV[meses[i].m]}</span>
         </div>`).join('');
     }
-    barChart('chartSessoes', [186, 204, 221, 238, 226, 237]);
-    barChart('chartReceita', [29.4, 32.1, 35.8, 39.2, 37.1, 42.3], v => v.toLocaleString('pt-BR'));
 
-    /* Receita por fisio */
-    const porFisio = [ ['camila', 14280], ['rafael', 11890], ['marina', 9860], ['pedro', 8120] ];
-    const maxF = porFisio[0][1];
-    document.getElementById('chartFisios').innerHTML = porFisio.map(([id, v]) => {
-      const f = App.fisio(id);
-      return `<div class="hbar">
-        <div class="hb-top"><span class="hb-name">${f.nome}</span><span class="hb-val">${App.money(v)}</span></div>
-        <div class="hb-track"><div class="hb-fill" style="width:${Math.round(v / maxF * 100)}%;background:${f.cor};"></div></div>
-      </div>`;
-    }).join('');
+    function hbars(el, dados, fmt = v => v) {
+      // dados: [[nome, valor, cor?]]
+      const max = Math.max(...dados.map(d => d[1]), 1);
+      document.getElementById(el).innerHTML = dados.map(([n, v, c]) => `
+        <div class="hbar">
+          <div class="hb-top"><span class="hb-name">${n}</span><span class="hb-val">${fmt(v)}</span></div>
+          <div class="hb-track"><div class="hb-fill" style="width:${Math.round(v / max * 100)}%;background:${c || 'var(--primary)'};"></div></div>
+        </div>`).join('') || '<div class="empty">Sem dados no período.</div>';
+    }
 
-    /* Origem */
-    const origens = [ ['🌐 Site PerFisio', 30, 'var(--primary)'], ['🩺 Indicação médica', 22, 'var(--blue)'], ['🤝 Indicação de paciente', 15, 'var(--green)'], ['📸 Instagram', 11, 'var(--purple)'], ['🏥 Convênios', 9, 'var(--amber)'] ];
-    document.getElementById('chartOrigem').innerHTML = origens.map(([n, v, c]) => `
-      <div class="hbar">
-        <div class="hb-top"><span class="hb-name">${n}</span><span class="hb-val">${v} pacientes</span></div>
-        <div class="hb-track"><div class="hb-fill" style="width:${Math.round(v / 30 * 100)}%;background:${c};"></div></div>
-      </div>`).join('');
+    async function boot() {
+      const [sessoes, pagamentos, pacientes, leads, fisios] = await Promise.all([
+        PF.get('sessoes', { from, to }), PF.get('pagamentos'), PF.get('pacientes'), PF.get('leads'), PF.get('fisios'),
+      ]);
 
-    /* Condições */
-    const conds = [ ['Lombalgia / coluna', 28], ['Joelho (LCA, menisco, PFD)', 19], ['Ombro (manguito, capsulite)', 14], ['Neurofuncional (AVC, Parkinson)', 9], ['Escoliose / postural (RPG)', 8], ['Outras', 9] ];
-    document.getElementById('chartCond').innerHTML = conds.map(([n, v]) => `
-      <div class="hbar">
-        <div class="hb-top"><span class="hb-name">${n}</span><span class="hb-val">${v}%</span></div>
-        <div class="hb-track"><div class="hb-fill" style="width:${v / 28 * 100}%;background:var(--primary);"></div></div>
-      </div>`).join('');
+      /* stats */
+      const realizadas = sessoes.filter(s => s.status === 'realizada');
+      const faltas = sessoes.filter(s => s.status === 'falta');
+      document.getElementById('stSessoes').textContent = realizadas.length;
+      document.getElementById('stSessoesSub').textContent = sessoes.filter(s => s.status === 'agendada').length + ' ainda agendadas';
+      const novos = pacientes.filter(p => p.criado_em.slice(0, 7) >= meses[0].key);
+      document.getElementById('stNovos').textContent = novos.length;
+      const doSite = leads.filter(l => l.origem === 'Site PerFisio').length;
+      document.getElementById('stNovosSub').textContent = leads.length ? `${Math.round(doSite / leads.length * 100)}% dos leads vêm do site PerFisio` : 'cadastre leads no CRM';
+      document.getElementById('stFaltas').textContent = (realizadas.length + faltas.length)
+        ? (faltas.length / (realizadas.length + faltas.length) * 100).toFixed(1).replace('.', ',') + '%' : '—';
+      document.getElementById('stFaltasSub').textContent = faltas.length + ' faltas no período';
+      const pagos = pagamentos.filter(p => p.status === 'pago' && ((p.vencimento || p.criado_em) || '').slice(0, 7) >= meses[0].key);
+      const receitaTotal = pagos.reduce((a, p) => a + Number(p.valor), 0);
+      document.getElementById('stReceita').textContent = App.money(receitaTotal);
+      document.getElementById('stReceitaSub').textContent = pagos.length + ' pagamentos recebidos';
+
+      /* barras mensais */
+      barChart('chartSessoes', meses.map(m => realizadas.filter(s => s.data.slice(0, 7) === m.key).length));
+      barChart('chartReceita', meses.map(m => pagos.filter(p => ((p.vencimento || p.criado_em) || '').slice(0, 7) === m.key).reduce((a, p) => a + Number(p.valor), 0)), v => v ? App.moneyShort(v) : '0');
+
+      /* receita por fisio */
+      hbars('chartFisios', fisios.filter(f => f.ativo).map(f => {
+        const idsPacs = pacientes.filter(p => p.fisio_id === f.id).map(p => p.id);
+        const v = pagos.filter(p => idsPacs.includes(p.paciente_id)).reduce((a, p) => a + Number(p.valor), 0);
+        return [f.nome, v, f.cor];
+      }).sort((a, b) => b[1] - a[1]), v => App.money(v));
+
+      /* origem dos leads */
+      const ORIG_ICO = { 'Site PerFisio': '🌐', 'Instagram': '📸', 'Google': '🔎', 'Indicação médica': '🩺', 'Indicação de paciente': '🤝', 'Convênio': '🏥' };
+      const origens = {};
+      leads.forEach(l => { origens[l.origem || 'Outro'] = (origens[l.origem || 'Outro'] || 0) + 1; });
+      hbars('chartOrigem', Object.entries(origens).map(([n, v]) => [(ORIG_ICO[n] || '•') + ' ' + n, v]).sort((a, b) => b[1] - a[1]), v => v + ' lead(s)');
+
+      /* status dos pacientes */
+      const ST = { tratamento: ['Em tratamento', 'var(--green)'], avaliacao: ['Em avaliação', 'var(--blue)'], alta: ['Alta', 'var(--purple)'], inativo: ['Inativos', '#94A8A5'] };
+      hbars('chartStatus', Object.entries(ST).map(([k, [n, c]]) => [n, pacientes.filter(p => p.status === k).length, c]), v => v);
+
+      /* funil */
+      const COLS = [['novo', 'Novo contato'], ['contato', 'Contato feito'], ['avaliacao', 'Avaliação agendada'], ['proposta', 'Plano proposto'], ['convertido', 'Convertido']];
+      hbars('chartFunil', COLS.map(([k, n]) => [n, leads.filter(l => l.col === k).length, 'var(--primary)']), v => v);
+    }
+
+    boot().catch(e => App.toast(e.message, 'error'));
   </script>
 </body>
 </html>

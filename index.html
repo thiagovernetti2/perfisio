@@ -73,8 +73,8 @@
     <nav>
       <a href="#profissionais">Encontrar fisioterapeuta</a>
       <a href="#clinicas">Para clínicas</a>
-      <a href="app/dashboard.html" class="btn btn-ghost btn-sm">Entrar</a>
-      <a href="app/dashboard.html" class="btn btn-primary btn-sm">Criar perfil grátis</a>
+      <a href="login.html" class="btn btn-ghost btn-sm">Entrar</a>
+      <a href="login.html#registro" class="btn btn-primary btn-sm">Criar perfil grátis</a>
     </nav>
   </header>
 
@@ -109,43 +109,8 @@
   <section class="section" id="profissionais">
     <h2>Profissionais e clínicas em destaque</h2>
     <p class="sec-sub">Perfis verificados com CREFITO ativo e avaliações reais de pacientes.</p>
-    <div class="perfil-grid">
-      <div class="perfil-card" onclick="alert('Perfil público do profissional (protótipo)')">
-        <div class="pc-top" style="background:linear-gradient(135deg,#0DA189,#0A8270);"><span class="pc-avatar" style="background:#0A8270;">CM</span></div>
-        <div class="pc-body">
-          <div class="pc-nome">Clínica Movimente</div>
-          <div class="pc-esp">Ortopedia · Esportiva · Pilates · Neuro</div>
-          <div class="pc-meta"><span>📍 Vila Mariana, SP</span><span>⭐ 4,9 (132)</span><span>✅ CREFITO verificado</span></div>
-          <div class="pc-foot"><span class="pc-preco">R$ 140–240</span><button class="btn btn-soft btn-sm">Agendar avaliação</button></div>
-        </div>
-      </div>
-      <div class="perfil-card" onclick="alert('Perfil público do profissional (protótipo)')">
-        <div class="pc-top" style="background:linear-gradient(135deg,#2D7DD2,#1F5FA8);"><span class="pc-avatar" style="background:#1F5FA8;">RN</span></div>
-        <div class="pc-body">
-          <div class="pc-nome">Dr. Rafael Nunes</div>
-          <div class="pc-esp">Fisioterapia Esportiva · Corredores</div>
-          <div class="pc-meta"><span>📍 Moema, SP</span><span>⭐ 4,8 (87)</span><span>✅ CREFITO verificado</span></div>
-          <div class="pc-foot"><span class="pc-preco">R$ 180</span><button class="btn btn-soft btn-sm">Agendar avaliação</button></div>
-        </div>
-      </div>
-      <div class="perfil-card" onclick="alert('Perfil público do profissional (protótipo)')">
-        <div class="pc-top" style="background:linear-gradient(135deg,#7C5CBF,#5D3FA0);"><span class="pc-avatar" style="background:#5D3FA0;">MA</span></div>
-        <div class="pc-body">
-          <div class="pc-nome">Dra. Marina Alves</div>
-          <div class="pc-esp">Pilates Clínico · RPG · Escoliose</div>
-          <div class="pc-meta"><span>📍 Pinheiros, SP</span><span>⭐ 5,0 (64)</span><span>✅ CREFITO verificado</span></div>
-          <div class="pc-foot"><span class="pc-preco">R$ 160</span><button class="btn btn-soft btn-sm">Agendar avaliação</button></div>
-        </div>
-      </div>
-      <div class="perfil-card" onclick="alert('Perfil público do profissional (protótipo)')">
-        <div class="pc-top" style="background:linear-gradient(135deg,#D9820B,#B26505);"><span class="pc-avatar" style="background:#B26505;">PS</span></div>
-        <div class="pc-body">
-          <div class="pc-nome">Dr. Pedro Sampaio</div>
-          <div class="pc-esp">Neurofuncional · AVC · Parkinson · Domiciliar</div>
-          <div class="pc-meta"><span>📍 Atende em domicílio, SP</span><span>⭐ 4,9 (51)</span><span>✅ CREFITO verificado</span></div>
-          <div class="pc-foot"><span class="pc-preco">R$ 240</span><button class="btn btn-soft btn-sm">Agendar avaliação</button></div>
-        </div>
-      </div>
+    <div class="perfil-grid" id="perfilGrid">
+      <div class="empty" style="grid-column:1/-1;text-align:center;color:var(--text-soft);padding:30px;">Carregando perfis...</div>
     </div>
   </section>
 
@@ -168,7 +133,7 @@
     <div class="cta-band">
       <h2>Comece grátis hoje</h2>
       <p>Crie seu perfil no diretório, receba pacientes e gerencie sua clínica em um só lugar. Sem cartão de crédito.</p>
-      <a href="app/dashboard.html" class="btn btn-primary" style="padding:13px 28px;font-size:.95rem;">Criar minha conta →</a>
+      <a href="login.html#registro" class="btn btn-primary" style="padding:13px 28px;font-size:.95rem;">Criar minha conta →</a>
     </div>
   </section>
 
@@ -178,5 +143,90 @@
     <a href="#">Termos</a> · <a href="#">Privacidade</a> · <a href="#">Contato</a>
   </footer>
 
+
+  <!-- MODAL SOLICITAR AVALIAÇÃO -->
+  <div class="modal-overlay" id="mAvaliacao">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="avTitulo">Solicitar avaliação</h3>
+        <button class="close" onclick="App.closeModal('mAvaliacao')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field"><label>Seu nome *</label><input type="text" id="avNome"></div>
+          <div class="field"><label>Telefone / WhatsApp</label><input type="text" id="avTel"></div>
+          <div class="field full"><label>O que você está sentindo?</label><textarea id="avObs" placeholder="Ex.: dor no joelho ao subir escadas há 2 meses"></textarea></div>
+        </div>
+        <div style="margin-top:10px;font-size:.78rem;color:var(--text-soft);">A clínica recebe seu contato e retorna para agendar a avaliação.</div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal('mAvaliacao')">Cancelar</button>
+        <button class="btn btn-primary" id="btnAv" onclick="enviarSolicitacao()">Enviar solicitação</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/app.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script>
+    let clinicaSel = null;
+    const GRADS = [['#0DA189','#0A8270'],['#2D7DD2','#1F5FA8'],['#7C5CBF','#5D3FA0'],['#D9820B','#B26505']];
+
+    async function carregarPerfis() {
+      const grid = document.getElementById('perfilGrid');
+      let perfis = [];
+      try { perfis = await PF.api('/api/public/perfis'); } catch (e) { /* API offline */ }
+      if (!perfis.length) {
+        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--text-soft);padding:36px 20px;border:1.5px dashed var(--line);border-radius:14px;">
+          <div style="font-size:2rem;">🩺</div>
+          <div style="font-weight:700;color:var(--ink);margin-top:8px;">Seja a primeira clínica do diretório</div>
+          <div style="font-size:.86rem;margin-top:5px;">Crie sua conta, ative o perfil público em Configurações e apareça aqui para receber pacientes.</div>
+          <a href="login.html#registro" class="btn btn-primary btn-sm" style="margin-top:14px;">Criar perfil grátis</a>
+        </div>`;
+        return;
+      }
+      grid.innerHTML = perfis.map((c, i) => {
+        const [g1, g2] = GRADS[i % 4];
+        const p = c.perfil || {};
+        const ini = c.nome.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase();
+        return `<div class="perfil-card">
+          <div class="pc-top" style="background:linear-gradient(135deg,${g1},${g2});"><span class="pc-avatar" style="background:${g2};">${ini}</span></div>
+          <div class="pc-body">
+            <div class="pc-nome">${p.titulo || c.nome}</div>
+            <div class="pc-esp">${p.especialidades || 'Fisioterapia'}</div>
+            <div class="pc-meta">${c.endereco ? `<span>📍 ${c.endereco}</span>` : ''}<span>✅ Perfil verificado</span></div>
+            ${p.bio ? `<div style="font-size:.78rem;color:var(--text-soft);margin-top:8px;line-height:1.5;">${p.bio.slice(0, 120)}${p.bio.length > 120 ? '…' : ''}</div>` : ''}
+            <div class="pc-foot">
+              <span class="pc-preco">${p.faixa_preco || ''}</span>
+              ${p.agenda_online !== false ? `<button class="btn btn-soft btn-sm" onclick="abrirSolicitacao('${c.id}', '${c.nome.replace(/'/g, '')}')">Agendar avaliação</button>` : ''}
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function abrirSolicitacao(id, nome) {
+      clinicaSel = id;
+      document.getElementById('avTitulo').textContent = 'Solicitar avaliação — ' + nome;
+      App.openModal('mAvaliacao');
+    }
+
+    async function enviarSolicitacao() {
+      if (!avNome.value.trim()) { App.toast('Informe seu nome', 'error'); return; }
+      const btn = document.getElementById('btnAv'); btn.disabled = true;
+      try {
+        await PF.api('/api/public/leads', { method: 'POST', body: {
+          clinica_id: clinicaSel, nome: avNome.value.trim(), telefone: avTel.value.trim() || null,
+          interesse: 'Avaliação fisioterapêutica', obs: avObs.value.trim() || null,
+        }});
+        App.closeModal('mAvaliacao');
+        avNome.value = ''; avTel.value = ''; avObs.value = '';
+        App.toast('Solicitação enviada! A clínica entrará em contato. ✅');
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false;
+    }
+
+    carregarPerfis();
+  </script>
 </body>
 </html>

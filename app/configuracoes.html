@@ -7,12 +7,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../assets/css/app.css">
 </head>
-<body data-page="configuracoes" data-title="Configurações" data-subtitle="Dados da clínica, perfil público e preferências">
+<body data-page="configuracoes" data-title="Configurações" data-subtitle="Dados da clínica, perfil público e usuários">
 
   <div class="tabs" data-auto>
     <button class="tab active" data-tab="clinica">Clínica</button>
     <button class="tab" data-tab="perfil">Perfil público no PerFisio</button>
-    <button class="tab" data-tab="notificacoes">Notificações</button>
     <button class="tab" data-tab="usuarios">Usuários & Permissões</button>
   </div>
 
@@ -21,16 +20,16 @@
     <div class="card card-pad" style="max-width:760px;">
       <h3 style="font-size:.98rem;margin-bottom:16px;">Dados da clínica</h3>
       <div class="form-grid">
-        <div class="field"><label>Nome da clínica</label><input type="text" value="Clínica Movimente"></div>
-        <div class="field"><label>CNPJ</label><input type="text" value="12.345.678/0001-90"></div>
-        <div class="field"><label>Telefone / WhatsApp</label><input type="text" value="(11) 3456-7890"></div>
-        <div class="field"><label>E-mail</label><input type="email" value="contato@movimente.com.br"></div>
-        <div class="field full"><label>Endereço</label><input type="text" value="Rua das Acácias, 218 · Vila Mariana · São Paulo/SP"></div>
-        <div class="field"><label>Horário de funcionamento</label><input type="text" value="Seg–Sex 7h–20h · Sáb 8h–12h"></div>
-        <div class="field"><label>Responsável técnico</label><input type="text" value="Dra. Camila Rocha · CREFITO-3 45.678-F"></div>
+        <div class="field"><label>Nome da clínica</label><input type="text" id="cNome"></div>
+        <div class="field"><label>CNPJ</label><input type="text" id="cCnpj"></div>
+        <div class="field"><label>Telefone / WhatsApp</label><input type="text" id="cTel"></div>
+        <div class="field"><label>E-mail</label><input type="email" id="cEmail"></div>
+        <div class="field full"><label>Endereço</label><input type="text" id="cEnd" placeholder="Rua, número · bairro · cidade/UF"></div>
+        <div class="field"><label>Horário de funcionamento</label><input type="text" id="cHorario" placeholder="Seg–Sex 7h–20h · Sáb 8h–12h"></div>
+        <div class="field"><label>Responsável técnico</label><input type="text" id="cResp" placeholder="Nome · CREFITO"></div>
       </div>
       <div style="display:flex;justify-content:flex-end;margin-top:18px;">
-        <button class="btn btn-primary" onclick="App.toast('Dados da clínica salvos!')">Salvar alterações</button>
+        <button class="btn btn-primary" onclick="salvarClinica()">Salvar alterações</button>
       </div>
     </div>
   </div>
@@ -41,50 +40,25 @@
       <div class="card card-pad">
         <h3 style="font-size:.98rem;margin-bottom:16px;">Como sua clínica aparece no diretório PerFisio</h3>
         <div class="form-grid">
-          <div class="field full"><label>Título do perfil</label><input type="text" value="Clínica Movimente — Fisioterapia e Pilates na Vila Mariana"></div>
-          <div class="field full"><label>Bio / apresentação</label><textarea style="min-height:110px;">Equipe especializada em ortopedia, esportiva, neurofuncional e pilates clínico. Avaliação completa, plano de tratamento individualizado e acompanhamento de exercícios em casa pelo WhatsApp.</textarea></div>
-          <div class="field"><label>Especialidades exibidas</label><input type="text" value="Ortopedia, Esportiva, Neuro, Pilates, RPG"></div>
-          <div class="field"><label>Faixa de preço exibida</label>
-            <select><option>R$ 140–240 por sessão</option><option>Sob consulta</option><option>Não exibir</option></select>
-          </div>
-          <div class="check-row full"><input type="checkbox" checked id="ckVisivel"><label for="ckVisivel" style="margin:0;font-weight:500;">Perfil visível na busca pública do PerFisio</label></div>
-          <div class="check-row full"><input type="checkbox" checked id="ckAgendaOnline"><label for="ckAgendaOnline" style="margin:0;font-weight:500;">Permitir solicitação de avaliação online (entra no CRM como lead)</label></div>
-          <div class="check-row full"><input type="checkbox" checked id="ckAvaliacoes"><label for="ckAvaliacoes" style="margin:0;font-weight:500;">Exibir avaliações de pacientes (⭐ 4,9 · 132 avaliações)</label></div>
+          <div class="field full"><label>Título do perfil</label><input type="text" id="pTitulo" placeholder="Ex.: Clínica Movimente — Fisioterapia e Pilates na Vila Mariana"></div>
+          <div class="field full"><label>Bio / apresentação</label><textarea id="pBio" style="min-height:110px;" placeholder="Conte sobre a equipe, especialidades e diferenciais..."></textarea></div>
+          <div class="field"><label>Especialidades exibidas</label><input type="text" id="pEsp" placeholder="Ortopedia, Esportiva, Pilates..."></div>
+          <div class="field"><label>Faixa de preço exibida</label><input type="text" id="pPreco" placeholder="R$ 140–240 por sessão"></div>
+          <div class="check-row full"><input type="checkbox" id="pVisivel"><label for="pVisivel" style="margin:0;font-weight:500;">Perfil visível na busca pública do PerFisio</label></div>
+          <div class="check-row full"><input type="checkbox" id="pAgenda" checked><label for="pAgenda" style="margin:0;font-weight:500;">Permitir solicitação de avaliação online (entra no CRM como lead)</label></div>
         </div>
         <div style="display:flex;justify-content:flex-end;margin-top:18px;gap:10px;">
-          <button class="btn btn-ghost" onclick="App.toast('Prévia do perfil aberta (protótipo)', 'info')">Ver prévia</button>
-          <button class="btn btn-primary" onclick="App.toast('Perfil público atualizado!')">Publicar alterações</button>
+          <button class="btn btn-ghost" onclick="window.open('../index.html','_blank')">Ver site público</button>
+          <button class="btn btn-primary" onclick="salvarPerfil()">Publicar alterações</button>
         </div>
       </div>
       <div class="card card-pad">
-        <h3 style="font-size:.98rem;margin-bottom:14px;">📊 Desempenho do perfil (30 dias)</h3>
+        <h3 style="font-size:.98rem;margin-bottom:14px;">💡 Como funciona</h3>
         <div class="day-list">
-          <div class="dl-item"><div class="dl-bar" style="background:var(--primary);"></div><div><div class="dl-title">214 visitas ao perfil</div><div class="dl-sub">▲ 18% vs. mês anterior</div></div></div>
-          <div class="dl-item"><div class="dl-bar" style="background:var(--blue);"></div><div><div class="dl-title">9 solicitações de avaliação</div><div class="dl-sub">Convertidas automaticamente em leads no CRM</div></div></div>
-          <div class="dl-item"><div class="dl-bar" style="background:var(--green);"></div><div><div class="dl-title">4 novos pacientes pelo site</div><div class="dl-sub">Taxa de conversão: 44%</div></div></div>
-          <div class="dl-item"><div class="dl-bar" style="background:var(--amber);"></div><div><div class="dl-title">Posição #3 na busca "fisioterapia Vila Mariana"</div><div class="dl-sub">Complete seu perfil com fotos para subir posições</div></div></div>
+          <div class="dl-item"><div class="dl-bar" style="background:var(--primary);"></div><div><div class="dl-title">Perfil no diretório</div><div class="dl-sub">Com o perfil visível, sua clínica aparece na busca pública da página inicial do PerFisio.</div></div></div>
+          <div class="dl-item"><div class="dl-bar" style="background:var(--blue);"></div><div><div class="dl-title">Solicitações viram leads</div><div class="dl-sub">Quando um paciente pede avaliação pelo site, o contato entra automaticamente no seu CRM na coluna "Novo contato".</div></div></div>
+          <div class="dl-item"><div class="dl-bar" style="background:var(--green);"></div><div><div class="dl-title">Do lead ao prontuário</div><div class="dl-sub">Arraste o lead pelo funil até "Convertido" — o paciente é criado automaticamente no cadastro.</div></div></div>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- NOTIFICAÇÕES -->
-  <div data-tab-panel="notificacoes" style="display:none;">
-    <div class="card card-pad" style="max-width:680px;">
-      <h3 style="font-size:.98rem;margin-bottom:10px;">Lembretes automáticos para pacientes</h3>
-      <div class="check-row"><input type="checkbox" checked id="n1"><label for="n1" style="margin:0;font-weight:500;">WhatsApp 24h antes da sessão</label></div>
-      <div class="check-row"><input type="checkbox" checked id="n2"><label for="n2" style="margin:0;font-weight:500;">WhatsApp 2h antes da sessão</label></div>
-      <div class="check-row"><input type="checkbox" checked id="n3"><label for="n3" style="margin:0;font-weight:500;">Lembrete diário dos exercícios prescritos</label></div>
-      <div class="check-row"><input type="checkbox" id="n4"><label for="n4" style="margin:0;font-weight:500;">Pesquisa de satisfação após alta (NPS)</label></div>
-      <h3 style="font-size:.98rem;margin:22px 0 10px;">Cobranças</h3>
-      <div class="check-row"><input type="checkbox" checked id="n5"><label for="n5" style="margin:0;font-weight:500;">Enviar link de pagamento no vencimento</label></div>
-      <div class="check-row"><input type="checkbox" checked id="n6"><label for="n6" style="margin:0;font-weight:500;">Lembrete de cobrança 3 dias após atraso</label></div>
-      <div class="check-row"><input type="checkbox" checked id="n7"><label for="n7" style="margin:0;font-weight:500;">Avisar quando pacote estiver a 2 sessões do fim (propor renovação)</label></div>
-      <h3 style="font-size:.98rem;margin:22px 0 10px;">Para a equipe</h3>
-      <div class="check-row"><input type="checkbox" checked id="n8"><label for="n8" style="margin:0;font-weight:500;">Alertar evolução não registrada no fim do dia</label></div>
-      <div class="check-row"><input type="checkbox" checked id="n9"><label for="n9" style="margin:0;font-weight:500;">Notificar novo lead do site PerFisio na hora</label></div>
-      <div style="display:flex;justify-content:flex-end;margin-top:18px;">
-        <button class="btn btn-primary" onclick="App.toast('Preferências de notificação salvas!')">Salvar preferências</button>
       </div>
     </div>
   </div>
@@ -94,39 +68,112 @@
     <div class="card" style="max-width:860px;">
       <div class="card-header">
         <h3>Usuários com acesso ao sistema</h3>
-        <button class="btn btn-soft btn-sm" onclick="App.toast('Convite enviado por e-mail!')">+ Convidar usuário</button>
+        <button class="btn btn-soft btn-sm" onclick="App.openModal('mUsuario')">+ Novo usuário</button>
       </div>
       <div class="table-wrap" style="padding-top:8px;">
         <table class="data">
-          <thead><tr><th>Usuário</th><th>E-mail</th><th>Perfil</th><th>Último acesso</th><th>Status</th></tr></thead>
-          <tbody>
-            <tr>
-              <td><div class="cell-person"><span class="avatar-sm" style="background:#0DA189;">CR</span><span class="p-name">Camila Rocha</span></div></td>
-              <td>camila@movimente.com.br</td><td><span class="badge primary">Gestora</span></td><td>Agora</td><td><span class="badge green">Ativo</span></td>
-            </tr>
-            <tr>
-              <td><div class="cell-person"><span class="avatar-sm" style="background:#2D7DD2;">RN</span><span class="p-name">Rafael Nunes</span></div></td>
-              <td>rafael@movimente.com.br</td><td><span class="badge blue">Fisioterapeuta</span></td><td>Hoje, 09:12</td><td><span class="badge green">Ativo</span></td>
-            </tr>
-            <tr>
-              <td><div class="cell-person"><span class="avatar-sm" style="background:#7C5CBF;">MA</span><span class="p-name">Marina Alves</span></div></td>
-              <td>marina@movimente.com.br</td><td><span class="badge blue">Fisioterapeuta</span></td><td>Hoje, 08:40</td><td><span class="badge green">Ativo</span></td>
-            </tr>
-            <tr>
-              <td><div class="cell-person"><span class="avatar-sm" style="background:#D9820B;">PS</span><span class="p-name">Pedro Sampaio</span></div></td>
-              <td>pedro@movimente.com.br</td><td><span class="badge blue">Fisioterapeuta</span></td><td>Ontem, 18:33</td><td><span class="badge green">Ativo</span></td>
-            </tr>
-            <tr>
-              <td><div class="cell-person"><span class="avatar-sm" style="background:#64737A;">JS</span><span class="p-name">Juliana Santos</span></div></td>
-              <td>recepcao@movimente.com.br</td><td><span class="badge amber">Recepção</span></td><td>Hoje, 07:55</td><td><span class="badge green">Ativo</span></td>
-            </tr>
-          </tbody>
+          <thead><tr><th>Usuário</th><th>E-mail</th><th>Perfil</th><th>Último acesso</th></tr></thead>
+          <tbody id="userRows"><tr><td colspan="4" class="empty">Carregando...</td></tr></tbody>
         </table>
       </div>
     </div>
   </div>
 
+  <!-- MODAL USUÁRIO -->
+  <div class="modal-overlay" id="mUsuario">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Novo usuário</h3>
+        <button class="close" onclick="App.closeModal('mUsuario')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field"><label>Nome *</label><input type="text" id="uNome"></div>
+          <div class="field"><label>E-mail *</label><input type="email" id="uEmail"></div>
+          <div class="field"><label>Senha provisória *</label><input type="text" id="uSenha" placeholder="mín. 6 caracteres"></div>
+          <div class="field"><label>Perfil de acesso</label>
+            <select id="uPerfil"><option value="fisio">Fisioterapeuta</option><option value="recepcao">Recepção</option><option value="gestor">Gestor (acesso total)</option></select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal('mUsuario')">Cancelar</button>
+        <button class="btn btn-primary" id="btnUser" onclick="salvarUsuario()">Criar usuário</button>
+      </div>
+    </div>
+  </div>
+
   <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/api.js"></script>
   <script src="../assets/js/sidebar.js"></script>
+  <script>
+    let CLINICA = null;
+
+    async function boot() {
+      CLINICA = await PF.api('/api/clinica');
+      cNome.value = CLINICA.nome || ''; cCnpj.value = CLINICA.cnpj || ''; cTel.value = CLINICA.telefone || '';
+      cEmail.value = CLINICA.email || ''; cEnd.value = CLINICA.endereco || '';
+      cHorario.value = CLINICA.horario || ''; cResp.value = CLINICA.resp_tecnico || '';
+      const p = CLINICA.perfil || {};
+      pTitulo.value = p.titulo || ''; pBio.value = p.bio || ''; pEsp.value = p.especialidades || '';
+      pPreco.value = p.faixa_preco || ''; pVisivel.checked = !!p.visivel; pAgenda.checked = p.agenda_online !== false;
+      await carregarUsuarios();
+    }
+
+    async function salvarClinica() {
+      try {
+        CLINICA = await PF.api('/api/clinica', { method: 'PUT', body: {
+          nome: cNome.value.trim(), cnpj: cCnpj.value.trim(), telefone: cTel.value.trim(),
+          email: cEmail.value.trim(), endereco: cEnd.value.trim(), horario: cHorario.value.trim(),
+          resp_tecnico: cResp.value.trim(),
+        }});
+        // atualiza nome da clínica na sessão local
+        const u = PF.user(); if (u) { u.clinica_nome = CLINICA.nome; PF.setSession(PF.token(), u); }
+        App.toast('Dados da clínica salvos!');
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    async function salvarPerfil() {
+      try {
+        const perfil = {
+          ...(CLINICA.perfil || {}),
+          titulo: pTitulo.value.trim(), bio: pBio.value.trim(), especialidades: pEsp.value.trim(),
+          faixa_preco: pPreco.value.trim(), visivel: pVisivel.checked, agenda_online: pAgenda.checked,
+        };
+        CLINICA = await PF.api('/api/clinica', { method: 'PUT', body: { perfil } });
+        App.toast(perfil.visivel ? 'Perfil publicado no diretório! 🌐' : 'Perfil salvo (oculto do diretório)');
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    async function carregarUsuarios() {
+      const users = await PF.get('usuarios');
+      const BADGE = { gestor: '<span class="badge primary">Gestor</span>', fisio: '<span class="badge blue">Fisioterapeuta</span>', recepcao: '<span class="badge amber">Recepção</span>' };
+      const CORES = ['#0DA189','#2D7DD2','#7C5CBF','#D9820B'];
+      document.getElementById('userRows').innerHTML = users.map((u, i) => `
+        <tr>
+          <td><div class="cell-person"><span class="avatar-sm" style="background:${CORES[i % 4]};">${App.iniciais(u.nome)}</span><span class="p-name">${u.nome}</span></div></td>
+          <td>${u.email}</td>
+          <td>${BADGE[u.perfil] || u.perfil}</td>
+          <td>${u.ultimo_acesso ? new Date(u.ultimo_acesso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+        </tr>`).join('');
+    }
+
+    async function salvarUsuario() {
+      if (!uNome.value.trim() || !uEmail.value.trim() || uSenha.value.length < 6) {
+        App.toast('Preencha nome, e-mail e senha (mín. 6 caracteres)', 'error'); return;
+      }
+      const btn = document.getElementById('btnUser'); btn.disabled = true;
+      try {
+        await PF.post('usuarios', { nome: uNome.value.trim(), email: uEmail.value.trim(), senha: uSenha.value, perfil: uPerfil.value });
+        App.closeModal('mUsuario');
+        ['uNome','uEmail','uSenha'].forEach(id => document.getElementById(id).value = '');
+        App.toast('Usuário criado! Compartilhe o e-mail e a senha provisória com ele.');
+        await carregarUsuarios();
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false;
+    }
+
+    boot().catch(e => App.toast(e.message, 'error'));
+  </script>
 </body>
 </html>

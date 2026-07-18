@@ -7,38 +7,37 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../assets/css/app.css">
 </head>
-<body data-page="prontuarios" data-title="Prontuários" data-subtitle="Prontuário eletrônico com evoluções, avaliações e anexos">
+<body data-page="prontuarios" data-title="Prontuários" data-subtitle="Prontuário eletrônico com evoluções, avaliações e prescrições">
 
   <div class="grid-2" style="grid-template-columns:300px 1fr;">
     <!-- LISTA DE PACIENTES -->
     <div class="card">
       <div class="card-pad" style="padding-bottom:12px;">
-        <div class="topbar-search" style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:8px 12px;">
+        <div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:8px 12px;">
           🔍 <input id="patSearch" type="text" placeholder="Buscar paciente..." style="border:none;background:none;outline:none;width:100%;font-size:.85rem;">
         </div>
       </div>
-      <div class="pat-list" id="patList"></div>
+      <div class="pat-list" id="patList"><div class="empty">Carregando...</div></div>
     </div>
 
     <!-- PRONTUÁRIO -->
-    <div>
+    <div id="prontuario" style="display:none;">
       <div class="card card-pad" style="margin-bottom:18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-        <span class="avatar-sm" id="pHeadAvatar" style="width:52px;height:52px;font-size:1rem;background:#0DA189;">MT</span>
+        <span class="avatar-sm" id="pHeadAvatar" style="width:52px;height:52px;font-size:1rem;background:#0DA189;"></span>
         <div style="flex:1;min-width:200px;">
-          <div id="pHeadNome" style="font-size:1.1rem;font-weight:800;color:var(--ink);">Marcos Teixeira</div>
-          <div id="pHeadSub" style="font-size:.8rem;color:var(--text-soft);margin-top:2px;">42 anos · Unimed · Lombalgia crônica · Dra. Camila Rocha</div>
+          <div id="pHeadNome" style="font-size:1.1rem;font-weight:800;color:var(--ink);"></div>
+          <div id="pHeadSub" style="font-size:.8rem;color:var(--text-soft);margin-top:2px;"></div>
         </div>
         <div style="display:flex;gap:8px;">
-          <span class="badge green" id="pHeadStatus">Em tratamento · 7/10</span>
-          <button class="btn btn-ghost btn-sm" onclick="App.toast('Prontuário exportado em PDF (protótipo)', 'info')">⬇ Exportar PDF</button>
+          <span class="badge green" id="pHeadStatus"></span>
+          <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨 Imprimir</button>
         </div>
       </div>
 
-      <div class="tabs" data-auto>
+      <div class="tabs" id="pTabs" data-auto>
         <button class="tab active" data-tab="evolucoes">Evoluções</button>
         <button class="tab" data-tab="avaliacao">Avaliação inicial</button>
-        <button class="tab" data-tab="exercicios">Exercícios prescritos</button>
-        <button class="tab" data-tab="anexos">Anexos</button>
+        <button class="tab" data-tab="prescricoes">Exercícios prescritos</button>
       </div>
 
       <!-- EVOLUÇÕES -->
@@ -46,150 +45,172 @@
         <div class="card card-pad" style="margin-bottom:18px;">
           <h3 style="font-size:.95rem;margin-bottom:12px;">Nova evolução (SOAP)</h3>
           <div class="form-grid">
-            <div class="field"><label>S — Subjetivo</label><textarea id="evS" placeholder="Relato do paciente. Ex.: refere melhora da dor, EVA 3..."></textarea></div>
-            <div class="field"><label>O — Objetivo</label><textarea id="evO" placeholder="Achados do fisioterapeuta. Ex.: ADM de flexão 80°..."></textarea></div>
-            <div class="field"><label>A — Avaliação</label><textarea id="evA" placeholder="Análise. Ex.: evolução dentro do esperado..."></textarea></div>
-            <div class="field"><label>P — Plano</label><textarea id="evP" placeholder="Conduta. Ex.: progredir carga, incluir prancha..."></textarea></div>
+            <div class="field"><label>S — Subjetivo</label><textarea id="evS" placeholder="Relato do paciente..."></textarea></div>
+            <div class="field"><label>O — Objetivo</label><textarea id="evO" placeholder="Achados do fisioterapeuta..."></textarea></div>
+            <div class="field"><label>A — Avaliação</label><textarea id="evA" placeholder="Análise da evolução..."></textarea></div>
+            <div class="field"><label>P — Plano</label><textarea id="evP" placeholder="Conduta para as próximas sessões..."></textarea></div>
+            <div class="field"><label>EVA (dor 0–10)</label><input type="number" id="evEva" min="0" max="10" placeholder="Ex.: 4"></div>
+            <div class="field"><label>Fisioterapeuta</label><select id="evFisio"></select></div>
           </div>
           <div style="display:flex;justify-content:flex-end;margin-top:14px;">
-            <button class="btn btn-primary" onclick="salvarEvolucao()">Salvar evolução</button>
+            <button class="btn btn-primary" id="btnEv" onclick="salvarEvolucao()">Salvar evolução</button>
           </div>
         </div>
-
-        <div id="soapList">
-          <div class="soap-block">
-            <div class="sp-head"><span class="sp-date">14/07/2026 · Sessão 7 · Camila Rocha</span><span class="badge green">EVA 4</span></div>
-            <div class="sp-row"><b>S</b> Paciente refere redução importante da dor ao sentar por períodos longos. Dormiu bem.</div>
-            <div class="sp-row"><b>O</b> Flexão de tronco sem dor até 70°. Teste de Lasègue negativo bilateral. Boa ativação de core.</div>
-            <div class="sp-row"><b>A</b> Evolução acima do esperado. Dor migrando de EVA 6 para 4 em 3 semanas.</div>
-            <div class="sp-row"><b>P</b> Progredir fortalecimento de CORE, iniciar exercícios com carga leve. Manter 2x/semana.</div>
-          </div>
-          <div class="soap-block">
-            <div class="sp-head"><span class="sp-date">09/07/2026 · Sessão 6 · Camila Rocha</span><span class="badge amber">EVA 5</span></div>
-            <div class="sp-row"><b>S</b> Relata desconforto após viagem de carro no fim de semana (4h dirigindo).</div>
-            <div class="sp-row"><b>O</b> Leve aumento de tensão em paravertebrais lombares. ADM preservada.</div>
-            <div class="sp-row"><b>A</b> Recidiva leve associada à postura prolongada, sem sinais de piora estrutural.</div>
-            <div class="sp-row"><b>P</b> Liberação miofascial + mobilidade. Orientado sobre pausas em viagens longas.</div>
-          </div>
-          <div class="soap-block">
-            <div class="sp-head"><span class="sp-date">07/07/2026 · Sessão 5 · Camila Rocha</span><span class="badge amber">EVA 5</span></div>
-            <div class="sp-row"><b>S</b> Refere dor estável, sem irradiação para membros inferiores.</div>
-            <div class="sp-row"><b>O</b> Melhora do padrão de movimento no agachamento. Prancha 40s com boa técnica.</div>
-            <div class="sp-row"><b>A</b> Ganho consistente de estabilidade lombopélvica.</div>
-            <div class="sp-row"><b>P</b> Manter protocolo, aumentar tempo de prancha e incluir bird-dog com resistência.</div>
-          </div>
-        </div>
+        <div id="soapList"></div>
       </div>
 
       <!-- AVALIAÇÃO -->
       <div data-tab-panel="avaliacao" style="display:none;">
         <div class="card card-pad">
-          <h3 style="font-size:.95rem;margin-bottom:14px;">Avaliação inicial · 28/06/2026 · Camila Rocha</h3>
+          <h3 style="font-size:.95rem;margin-bottom:14px;">Avaliação inicial</h3>
           <div class="form-grid">
-            <div><div class="tl-date">QUEIXA PRINCIPAL</div><div style="font-size:.87rem;margin-top:3px;">Dor lombar há 4 meses, piora ao sentar por longos períodos. EVA inicial: 7.</div></div>
-            <div><div class="tl-date">HISTÓRIA</div><div style="font-size:.87rem;margin-top:3px;">Trabalho em escritório (8h/dia sentado). Sedentário há 2 anos. Sem cirurgias prévias. RM: protrusão discal L4-L5 sem compressão radicular.</div></div>
-            <div><div class="tl-date">EXAME FÍSICO</div><div style="font-size:.87rem;margin-top:3px;">Flexão de tronco limitada a 50° com dor. Fraqueza de glúteo médio bilateral. Encurtamento de isquiotibiais. Lasègue negativo.</div></div>
-            <div><div class="tl-date">DIAGNÓSTICO CINÉTICO-FUNCIONAL</div><div style="font-size:.87rem;margin-top:3px;">Lombalgia mecânica crônica com déficit de estabilização lombopélvica.</div></div>
-            <div class="full"><div class="tl-date">PLANO DE TRATAMENTO</div><div style="font-size:.87rem;margin-top:3px;">10 sessões, 2x/semana · Fase 1: analgesia e mobilidade (sessões 1–3) · Fase 2: estabilização de core (4–7) · Fase 3: fortalecimento global e retorno à atividade física (8–10). Meta: EVA ≤ 2 e retorno à musculação.</div></div>
+            <div class="field full"><label>Queixa principal e história</label><textarea id="avHistoria" style="min-height:90px;" placeholder="Queixa, início dos sintomas, exames, histórico..."></textarea></div>
+            <div class="field full"><label>Exame físico</label><textarea id="avExame" style="min-height:90px;" placeholder="ADM, força, testes especiais, postura..."></textarea></div>
+            <div class="field full"><label>Diagnóstico cinético-funcional</label><textarea id="avDiag" placeholder="Ex.: lombalgia mecânica crônica com déficit de estabilização..."></textarea></div>
+            <div class="field full"><label>Plano de tratamento e metas</label><textarea id="avPlano" style="min-height:90px;" placeholder="Fases, frequência, metas objetivas (EVA, ADM, retorno ao esporte)..."></textarea></div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+            <button class="btn btn-primary" onclick="salvarAvaliacao()">Salvar avaliação</button>
           </div>
         </div>
       </div>
 
-      <!-- EXERCÍCIOS -->
-      <div data-tab-panel="exercicios" style="display:none;">
+      <!-- PRESCRIÇÕES -->
+      <div data-tab-panel="prescricoes" style="display:none;">
         <div class="card">
           <div class="card-header">
-            <h3>Prescrição atual (casa)</h3>
-            <a class="link" href="exercicios.html">Abrir biblioteca →</a>
+            <h3>Prescrições de exercícios</h3>
+            <a class="link" href="exercicios.html">Prescrever na biblioteca →</a>
           </div>
-          <div class="table-wrap" style="padding-top:8px;">
-            <table class="data">
-              <thead><tr><th>Exercício</th><th>Séries × Reps</th><th>Frequência</th><th>Adesão do paciente</th></tr></thead>
-              <tbody>
-                <tr><td>🧘 Ponte de glúteos</td><td>3 × 12</td><td>Diária</td><td><div class="progress" style="width:110px;"><div style="width:85%;"></div></div><span style="font-size:.72rem;color:var(--text-soft);">85%</span></td></tr>
-                <tr><td>🐦 Bird-dog</td><td>3 × 10 (cada lado)</td><td>Diária</td><td><div class="progress" style="width:110px;"><div style="width:70%;"></div></div><span style="font-size:.72rem;color:var(--text-soft);">70%</span></td></tr>
-                <tr><td>🪵 Prancha frontal</td><td>3 × 30s</td><td>Diária</td><td><div class="progress" style="width:110px;"><div style="width:92%;"></div></div><span style="font-size:.72rem;color:var(--text-soft);">92%</span></td></tr>
-                <tr><td>🦵 Alongamento de isquiotibiais</td><td>3 × 30s</td><td>2x ao dia</td><td><div class="progress" style="width:110px;"><div style="width:60%;"></div></div><span style="font-size:.72rem;color:var(--text-soft);">60%</span></td></tr>
-              </tbody>
-            </table>
-          </div>
+          <div class="card-pad" id="presList"></div>
         </div>
       </div>
+    </div>
 
-      <!-- ANEXOS -->
-      <div data-tab-panel="anexos" style="display:none;">
-        <div class="card card-pad">
-          <div class="day-list">
-            <div class="dl-item"><div style="font-size:1.4rem;">📄</div><div style="flex:1;"><div class="dl-title">RM_coluna_lombar_jun2026.pdf</div><div class="dl-sub">Ressonância magnética · enviado em 28/06/2026 · 4,2 MB</div></div><button class="btn btn-ghost btn-sm" onclick="App.toast('Download iniciado (protótipo)', 'info')">Baixar</button></div>
-            <div class="dl-item"><div style="font-size:1.4rem;">📄</div><div style="flex:1;"><div class="dl-title">Encaminhamento_ortopedista.pdf</div><div class="dl-sub">Dr. Fábio Landim (CRM 88.123) · enviado em 26/06/2026 · 320 KB</div></div><button class="btn btn-ghost btn-sm" onclick="App.toast('Download iniciado (protótipo)', 'info')">Baixar</button></div>
-            <div class="dl-item"><div style="font-size:1.4rem;">🖼️</div><div style="flex:1;"><div class="dl-title">avaliacao_postural_frente.jpg</div><div class="dl-sub">Foto de avaliação postural · 28/06/2026 · 1,8 MB</div></div><button class="btn btn-ghost btn-sm" onclick="App.toast('Download iniciado (protótipo)', 'info')">Baixar</button></div>
-          </div>
-          <button class="btn btn-soft" style="margin-top:14px;" onclick="App.toast('Upload de anexos no protótipo completo', 'info')">+ Adicionar anexo</button>
-        </div>
+    <div id="vazio" class="card card-pad" style="display:none;">
+      <div class="empty">Nenhum paciente cadastrado ainda.<br><br>
+        <a class="btn btn-primary" href="pacientes.html">+ Cadastrar primeiro paciente</a>
       </div>
     </div>
   </div>
 
   <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/api.js"></script>
   <script src="../assets/js/sidebar.js"></script>
   <script>
-    const PACS = [
-      { nome: 'Marcos Teixeira', sub: 'Lombalgia crônica · 7/10', cor: '#0DA189', head: '42 anos · Unimed · Lombalgia crônica · Dra. Camila Rocha', status: 'Em tratamento · 7/10' },
-      { nome: 'Larissa Fontes', sub: 'Pós-op. LCA · 7/20', cor: '#2D7DD2', head: '29 anos · Particular · Pós-op. LCA (joelho D) · Dr. Rafael Nunes', status: 'Em tratamento · 7/20' },
-      { nome: 'Helena Garcia', sub: 'Osteoartrose · 18/20', cor: '#7C5CBF', head: '63 anos · Bradesco Saúde · Osteoartrose de quadril · Dra. Marina Alves', status: 'Alta próxima · 18/20' },
-      { nome: 'João Paulo Dias', sub: 'AVC · 6/30', cor: '#D9820B', head: '55 anos · Particular · AVC, reabilitação motora · Dr. Pedro Sampaio', status: 'Em tratamento · 6/30' },
-      { nome: 'Paula Ribeiro', sub: 'Fibromialgia · Pilates', cor: '#D64545', head: '51 anos · Amil · Fibromialgia · Dra. Marina Alves', status: 'Em tratamento · mensal' },
-      { nome: 'Antônio Ferraz', sub: 'Parkinson · 22/30', cor: '#1E9E6A', head: '71 anos · Bradesco Saúde · Parkinson, equilíbrio · Dr. Pedro Sampaio', status: 'Em tratamento · 22/30' },
-      { nome: 'Beatriz Nogueira', sub: 'Escoliose · RPG · 3/8', cor: '#2D7DD2', head: '27 anos · Unimed · Escoliose, RPG · Dra. Marina Alves', status: 'Em tratamento · 3/8' },
-    ];
-    let sel = 0;
+    let PACS = [], FISIOS = [], sel = null;
+    const CORES = ['#0DA189','#2D7DD2','#7C5CBF','#D9820B','#D64545','#1E9E6A'];
+    const STATUS_TXT = { tratamento: 'Em tratamento', avaliacao: 'Em avaliação', alta: 'Alta', inativo: 'Inativo' };
+
+    async function boot() {
+      [PACS, FISIOS] = await Promise.all([PF.get('pacientes'), PF.get('fisios')]);
+      document.getElementById('evFisio').innerHTML = FISIOS.filter(f=>f.ativo).map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
+      if (!PACS.length) {
+        document.getElementById('vazio').style.display = '';
+        document.getElementById('patList').innerHTML = '<div class="empty">Sem pacientes</div>';
+        return;
+      }
+      const urlP = new URLSearchParams(location.search).get('p');
+      renderList();
+      selPac(PACS.find(p => p.id === urlP)?.id || PACS[0].id);
+    }
 
     function renderList(q = '') {
-      const list = document.getElementById('patList');
-      list.innerHTML = PACS
-        .map((p, i) => ({ p, i }))
-        .filter(({ p }) => p.nome.toLowerCase().includes(q.toLowerCase()))
-        .map(({ p, i }) => `
-          <div class="pat-item${i === sel ? ' active' : ''}" onclick="selPac(${i})">
-            <span class="avatar-sm" style="background:${p.cor};">${App.iniciais(p.nome)}</span>
-            <div><div class="pt-name">${p.nome}</div><div class="pt-sub">${p.sub}</div></div>
+      document.getElementById('patList').innerHTML = PACS
+        .filter(p => p.nome.toLowerCase().includes(q.toLowerCase()))
+        .map((p, i) => `
+          <div class="pat-item${p.id === sel ? ' active' : ''}" onclick="selPac('${p.id}')">
+            <span class="avatar-sm" style="background:${CORES[i % 6]};">${App.iniciais(p.nome)}</span>
+            <div><div class="pt-name">${p.nome}</div><div class="pt-sub">${p.queixa || STATUS_TXT[p.status]}${p.sessoes_total ? ' · ' + p.sessoes_feitas + '/' + p.sessoes_total : ''}</div></div>
           </div>`).join('') || '<div class="empty">Nenhum paciente encontrado.</div>';
     }
 
-    function selPac(i) {
-      sel = i;
-      const p = PACS[i];
+    async function selPac(id) {
+      sel = id;
+      const p = PACS.find(x => x.id === id);
+      if (!p) return;
+      document.getElementById('prontuario').style.display = '';
+      const f = FISIOS.find(x => x.id === p.fisio_id);
+      const idade = PF.idade(p.nascimento);
       document.getElementById('pHeadNome').textContent = p.nome;
-      document.getElementById('pHeadSub').textContent = p.head;
-      document.getElementById('pHeadStatus').textContent = p.status;
+      document.getElementById('pHeadSub').textContent =
+        [idade ? idade + ' anos' : null, p.convenio || 'Particular', p.queixa, f ? f.nome : null].filter(Boolean).join(' · ');
+      document.getElementById('pHeadStatus').textContent = STATUS_TXT[p.status] + (p.sessoes_total ? ` · ${p.sessoes_feitas}/${p.sessoes_total}` : '');
       const av = document.getElementById('pHeadAvatar');
       av.textContent = App.iniciais(p.nome);
-      av.style.background = p.cor;
+      av.style.background = CORES[PACS.indexOf(p) % 6];
+      if (p.fisio_id) document.getElementById('evFisio').value = p.fisio_id;
+      // avaliação
+      const a = p.avaliacao || {};
+      avHistoria.value = a.historia || ''; avExame.value = a.exame || '';
+      avDiag.value = a.diagnostico || ''; avPlano.value = a.plano || '';
       renderList(document.getElementById('patSearch').value);
+      await Promise.all([carregarEvolucoes(), carregarPrescricoes()]);
     }
 
-    function salvarEvolucao() {
-      const s = document.getElementById('evS').value.trim();
-      const o = document.getElementById('evO').value.trim();
-      const a = document.getElementById('evA').value.trim();
-      const pl = document.getElementById('evP').value.trim();
-      if (!s && !o && !a && !pl) { App.toast('Preencha ao menos um campo da evolução', 'error'); return; }
-      const bloco = document.createElement('div');
-      bloco.className = 'soap-block';
-      bloco.style.borderColor = 'var(--primary)';
-      bloco.innerHTML = `
-        <div class="sp-head"><span class="sp-date">16/07/2026 · Nova sessão · Camila Rocha</span><span class="badge primary">Agora</span></div>
-        ${s ? `<div class="sp-row"><b>S</b> ${s}</div>` : ''}
-        ${o ? `<div class="sp-row"><b>O</b> ${o}</div>` : ''}
-        ${a ? `<div class="sp-row"><b>A</b> ${a}</div>` : ''}
-        ${pl ? `<div class="sp-row"><b>P</b> ${pl}</div>` : ''}`;
-      document.getElementById('soapList').prepend(bloco);
-      ['evS', 'evO', 'evA', 'evP'].forEach(id => document.getElementById(id).value = '');
-      App.toast('Evolução registrada no prontuário!');
+    async function carregarEvolucoes() {
+      const evs = await PF.get('evolucoes', { paciente_id: sel });
+      document.getElementById('soapList').innerHTML = evs.map(e => {
+        const f = FISIOS.find(x => x.id === e.fisio_id);
+        return `<div class="soap-block">
+          <div class="sp-head">
+            <span class="sp-date">${PF.fmtData(e.data.slice(0,10))}${f ? ' · ' + f.nome : ''}</span>
+            <span>${e.eva != null ? `<span class="badge ${e.eva <= 3 ? 'green' : e.eva <= 6 ? 'amber' : 'red'}">EVA ${e.eva}</span>` : ''}
+            <button style="background:none;border:none;color:var(--text-soft);font-size:.8rem;" title="Excluir" onclick="excluirEv('${e.id}')">✕</button></span>
+          </div>
+          ${e.s ? `<div class="sp-row"><b>S</b> ${e.s}</div>` : ''}
+          ${e.o ? `<div class="sp-row"><b>O</b> ${e.o}</div>` : ''}
+          ${e.a ? `<div class="sp-row"><b>A</b> ${e.a}</div>` : ''}
+          ${e.p ? `<div class="sp-row"><b>P</b> ${e.p}</div>` : ''}
+        </div>`;
+      }).join('') || '<div class="empty">Nenhuma evolução registrada ainda.</div>';
+    }
+
+    async function carregarPrescricoes() {
+      const prs = await PF.get('prescricoes', { paciente_id: sel });
+      document.getElementById('presList').innerHTML = prs.map(pr => `
+        <div class="soap-block">
+          <div class="sp-head"><span class="sp-date">${PF.fmtData(pr.criado_em.slice(0,10))} · ${pr.freq || ''} ${pr.duracao ? '· ' + pr.duracao : ''}</span></div>
+          ${(pr.itens || []).map(i => `<div class="sp-row">💪 <b style="text-transform:none;letter-spacing:0;">${i.nome}</b> ${i.reps || ''}</div>`).join('')}
+        </div>`).join('') || '<div class="empty">Nenhuma prescrição. Monte uma na <a href="exercicios.html" style="color:var(--primary);font-weight:600;">biblioteca de exercícios</a>.</div>';
+    }
+
+    async function salvarEvolucao() {
+      const body = {
+        paciente_id: sel, fisio_id: evFisio.value || null,
+        s: evS.value.trim() || null, o: evO.value.trim() || null,
+        a: evA.value.trim() || null, p: evP.value.trim() || null,
+        eva: evEva.value === '' ? null : Number(evEva.value),
+        data: PF.hojeISO(),
+      };
+      if (!body.s && !body.o && !body.a && !body.p) { App.toast('Preencha ao menos um campo da evolução', 'error'); return; }
+      const btn = document.getElementById('btnEv'); btn.disabled = true;
+      try {
+        await PF.post('evolucoes', body);
+        ['evS','evO','evA','evP','evEva'].forEach(id => document.getElementById(id).value = '');
+        App.toast('Evolução registrada no prontuário!');
+        await carregarEvolucoes();
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false;
+    }
+
+    async function excluirEv(id) {
+      if (!confirm('Excluir esta evolução?')) return;
+      try { await PF.del('evolucoes', id); await carregarEvolucoes(); App.toast('Evolução excluída'); }
+      catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    async function salvarAvaliacao() {
+      try {
+        const avaliacao = { historia: avHistoria.value.trim(), exame: avExame.value.trim(), diagnostico: avDiag.value.trim(), plano: avPlano.value.trim() };
+        await PF.put('pacientes', sel, { avaliacao });
+        const p = PACS.find(x => x.id === sel); if (p) p.avaliacao = avaliacao;
+        App.toast('Avaliação salva no prontuário!');
+      } catch (e) { App.toast(e.message, 'error'); }
     }
 
     document.getElementById('patSearch').addEventListener('input', e => renderList(e.target.value));
-    renderList();
+    boot().catch(e => App.toast(e.message, 'error'));
   </script>
 </body>
 </html>

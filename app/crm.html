@@ -10,15 +10,11 @@
 <body data-page="crm" data-title="CRM · Captação de pacientes" data-subtitle="Arraste os cards entre as etapas do funil">
 
   <div class="page-head">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <span class="badge primary">18 leads no funil</span>
-      <span class="badge green">Taxa de conversão: 46%</span>
-      <span class="badge amber">6 sem resposta há 3+ dias</span>
-    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;" id="crmBadges"></div>
     <button class="btn btn-primary" onclick="App.openModal('mLead')">+ Novo lead</button>
   </div>
 
-  <div class="kanban" id="kanban"></div>
+  <div class="kanban" id="kanban"><div class="empty">Carregando...</div></div>
 
   <!-- MODAL NOVO LEAD -->
   <div class="modal-overlay" id="mLead">
@@ -29,76 +25,84 @@
       </div>
       <div class="modal-body">
         <div class="form-grid">
-          <div class="field"><label>Nome</label><input type="text" placeholder="Nome do contato"></div>
-          <div class="field"><label>Telefone / WhatsApp</label><input type="text" placeholder="(11) 9 0000-0000"></div>
+          <div class="field"><label>Nome *</label><input type="text" id="lNome"></div>
+          <div class="field"><label>Telefone / WhatsApp</label><input type="text" id="lTel"></div>
           <div class="field"><label>Origem</label>
-            <select><option>Site PerFisio</option><option>Instagram</option><option>Google</option><option>Indicação médica</option><option>Indicação de paciente</option><option>Convênio</option></select>
+            <select id="lOrigem"><option>Site PerFisio</option><option>Instagram</option><option>Google</option><option>Indicação médica</option><option>Indicação de paciente</option><option>Convênio</option></select>
           </div>
           <div class="field"><label>Interesse</label>
-            <select><option>Fisioterapia ortopédica</option><option>Fisioterapia esportiva</option><option>Pilates clínico</option><option>RPG</option><option>Neurofuncional</option><option>Domiciliar</option></select>
+            <select id="lInteresse"><option>Fisioterapia ortopédica</option><option>Fisioterapia esportiva</option><option>Pilates clínico</option><option>RPG</option><option>Neurofuncional</option><option>Domiciliar</option></select>
           </div>
-          <div class="field full"><label>Queixa / observação</label><textarea placeholder="Ex.: dor no joelho ao correr, quer avaliação essa semana"></textarea></div>
+          <div class="field"><label>Valor estimado (R$)</label><input type="number" id="lValor" placeholder="1400"></div>
+          <div class="field"><label>Fisioterapeuta</label><select id="lFisio"></select></div>
+          <div class="field full"><label>Queixa / observação</label><textarea id="lObs" placeholder="Ex.: dor no joelho ao correr, quer avaliação essa semana"></textarea></div>
         </div>
       </div>
       <div class="modal-foot">
         <button class="btn btn-ghost" onclick="App.closeModal('mLead')">Cancelar</button>
-        <button class="btn btn-primary" onclick="App.closeModal('mLead'); App.toast('Lead adicionado ao funil!')">Adicionar lead</button>
+        <button class="btn btn-primary" id="btnLead" onclick="salvarLead()">Adicionar lead</button>
       </div>
     </div>
   </div>
 
   <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/api.js"></script>
   <script src="../assets/js/sidebar.js"></script>
   <script>
     const COLS = [
-      { id: 'novo',      title: 'Novo contato',        cor: '#2D7DD2' },
-      { id: 'contato',   title: 'Contato feito',       cor: '#7C5CBF' },
-      { id: 'avaliacao', title: 'Avaliação agendada',  cor: '#D9820B' },
-      { id: 'proposta',  title: 'Plano proposto',      cor: '#0DA189' },
-      { id: 'convertido',title: 'Paciente convertido', cor: '#1E9E6A' },
-    ];
-    let LEADS = [
-      { id: 1, nome: 'Renata Campos', origem: 'Site PerFisio', interesse: 'Cervicalgia + cefaleia', valor: 1400, fisio: 'camila', dias: 2, col: 'avaliacao' },
-      { id: 2, nome: 'Tiago Prado', origem: 'Indicação médica', interesse: 'Dor no ombro', valor: 1200, fisio: 'camila', dias: 1, col: 'avaliacao' },
-      { id: 3, nome: 'Luciana Freitas', origem: 'Instagram', interesse: 'Pilates clínico', valor: 680, fisio: 'marina', dias: 0, col: 'novo' },
-      { id: 4, nome: 'Roberto Cunha', origem: 'Google', interesse: 'Lombalgia', valor: 1400, fisio: 'camila', dias: 3, col: 'novo' },
-      { id: 5, nome: 'Amanda Silveira', origem: 'Site PerFisio', interesse: 'Pós-op. ombro', valor: 2200, fisio: 'rafael', dias: 1, col: 'contato' },
-      { id: 6, nome: 'Felipe Araújo', origem: 'Indicação de paciente', interesse: 'Fisio esportiva · corrida', valor: 1600, fisio: 'rafael', dias: 4, col: 'contato' },
-      { id: 7, nome: 'Dona Ilda Martins', origem: 'Convênio', interesse: 'Pós-AVC · domiciliar', valor: 3600, fisio: 'pedro', dias: 2, col: 'proposta' },
-      { id: 8, nome: 'Carlos Eduardo', origem: 'Google', interesse: 'Hérnia de disco', valor: 1800, fisio: 'camila', dias: 6, col: 'proposta' },
-      { id: 9, nome: 'Juliana Prates', origem: 'Instagram', interesse: 'RPG · escoliose', valor: 960, fisio: 'marina', dias: 0, col: 'convertido' },
-      { id: 10, nome: 'Otávio Bernardes', origem: 'Site PerFisio', interesse: 'Entorse de tornozelo', valor: 880, fisio: 'rafael', dias: 1, col: 'convertido' },
-      { id: 11, nome: 'Vanessa Rocha', origem: 'Site PerFisio', interesse: 'Pilates clínico', valor: 680, fisio: 'marina', dias: 5, col: 'novo' },
-      { id: 12, nome: 'Gilberto Nunes', origem: 'Indicação médica', interesse: 'Parkinson · equilíbrio', valor: 3600, fisio: 'pedro', dias: 2, col: 'contato' },
+      { id: 'novo',       title: 'Novo contato',        cor: '#2D7DD2' },
+      { id: 'contato',    title: 'Contato feito',       cor: '#7C5CBF' },
+      { id: 'avaliacao',  title: 'Avaliação agendada',  cor: '#D9820B' },
+      { id: 'proposta',   title: 'Plano proposto',      cor: '#0DA189' },
+      { id: 'convertido', title: 'Paciente convertido', cor: '#1E9E6A' },
     ];
     const ORIGEM_ICO = { 'Site PerFisio': '🌐', 'Instagram': '📸', 'Google': '🔎', 'Indicação médica': '🩺', 'Indicação de paciente': '🤝', 'Convênio': '🏥' };
+    let LEADS = [], FISIOS = [];
+
+    async function boot() {
+      [LEADS, FISIOS] = await Promise.all([PF.get('leads'), PF.get('fisios')]);
+      document.getElementById('lFisio').innerHTML = '<option value="">A definir</option>' +
+        FISIOS.filter(f=>f.ativo).map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
+      render();
+    }
+
+    function diasDesde(iso) { return Math.floor((Date.now() - new Date(iso)) / 86400000); }
 
     function render() {
+      const conv = LEADS.filter(l => l.col === 'convertido').length;
+      const semResp = LEADS.filter(l => l.col === 'novo' && diasDesde(l.criado_em) >= 3).length;
+      document.getElementById('crmBadges').innerHTML = `
+        <span class="badge primary">${LEADS.length} leads no funil</span>
+        <span class="badge green">Conversão: ${LEADS.length ? Math.round(conv / LEADS.length * 100) : 0}%</span>
+        ${semResp ? `<span class="badge amber">${semResp} sem resposta há 3+ dias</span>` : ''}`;
+
       document.getElementById('kanban').innerHTML = COLS.map(col => {
         const cards = LEADS.filter(l => l.col === col.id);
-        const sum = cards.reduce((a, l) => a + l.valor, 0);
+        const sum = cards.reduce((a, l) => a + Number(l.valor || 0), 0);
         return `<div class="kb-col" data-col="${col.id}">
           <div class="kb-col-head">
             <span class="kb-dot" style="background:${col.cor};"></span>
             <span class="kb-title">${col.title}</span>
             <span class="kb-count">${cards.length}</span>
-            <span class="kb-sum">${App.moneyShort(sum)}</span>
+            <span class="kb-sum">${sum ? App.moneyShort(sum) : ''}</span>
           </div>
           <div class="kb-cards">
             ${cards.map(l => {
-              const f = App.fisio(l.fisio);
+              const f = FISIOS.find(x => x.id === l.fisio_id);
+              const d = diasDesde(l.criado_em);
               return `<div class="kb-card" draggable="true" data-id="${l.id}">
-                <div class="kc-name">${l.nome}</div>
-                <div class="kc-prop">${ORIGEM_ICO[l.origem] || '•'} ${l.origem} · ${l.interesse}</div>
+                <div class="kc-name">${l.nome} <button style="float:right;background:none;border:none;color:var(--text-soft);font-size:.8rem;" title="Excluir lead" onclick="excluirLead(event,'${l.id}')">✕</button></div>
+                <div class="kc-prop">${ORIGEM_ICO[l.origem] || '•'} ${l.origem || ''}${l.interesse ? ' · ' + l.interesse : ''}</div>
+                ${l.obs ? `<div class="kc-prop">💬 ${l.obs}</div>` : ''}
                 <div class="kc-foot">
-                  <span class="kc-value">${App.money(l.valor)}</span>
+                  <span class="kc-value">${Number(l.valor) ? App.money(Number(l.valor)) : ''}</span>
                   <div class="kc-meta">
-                    <span class="kc-days">${l.dias === 0 ? 'hoje' : l.dias + 'd'}</span>
-                    <span class="avatar-sm" style="background:${f.cor};width:24px;height:24px;font-size:.6rem;" title="${f.nome}">${App.iniciais(f.nome)}</span>
+                    <span class="kc-days">${d === 0 ? 'hoje' : d + 'd'}</span>
+                    ${f ? `<span class="avatar-sm" style="background:${f.cor};width:24px;height:24px;font-size:.6rem;" title="${f.nome}">${App.iniciais(f.nome)}</span>` : ''}
                   </div>
                 </div>
               </div>`;
-            }).join('')}
+            }).join('') || '<div class="empty" style="padding:18px 8px;font-size:.78rem;">Vazio</div>'}
           </div>
         </div>`;
       }).join('');
@@ -114,24 +118,55 @@
       document.querySelectorAll('.kb-col').forEach(col => {
         col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
         col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
-        col.addEventListener('drop', e => {
+        col.addEventListener('drop', async e => {
           e.preventDefault();
           col.classList.remove('drag-over');
           if (!dragged) return;
-          const lead = LEADS.find(l => l.id == dragged.dataset.id);
+          const lead = LEADS.find(l => l.id === dragged.dataset.id);
           const dest = col.dataset.col;
-          if (lead && lead.col !== dest) {
-            lead.col = dest;
+          if (!lead || lead.col === dest) return;
+          try {
+            if (dest === 'convertido') {
+              await PF.api(`/api/leads/${lead.id}/converter`, { method: 'POST' });
+              App.toast(`${lead.nome} convertido — paciente criado em "Em avaliação"! 🎉`);
+              setTimeout(() => App.toast('Agende a avaliação inicial na Agenda', 'info'), 700);
+            } else {
+              await PF.put('leads', lead.id, { col: dest });
+              App.toast(`${lead.nome} movido para "${COLS.find(c => c.id === dest).title}"`);
+            }
+            LEADS = await PF.get('leads');
             render();
-            const colTitle = COLS.find(c => c.id === dest).title;
-            App.toast(`${lead.nome} movido para "${colTitle}"`);
-            if (dest === 'convertido') setTimeout(() => App.toast('Lembre de cadastrar o paciente e agendar a 1ª sessão', 'info'), 600);
-          }
+          } catch (err) { App.toast(err.message, 'error'); }
         });
       });
     }
 
-    render();
+    async function salvarLead() {
+      if (!lNome.value.trim()) { App.toast('Informe o nome do lead', 'error'); return; }
+      const btn = document.getElementById('btnLead'); btn.disabled = true;
+      try {
+        await PF.post('leads', {
+          nome: lNome.value.trim(), telefone: lTel.value.trim() || null, origem: lOrigem.value,
+          interesse: lInteresse.value, valor: Number(lValor.value) || 0,
+          fisio_id: lFisio.value || null, obs: lObs.value.trim() || null,
+        });
+        App.closeModal('mLead');
+        ['lNome','lTel','lValor','lObs'].forEach(id => document.getElementById(id).value = '');
+        App.toast('Lead adicionado ao funil!');
+        LEADS = await PF.get('leads');
+        render();
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false;
+    }
+
+    async function excluirLead(ev, id) {
+      ev.stopPropagation();
+      if (!confirm('Excluir este lead?')) return;
+      try { await PF.del('leads', id); LEADS = await PF.get('leads'); render(); App.toast('Lead excluído'); }
+      catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    boot().catch(e => App.toast(e.message, 'error'));
   </script>
 </body>
 </html>

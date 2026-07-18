@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entrar — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/app.css">
+  <style>
+    .login-page { display: flex; min-height: 100vh; }
+    .login-hero {
+      flex: 1.15; background: var(--ink); color: #fff; position: relative; overflow: hidden;
+      display: flex; flex-direction: column; justify-content: space-between; padding: 48px 56px;
+    }
+    .login-hero::after {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(600px 400px at 85% 15%, rgba(13,161,137,.32), transparent 60%),
+        radial-gradient(500px 400px at 10% 90%, rgba(90,208,187,.12), transparent 60%);
+      pointer-events: none;
+    }
+    .login-hero .brand { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 1.15rem; position: relative; z-index: 1; }
+    .login-hero .brand .mark { width: 36px; height: 36px; border-radius: 9px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); display: grid; place-items: center; }
+    .login-hero .hero-quote { font-size: 1.7rem; font-weight: 800; line-height: 1.3; max-width: 480px; letter-spacing: -.5px; position: relative; z-index: 1; }
+    .login-hero .hero-quote em { color: var(--accent); font-style: normal; }
+    .login-hero .hero-stats { display: flex; gap: 36px; position: relative; z-index: 1; }
+    .login-hero .hs .n { font-size: 1.5rem; font-weight: 800; }
+    .login-hero .hs .l { font-size: .76rem; color: #8FA6A3; margin-top: 2px; }
+    .login-form-side { flex: 1; display: grid; place-items: center; padding: 40px; background: var(--bg); }
+    .login-card { width: 100%; max-width: 410px; }
+    .login-card h2 { font-size: 1.5rem; font-weight: 800; color: var(--ink); margin: 18px 0 4px; }
+    .login-card .l-sub { color: var(--text-soft); font-size: .9rem; margin-bottom: 22px; }
+    .login-card .field { margin-bottom: 14px; }
+    .erro-box { background: var(--red-soft); color: var(--red); border-radius: 9px; padding: 10px 14px; font-size: .85rem; font-weight: 600; margin-bottom: 14px; display: none; }
+    @media (max-width: 1024px) { .login-hero { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-hero">
+      <a class="brand" href="index.html"><span class="mark">P</span> PerFisio</a>
+      <div class="hero-quote">A gestão da sua clínica e a <em>captação de pacientes</em> no mesmo lugar.</div>
+      <div class="hero-stats">
+        <div class="hs"><div class="n">CRM</div><div class="l">funil de captação</div></div>
+        <div class="hs"><div class="n">SOAP</div><div class="l">prontuário eletrônico</div></div>
+        <div class="hs"><div class="n">100%</div><div class="l">na nuvem</div></div>
+      </div>
+    </div>
+    <div class="login-form-side">
+      <div class="login-card">
+        <div class="tabs" id="authTabs">
+          <button class="tab active" data-tab="login">Entrar</button>
+          <button class="tab" data-tab="registro">Criar conta grátis</button>
+        </div>
+
+        <div class="erro-box" id="erroBox"></div>
+
+        <!-- LOGIN -->
+        <div data-tab-panel="login">
+          <h2>Bem-vindo de volta</h2>
+          <div class="l-sub">Acesse o painel da sua clínica.</div>
+          <div class="field"><label>E-mail</label><input type="email" id="loEmail" placeholder="voce@clinica.com.br"></div>
+          <div class="field"><label>Senha</label><input type="password" id="loSenha" placeholder="••••••••" onkeydown="if(event.key==='Enter')fazerLogin()"></div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;" id="btnLogin" onclick="fazerLogin()">Entrar</button>
+        </div>
+
+        <!-- REGISTRO -->
+        <div data-tab-panel="registro" style="display:none;">
+          <h2>Crie sua conta</h2>
+          <div class="l-sub">Sua clínica pronta em 1 minuto — já com biblioteca de exercícios e pacotes.</div>
+          <div class="field"><label>Nome da clínica ou consultório</label><input type="text" id="reClinica" placeholder="Ex.: Clínica Movimente"></div>
+          <div class="field"><label>Seu nome</label><input type="text" id="reNome" placeholder="Ex.: Camila Rocha"></div>
+          <div class="field"><label>E-mail</label><input type="email" id="reEmail" placeholder="voce@clinica.com.br"></div>
+          <div class="field"><label>Senha (mín. 6 caracteres)</label><input type="password" id="reSenha" placeholder="••••••••" onkeydown="if(event.key==='Enter')registrar()"></div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;" id="btnRegistro" onclick="registrar()">Criar minha clínica →</button>
+        </div>
+
+        <div style="text-align:center;margin-top:18px;font-size:.8rem;color:var(--text-soft);">
+          <a href="index.html" style="color:var(--primary);font-weight:600;">← Voltar ao site</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/app.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script>
+    App.initTabs(document.getElementById('authTabs'));
+    if (location.hash === '#registro') document.querySelector('[data-tab="registro"]').click();
+    if (PF.token()) location.href = 'app/dashboard.html';
+
+    function erro(msg) {
+      const b = document.getElementById('erroBox');
+      b.textContent = msg; b.style.display = 'block';
+      setTimeout(() => b.style.display = 'none', 5000);
+    }
+
+    async function fazerLogin() {
+      const btn = document.getElementById('btnLogin');
+      btn.disabled = true; btn.textContent = 'Entrando...';
+      try {
+        const r = await PF.api('/api/auth/login', { method: 'POST', body: { email: loEmail.value.trim(), senha: loSenha.value } });
+        PF.setSession(r.token, r.usuario);
+        location.href = 'app/dashboard.html';
+      } catch (e) { erro(e.message); btn.disabled = false; btn.textContent = 'Entrar'; }
+    }
+
+    async function registrar() {
+      const btn = document.getElementById('btnRegistro');
+      btn.disabled = true; btn.textContent = 'Criando...';
+      try {
+        const r = await PF.api('/api/auth/register', { method: 'POST', body: { clinica: reClinica.value.trim(), nome: reNome.value.trim(), email: reEmail.value.trim(), senha: reSenha.value } });
+        PF.setSession(r.token, r.usuario);
+        location.href = 'app/dashboard.html';
+      } catch (e) { erro(e.message); btn.disabled = false; btn.textContent = 'Criar minha clínica →'; }
+    }
+  </script>
+</body>
+</html>

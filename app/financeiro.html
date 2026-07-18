@@ -11,24 +11,24 @@
 
   <div class="stats-grid">
     <div class="stat-card">
-      <div class="s-top"><span class="s-label">Receita de julho</span><div class="s-ico" style="background:var(--green-soft);">💰</div></div>
-      <div class="s-value">R$ 42.320</div>
-      <div class="s-delta up">▲ 14% <span class="muted">vs. junho</span></div>
+      <div class="s-top"><span class="s-label">Receita do mês</span><div class="s-ico" style="background:var(--green-soft);">💰</div></div>
+      <div class="s-value" id="stReceita">—</div>
+      <div class="s-delta"><span class="muted" id="stReceitaSub"></span></div>
     </div>
     <div class="stat-card">
       <div class="s-top"><span class="s-label">A receber</span><div class="s-ico" style="background:var(--blue-soft);">📥</div></div>
-      <div class="s-value">R$ 9.640</div>
-      <div class="s-delta"><span class="muted">12 cobranças em aberto</span></div>
+      <div class="s-value" id="stReceber">—</div>
+      <div class="s-delta"><span class="muted" id="stReceberSub"></span></div>
     </div>
     <div class="stat-card">
       <div class="s-top"><span class="s-label">Em atraso</span><div class="s-ico" style="background:var(--red-soft);">⚠️</div></div>
-      <div class="s-value">R$ 2.840</div>
-      <div class="s-delta down">5 cobranças <span class="muted">· enviar lembretes</span></div>
+      <div class="s-value" id="stAtraso">—</div>
+      <div class="s-delta"><span class="muted" id="stAtrasoSub"></span></div>
     </div>
     <div class="stat-card">
-      <div class="s-top"><span class="s-label">Ticket médio / paciente</span><div class="s-ico" style="background:var(--amber-soft);">🎯</div></div>
-      <div class="s-value">R$ 557</div>
-      <div class="s-delta up">▲ 6% <span class="muted">pacotes maiores</span></div>
+      <div class="s-top"><span class="s-label">Ticket médio</span><div class="s-ico" style="background:var(--amber-soft);">🎯</div></div>
+      <div class="s-value" id="stTicket">—</div>
+      <div class="s-delta"><span class="muted">por pagamento recebido</span></div>
     </div>
   </div>
 
@@ -38,7 +38,7 @@
       <button class="tab" data-tab="pacotes">Pacotes & Planos</button>
       <button class="tab" data-tab="convenios">Convênios</button>
     </div>
-    <button class="btn btn-primary" style="margin-bottom:20px;" onclick="App.openModal('mPagamento')">+ Registrar pagamento</button>
+    <button class="btn btn-primary" style="margin-bottom:20px;" onclick="abrirPagamento()">+ Registrar cobrança</button>
   </div>
 
   <!-- PAGAMENTOS -->
@@ -47,46 +47,7 @@
       <div class="table-wrap">
         <table class="data">
           <thead><tr><th>Paciente</th><th>Descrição</th><th>Forma</th><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead>
-          <tbody>
-            <tr>
-              <td><div class="cell-person"><span class="avatar-sm" style="background:#0DA189;">MT</span><span class="p-name">Marcos Teixeira</span></div></td>
-              <td>Pacote 10 sessões · Ortopedia</td><td>Pix</td><td>02/07/2026</td><td style="font-weight:700;">R$ 1.400</td>
-              <td><span class="badge green">Pago</span></td><td></td>
-            </tr>
-            <tr>
-              <td><div class="cell-person"><span class="avatar-sm" style="background:#2D7DD2;">LF</span><span class="p-name">Larissa Fontes</span></div></td>
-              <td>Pacote 20 sessões · Pós-op (2/4)</td><td>Cartão 4x</td><td>10/07/2026</td><td style="font-weight:700;">R$ 700</td>
-              <td><span class="badge green">Pago</span></td><td></td>
-            </tr>
-            <tr>
-              <td><div class="cell-person"><span class="avatar-sm" style="background:#D64545;">PR</span><span class="p-name">Paula Ribeiro</span></div></td>
-              <td>Mensalidade Pilates · julho</td><td>Boleto</td><td>10/07/2026</td><td style="font-weight:700;">R$ 680</td>
-              <td><span class="badge red">Em atraso</span></td>
-              <td><button class="btn btn-soft btn-sm" onclick="event.stopPropagation(); App.toast('Lembrete de cobrança enviado por WhatsApp 📲')">Cobrar</button></td>
-            </tr>
-            <tr>
-              <td><div class="cell-person"><span class="avatar-sm" style="background:#D9820B;">JP</span><span class="p-name">João Paulo Dias</span></div></td>
-              <td>Pacote 30 sessões · Neuro (1/3)</td><td>Pix</td><td>15/07/2026</td><td style="font-weight:700;">R$ 1.200</td>
-              <td><span class="badge amber">Vence hoje</span></td>
-              <td><button class="btn btn-soft btn-sm" onclick="event.stopPropagation(); App.toast('Link de pagamento enviado 📲')">Enviar link</button></td>
-            </tr>
-            <tr>
-              <td><div class="cell-person"><span class="avatar-sm" style="background:#7C5CBF;">HG</span><span class="p-name">Helena Garcia</span></div></td>
-              <td>Coparticipação Bradesco · junho</td><td>Repasse convênio</td><td>20/07/2026</td><td style="font-weight:700;">R$ 1.960</td>
-              <td><span class="badge blue">Aguardando repasse</span></td><td></td>
-            </tr>
-            <tr>
-              <td><div class="cell-person"><span class="avatar-sm" style="background:#1E9E6A;">AF</span><span class="p-name">Antônio Ferraz</span></div></td>
-              <td>Pacote 30 sessões · Neuro (3/3)</td><td>Cartão</td><td>25/07/2026</td><td style="font-weight:700;">R$ 1.200</td>
-              <td><span class="badge gray">Agendado</span></td><td></td>
-            </tr>
-            <tr>
-              <td><div class="cell-person"><span class="avatar-sm" style="background:#2D7DD2;">SM</span><span class="p-name">Sérgio Meireles</span></div></td>
-              <td>Renovação pacote 10 sessões</td><td>—</td><td>—</td><td style="font-weight:700;">R$ 1.400</td>
-              <td><span class="badge purple">Proposta enviada</span></td>
-              <td><button class="btn btn-soft btn-sm" onclick="event.stopPropagation(); App.toast('Proposta reenviada 📲')">Reenviar</button></td>
-            </tr>
-          </tbody>
+          <tbody id="pagRows"><tr><td colspan="7" class="empty">Carregando...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -94,112 +55,275 @@
 
   <!-- PACOTES -->
   <div data-tab-panel="pacotes" style="display:none;">
-    <div class="ex-grid">
-      <div class="ex-card" onclick="App.toast('Edição de pacote no protótipo completo', 'info')">
-        <div class="e-img" style="background:var(--primary-soft);height:90px;">🎫</div>
-        <div class="e-body">
-          <div class="e-title">Sessão avulsa</div>
-          <div class="e-sub">Fisioterapia ortopédica / esportiva</div>
-          <div style="font-size:1.3rem;font-weight:800;color:var(--ink);margin-top:10px;">R$ 160</div>
-          <div class="e-specs"><span>50 min</span><span>32 vendas no mês</span></div>
-        </div>
-      </div>
-      <div class="ex-card" onclick="App.toast('Edição de pacote no protótipo completo', 'info')">
-        <div class="e-img" style="background:var(--green-soft);height:90px;">📦</div>
-        <div class="e-body">
-          <div class="e-title">Pacote 10 sessões <span class="badge green" style="margin-left:4px;">mais vendido</span></div>
-          <div class="e-sub">R$ 140/sessão · validade 3 meses</div>
-          <div style="font-size:1.3rem;font-weight:800;color:var(--ink);margin-top:10px;">R$ 1.400</div>
-          <div class="e-specs"><span>50 min</span><span>18 vendas no mês</span></div>
-        </div>
-      </div>
-      <div class="ex-card" onclick="App.toast('Edição de pacote no protótipo completo', 'info')">
-        <div class="e-img" style="background:var(--blue-soft);height:90px;">📦</div>
-        <div class="e-body">
-          <div class="e-title">Pacote 20 sessões</div>
-          <div class="e-sub">R$ 130/sessão · validade 5 meses</div>
-          <div style="font-size:1.3rem;font-weight:800;color:var(--ink);margin-top:10px;">R$ 2.600</div>
-          <div class="e-specs"><span>50 min</span><span>7 vendas no mês</span></div>
-        </div>
-      </div>
-      <div class="ex-card" onclick="App.toast('Edição de pacote no protótipo completo', 'info')">
-        <div class="e-img" style="background:var(--purple-soft);height:90px;">🧘</div>
-        <div class="e-body">
-          <div class="e-title">Mensal Pilates · 2x/semana</div>
-          <div class="e-sub">Turmas de até 5 alunos</div>
-          <div style="font-size:1.3rem;font-weight:800;color:var(--ink);margin-top:10px;">R$ 680<span style="font-size:.8rem;font-weight:600;color:var(--text-soft);">/mês</span></div>
-          <div class="e-specs"><span>55 min</span><span>21 alunos ativos</span></div>
-        </div>
-      </div>
-      <div class="ex-card" onclick="App.toast('Edição de pacote no protótipo completo', 'info')">
-        <div class="e-img" style="background:var(--amber-soft);height:90px;">🏠</div>
-        <div class="e-body">
-          <div class="e-title">Atendimento domiciliar</div>
-          <div class="e-sub">Por sessão · região central</div>
-          <div style="font-size:1.3rem;font-weight:800;color:var(--ink);margin-top:10px;">R$ 240</div>
-          <div class="e-specs"><span>60 min</span><span>9 vendas no mês</span></div>
-        </div>
-      </div>
-      <div class="ex-card" style="display:grid;place-items:center;min-height:220px;border-style:dashed;" onclick="App.toast('Criação de pacote no protótipo completo', 'info')">
-        <div style="text-align:center;color:var(--text-soft);"><div style="font-size:2rem;">＋</div><div style="font-weight:600;font-size:.9rem;margin-top:6px;">Criar novo pacote</div></div>
-      </div>
-    </div>
+    <div class="ex-grid" id="pacotesGrid"></div>
   </div>
 
   <!-- CONVÊNIOS -->
   <div data-tab-panel="convenios" style="display:none;">
     <div class="card">
-      <div class="table-wrap">
+      <div class="card-header">
+        <h3>Convênios aceitos</h3>
+        <button class="btn btn-soft btn-sm" onclick="App.openModal('mConvenio')">+ Novo convênio</button>
+      </div>
+      <div class="table-wrap" style="padding-top:8px;">
         <table class="data">
-          <thead><tr><th>Convênio</th><th>Pacientes ativos</th><th>Valor/sessão</th><th>Produção julho</th><th>Repasse previsto</th><th>Status</th></tr></thead>
-          <tbody>
-            <tr><td style="font-weight:600;">Unimed</td><td>14</td><td>R$ 85</td><td>R$ 6.630</td><td>25/08/2026</td><td><span class="badge green">Em dia</span></td></tr>
-            <tr><td style="font-weight:600;">Bradesco Saúde</td><td>9</td><td>R$ 92</td><td>R$ 4.140</td><td>20/07/2026</td><td><span class="badge blue">Aguardando</span></td></tr>
-            <tr><td style="font-weight:600;">SulAmérica</td><td>6</td><td>R$ 88</td><td>R$ 2.376</td><td>30/08/2026</td><td><span class="badge green">Em dia</span></td></tr>
-            <tr><td style="font-weight:600;">Amil</td><td>4</td><td>R$ 80</td><td>R$ 1.440</td><td>15/07/2026</td><td><span class="badge red">Glosa em análise</span></td></tr>
-          </tbody>
+          <thead><tr><th>Convênio</th><th>Pacientes ativos</th><th>Valor/sessão</th><th>Status</th><th></th></tr></thead>
+          <tbody id="convRows"><tr><td colspan="5" class="empty">Carregando...</td></tr></tbody>
         </table>
       </div>
     </div>
-    <div class="card card-pad" style="margin-top:18px;">
-      <h3 style="font-size:.95rem;margin-bottom:8px;">💡 Particular vs. Convênio</h3>
-      <div style="font-size:.85rem;color:var(--text-soft);line-height:1.6;">Atendimentos particulares representam <b style="color:var(--ink);">66% da receita</b> com <b style="color:var(--ink);">52% das sessões</b>. O valor médio por sessão particular (R$ 148) é 71% maior que o repasse médio dos convênios (R$ 86,50).</div>
-    </div>
   </div>
 
-  <!-- MODAL REGISTRAR PAGAMENTO -->
+  <!-- MODAL PAGAMENTO -->
   <div class="modal-overlay" id="mPagamento">
     <div class="modal">
       <div class="modal-head">
-        <h3>Registrar pagamento</h3>
+        <h3>Registrar cobrança / pagamento</h3>
         <button class="close" onclick="App.closeModal('mPagamento')">×</button>
       </div>
       <div class="modal-body">
         <div class="form-grid">
-          <div class="field"><label>Paciente</label>
-            <select><option>Marcos Teixeira</option><option>Larissa Fontes</option><option>Paula Ribeiro</option><option>João Paulo Dias</option><option>Sérgio Meireles</option></select>
-          </div>
-          <div class="field"><label>Referente a</label>
-            <select><option>Pacote 10 sessões</option><option>Pacote 20 sessões</option><option>Sessão avulsa</option><option>Mensal Pilates</option><option>Domiciliar</option></select>
-          </div>
-          <div class="field"><label>Valor</label><input type="text" placeholder="R$ 0,00" value="R$ 1.400"></div>
+          <div class="field"><label>Paciente</label><select id="pgPaciente"></select></div>
+          <div class="field"><label>Referente a</label><select id="pgPacote"></select></div>
+          <div class="field"><label>Valor (R$) *</label><input type="number" id="pgValor" step="0.01"></div>
           <div class="field"><label>Forma de pagamento</label>
-            <select><option>Pix</option><option>Cartão de crédito</option><option>Cartão de débito</option><option>Dinheiro</option><option>Boleto</option><option>Repasse convênio</option></select>
+            <select id="pgForma"><option>Pix</option><option>Cartão de crédito</option><option>Cartão de débito</option><option>Dinheiro</option><option>Boleto</option><option>Repasse convênio</option></select>
           </div>
-          <div class="field"><label>Data</label><input type="date" value="2026-07-16"></div>
-          <div class="field"><label>Parcelas</label>
-            <select><option>À vista</option><option>2x</option><option>3x</option><option>4x</option></select>
+          <div class="field"><label>Vencimento</label><input type="date" id="pgVenc"></div>
+          <div class="field"><label>Situação</label>
+            <select id="pgStatus"><option value="pago">Pago (recebido agora)</option><option value="aberto">Em aberto (a receber)</option><option value="agendado">Agendado</option></select>
           </div>
+          <div class="field full"><label>Descrição</label><input type="text" id="pgDesc" placeholder="Ex.: Pacote 10 sessões · parcela 1/2"></div>
         </div>
       </div>
       <div class="modal-foot">
         <button class="btn btn-ghost" onclick="App.closeModal('mPagamento')">Cancelar</button>
-        <button class="btn btn-primary" onclick="App.closeModal('mPagamento'); App.toast('Pagamento registrado e recibo enviado!')">Registrar</button>
+        <button class="btn btn-primary" id="btnPg" onclick="salvarPagamento()">Registrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PACOTE -->
+  <div class="modal-overlay" id="mPacote">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="mPacTitulo">Novo pacote</h3>
+        <button class="close" onclick="App.closeModal('mPacote')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field full"><label>Nome *</label><input type="text" id="pcNome" placeholder="Ex.: Pacote 10 sessões"></div>
+          <div class="field"><label>Valor (R$) *</label><input type="number" id="pcValor" step="0.01"></div>
+          <div class="field"><label>Nº de sessões</label><input type="number" id="pcSessoes" value="1" min="1"></div>
+          <div class="field"><label>Tipo</label>
+            <select id="pcTipo"><option value="pacote">Pacote</option><option value="avulsa">Avulsa</option><option value="mensal">Mensalidade</option></select>
+          </div>
+          <div class="field full"><label>Descrição</label><input type="text" id="pcDesc" placeholder="Ex.: R$ 140/sessão · validade 3 meses"></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-danger" id="btnPcExcluir" style="margin-right:auto;display:none;" onclick="excluirPacote()">Excluir</button>
+        <button class="btn btn-ghost" onclick="App.closeModal('mPacote')">Cancelar</button>
+        <button class="btn btn-primary" id="btnPc" onclick="salvarPacote()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CONVÊNIO -->
+  <div class="modal-overlay" id="mConvenio">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Novo convênio</h3>
+        <button class="close" onclick="App.closeModal('mConvenio')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field"><label>Nome *</label><input type="text" id="cvNome" placeholder="Ex.: Unimed"></div>
+          <div class="field"><label>Valor repassado por sessão (R$)</label><input type="number" id="cvValor" step="0.01"></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal('mConvenio')">Cancelar</button>
+        <button class="btn btn-primary" onclick="salvarConvenio()">Salvar</button>
       </div>
     </div>
   </div>
 
   <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/api.js"></script>
   <script src="../assets/js/sidebar.js"></script>
+  <script>
+    let PAGS = [], PACS = [], PACOTES = [], CONVS = [];
+    let pacoteEditId = null;
+    const hoje = PF.hojeISO();
+    const CORES = ['#0DA189','#2D7DD2','#7C5CBF','#D9820B','#D64545','#1E9E6A'];
+    const TIPO_EMOJI = { avulsa: '🎫', pacote: '📦', mensal: '🧘' };
+
+    async function boot() {
+      [PAGS, PACS, PACOTES, CONVS] = await Promise.all([
+        PF.get('pagamentos'), PF.get('pacientes'), PF.get('pacotes'), PF.get('convenios'),
+      ]);
+      document.getElementById('pgPaciente').innerHTML = '<option value="">— Sem paciente —</option>' +
+        PACS.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+      document.getElementById('pgPacote').innerHTML = '<option value="">— Livre —</option>' +
+        PACOTES.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+      document.getElementById('pgPacote').addEventListener('change', e => {
+        const p = PACOTES.find(x => x.id === e.target.value);
+        if (p) { pgValor.value = Number(p.valor); pgDesc.value = p.nome; }
+      });
+      renderTudo();
+    }
+
+    function statusReal(p) {
+      if (p.status === 'aberto' && p.vencimento && p.vencimento.slice(0,10) < hoje) return 'atraso';
+      return p.status;
+    }
+
+    function renderTudo() { renderStats(); renderPagamentos(); renderPacotes(); renderConvenios(); }
+
+    function renderStats() {
+      const pagosMes = PAGS.filter(p => p.status === 'pago' && ((p.vencimento || p.criado_em) || '').slice(0,7) === hoje.slice(0,7));
+      const receita = pagosMes.reduce((a,p) => a + Number(p.valor), 0);
+      document.getElementById('stReceita').textContent = App.money(receita);
+      document.getElementById('stReceitaSub').textContent = pagosMes.length + ' pagamentos recebidos';
+      const abertos = PAGS.filter(p => ['aberto','agendado'].includes(p.status) && statusReal(p) !== 'atraso');
+      document.getElementById('stReceber').textContent = App.money(abertos.reduce((a,p) => a + Number(p.valor), 0));
+      document.getElementById('stReceberSub').textContent = abertos.length + ' cobranças em aberto';
+      const atraso = PAGS.filter(p => statusReal(p) === 'atraso');
+      document.getElementById('stAtraso').textContent = App.money(atraso.reduce((a,p) => a + Number(p.valor), 0));
+      document.getElementById('stAtrasoSub').textContent = atraso.length + ' cobranças vencidas';
+      const pagos = PAGS.filter(p => p.status === 'pago');
+      document.getElementById('stTicket').textContent = pagos.length ? App.money(pagos.reduce((a,p) => a + Number(p.valor), 0) / pagos.length) : '—';
+    }
+
+    function renderPagamentos() {
+      const BADGE = {
+        pago: '<span class="badge green">Pago</span>', aberto: '<span class="badge blue">Em aberto</span>',
+        atraso: '<span class="badge red">Em atraso</span>', agendado: '<span class="badge gray">Agendado</span>',
+      };
+      document.getElementById('pagRows').innerHTML = PAGS.map((p, i) => {
+        const pac = PACS.find(x => x.id === p.paciente_id);
+        const st = statusReal(p);
+        return `<tr>
+          <td>${pac ? `<div class="cell-person"><span class="avatar-sm" style="background:${CORES[i % 6]};">${App.iniciais(pac.nome)}</span><span class="p-name">${pac.nome}</span></div>` : '—'}</td>
+          <td>${p.descricao || '—'}</td>
+          <td>${p.forma || '—'}</td>
+          <td>${PF.fmtData(p.vencimento ? p.vencimento.slice(0,10) : null)}</td>
+          <td style="font-weight:700;">${App.money(Number(p.valor))}</td>
+          <td>${BADGE[st]}</td>
+          <td style="white-space:nowrap;">
+            ${st !== 'pago' ? `<button class="btn btn-soft btn-sm" onclick="marcarPago('${p.id}')">✓ Recebido</button>` : ''}
+            <button class="btn btn-ghost btn-sm" title="Excluir" onclick="excluirPag('${p.id}')">🗑</button>
+          </td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="7" class="empty">Nenhuma cobrança registrada. Clique em <b>+ Registrar cobrança</b>.</td></tr>';
+    }
+
+    function renderPacotes() {
+      const BG = ['var(--primary-soft)','var(--green-soft)','var(--blue-soft)','var(--purple-soft)','var(--amber-soft)'];
+      document.getElementById('pacotesGrid').innerHTML = PACOTES.map((p, i) => `
+        <div class="ex-card" onclick="abrirPacote('${p.id}')">
+          <div class="e-img" style="background:${BG[i % 5]};height:90px;">${TIPO_EMOJI[p.tipo] || '📦'}</div>
+          <div class="e-body">
+            <div class="e-title">${p.nome}</div>
+            <div class="e-sub">${p.descricao || ''}</div>
+            <div style="font-size:1.3rem;font-weight:800;color:var(--ink);margin-top:10px;">${App.money(Number(p.valor))}${p.tipo === 'mensal' ? '<span style="font-size:.8rem;font-weight:600;color:var(--text-soft);">/mês</span>' : ''}</div>
+            <div class="e-specs"><span>${p.sessoes} ${p.sessoes > 1 ? 'sessões' : 'sessão'}</span></div>
+          </div>
+        </div>`).join('') +
+        `<div class="ex-card" style="display:grid;place-items:center;min-height:200px;border-style:dashed;" onclick="abrirPacote(null)">
+          <div style="text-align:center;color:var(--text-soft);"><div style="font-size:2rem;">＋</div><div style="font-weight:600;font-size:.9rem;margin-top:6px;">Criar novo pacote</div></div>
+        </div>`;
+    }
+
+    function renderConvenios() {
+      document.getElementById('convRows').innerHTML = CONVS.map(c => {
+        const n = PACS.filter(p => (p.convenio || '').toLowerCase() === c.nome.toLowerCase() && p.status === 'tratamento').length;
+        return `<tr>
+          <td style="font-weight:600;">${c.nome}</td>
+          <td>${n}</td>
+          <td>${App.money(Number(c.valor_sessao))}</td>
+          <td>${c.ativo ? '<span class="badge green">Ativo</span>' : '<span class="badge gray">Inativo</span>'}</td>
+          <td><button class="btn btn-ghost btn-sm" onclick="excluirConv('${c.id}')">🗑</button></td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="5" class="empty">Nenhum convênio cadastrado (atendimento 100% particular).</td></tr>';
+    }
+
+    /* ---- ações ---- */
+    function abrirPagamento() {
+      pgValor.value = ''; pgDesc.value = ''; pgVenc.value = hoje; pgStatus.value = 'pago';
+      App.openModal('mPagamento');
+    }
+    async function salvarPagamento() {
+      if (!Number(pgValor.value)) { App.toast('Informe o valor', 'error'); return; }
+      const btn = document.getElementById('btnPg'); btn.disabled = true;
+      try {
+        await PF.post('pagamentos', {
+          paciente_id: pgPaciente.value || null, descricao: pgDesc.value.trim() || null,
+          forma: pgForma.value, vencimento: pgVenc.value || null,
+          valor: Number(pgValor.value), status: pgStatus.value,
+        });
+        App.closeModal('mPagamento');
+        App.toast('Cobrança registrada!');
+        PAGS = await PF.get('pagamentos'); renderTudo();
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false;
+    }
+    async function marcarPago(id) {
+      try { await PF.put('pagamentos', id, { status: 'pago' }); App.toast('Pagamento recebido! 💰'); PAGS = await PF.get('pagamentos'); renderTudo(); }
+      catch (e) { App.toast(e.message, 'error'); }
+    }
+    async function excluirPag(id) {
+      if (!confirm('Excluir esta cobrança?')) return;
+      try { await PF.del('pagamentos', id); PAGS = await PF.get('pagamentos'); renderTudo(); }
+      catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    function abrirPacote(id) {
+      pacoteEditId = id;
+      const p = PACOTES.find(x => x.id === id);
+      document.getElementById('mPacTitulo').textContent = p ? p.nome : 'Novo pacote';
+      document.getElementById('btnPcExcluir').style.display = p ? '' : 'none';
+      pcNome.value = p ? p.nome : ''; pcValor.value = p ? Number(p.valor) : '';
+      pcSessoes.value = p ? p.sessoes : 1; pcTipo.value = p ? p.tipo : 'pacote'; pcDesc.value = p ? (p.descricao || '') : '';
+      App.openModal('mPacote');
+    }
+    async function salvarPacote() {
+      if (!pcNome.value.trim() || !Number(pcValor.value)) { App.toast('Informe nome e valor', 'error'); return; }
+      const body = { nome: pcNome.value.trim(), valor: Number(pcValor.value), sessoes: Number(pcSessoes.value) || 1, tipo: pcTipo.value, descricao: pcDesc.value.trim() || null };
+      const btn = document.getElementById('btnPc'); btn.disabled = true;
+      try {
+        if (pacoteEditId) await PF.put('pacotes', pacoteEditId, body);
+        else await PF.post('pacotes', body);
+        App.closeModal('mPacote');
+        App.toast('Pacote salvo!');
+        PACOTES = await PF.get('pacotes'); renderPacotes();
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false;
+    }
+    async function excluirPacote() {
+      if (!pacoteEditId || !confirm('Excluir este pacote?')) return;
+      try { await PF.del('pacotes', pacoteEditId); App.closeModal('mPacote'); PACOTES = await PF.get('pacotes'); renderPacotes(); }
+      catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    async function salvarConvenio() {
+      if (!cvNome.value.trim()) { App.toast('Informe o nome do convênio', 'error'); return; }
+      try {
+        await PF.post('convenios', { nome: cvNome.value.trim(), valor_sessao: Number(cvValor.value) || 0 });
+        App.closeModal('mConvenio');
+        cvNome.value = ''; cvValor.value = '';
+        CONVS = await PF.get('convenios'); renderConvenios();
+        App.toast('Convênio adicionado!');
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+    async function excluirConv(id) {
+      if (!confirm('Excluir este convênio?')) return;
+      try { await PF.del('convenios', id); CONVS = await PF.get('convenios'); renderConvenios(); }
+      catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    boot().catch(e => App.toast(e.message, 'error'));
+  </script>
 </body>
 </html>

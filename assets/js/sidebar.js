@@ -1,7 +1,11 @@
-/* PERFISIO — Sidebar + Topbar injetadas
+/* PERFISIO — Sidebar + Topbar injetadas + guarda de autenticação
    Uso: <body data-page="pacientes" data-title="Pacientes" data-subtitle="...">
-   e <script src="../assets/js/sidebar.js"></script> no fim do body. */
+   Requer app.js e api.js carregados antes. */
 (function () {
+  // Guarda: páginas do app exigem login
+  if (!PF.token()) { location.href = '../login.html'; return; }
+  const usuario = PF.user() || { nome: 'Usuário', clinica_nome: 'Minha clínica', perfil: 'gestor' };
+
   const body = document.body;
   const page = body.dataset.page || '';
   const title = body.dataset.title || 'PerFisio';
@@ -28,6 +32,8 @@
          <span class="ico">${n.ico}</span>${n.text}</a>`
   ).join('');
 
+  const PERFIS = { gestor: 'Gestor(a)', fisio: 'Fisioterapeuta', recepcao: 'Recepção' };
+
   const sidebar = document.createElement('aside');
   sidebar.className = 'sidebar';
   sidebar.innerHTML = `
@@ -40,12 +46,12 @@
     </div>
     <nav>${navHtml}</nav>
     <div class="user-box">
-      <div class="avatar">CR</div>
-      <div>
-        <div class="u-name">Dra. Camila Rocha</div>
-        <div class="u-role">Gestora · Clínica Movimente</div>
+      <div class="avatar">${App.iniciais(usuario.nome)}</div>
+      <div style="min-width:0;">
+        <div class="u-name">${usuario.nome}</div>
+        <div class="u-role">${PERFIS[usuario.perfil] || usuario.perfil} · ${usuario.clinica_nome || ''}</div>
       </div>
-      <button class="logout" title="Sair" onclick="location.href='../index.html'">⎋</button>
+      <button class="logout" title="Sair" id="pfLogout">⎋</button>
     </div>`;
 
   const topbar = document.createElement('header');
@@ -56,8 +62,7 @@
       ${subtitle ? `<div class="subtitle">${subtitle}</div>` : ''}
     </div>
     <div class="spacer"></div>
-    <div class="search">🔍 <input type="text" placeholder="Buscar paciente, prontuário..."></div>
-    <button class="btn btn-ghost btn-icon" title="Notificações" onclick="App.toast('Você tem 3 notificações', 'info')">🔔</button>`;
+    <div class="search">🔍 <input type="text" placeholder="Buscar paciente..." id="pfGlobalSearch"></div>`;
 
   const shell = document.createElement('div');
   shell.className = 'app-shell';
@@ -74,4 +79,10 @@
   shell.appendChild(sidebar);
   shell.appendChild(main);
   body.appendChild(shell);
+
+  sidebar.querySelector('#pfLogout').addEventListener('click', PF.logout);
+  topbar.querySelector('#pfGlobalSearch').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.value.trim())
+      location.href = 'pacientes.html?q=' + encodeURIComponent(e.target.value.trim());
+  });
 })();

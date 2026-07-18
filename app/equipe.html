@@ -10,103 +10,181 @@
 <body data-page="equipe" data-title="Equipe" data-subtitle="Fisioterapeutas da clínica, agenda e produtividade">
 
   <div class="page-head">
-    <div style="display:flex;gap:8px;">
-      <span class="badge primary">4 profissionais ativos</span>
-      <span class="badge green">Ocupação média: 78%</span>
-    </div>
-    <button class="btn btn-primary" onclick="App.openModal('mPro')">+ Novo profissional</button>
+    <div style="display:flex;gap:8px;" id="eqBadges"></div>
+    <button class="btn btn-primary" onclick="abrirNovo()">+ Novo profissional</button>
   </div>
 
-  <div class="ex-grid" id="proGrid" style="grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));"></div>
+  <div class="ex-grid" id="proGrid" style="grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));"><div class="empty">Carregando...</div></div>
 
   <div class="card" style="margin-top:24px;">
-    <div class="card-header"><h3>Produção de julho por profissional</h3></div>
+    <div class="card-header"><h3>Produção do mês por profissional</h3></div>
     <div class="table-wrap" style="padding-top:8px;">
       <table class="data">
-        <thead><tr><th>Profissional</th><th>Sessões realizadas</th><th>Faltas de pacientes</th><th>Receita gerada</th><th>Comissão (40%)</th><th>Avaliação média</th></tr></thead>
+        <thead><tr><th>Profissional</th><th>Sessões realizadas</th><th>Agendadas</th><th>Faltas de pacientes</th><th>Receita gerada*</th><th>Comissão</th></tr></thead>
         <tbody id="prodRows"></tbody>
       </table>
     </div>
+    <div style="padding:10px 22px 16px;font-size:.74rem;color:var(--text-soft);">* Pagamentos recebidos no mês de pacientes vinculados ao profissional.</div>
   </div>
 
-  <!-- MODAL NOVO PROFISSIONAL -->
+  <!-- MODAL PROFISSIONAL -->
   <div class="modal-overlay" id="mPro">
     <div class="modal">
       <div class="modal-head">
-        <h3>Novo profissional</h3>
+        <h3 id="mProTitulo">Novo profissional</h3>
         <button class="close" onclick="App.closeModal('mPro')">×</button>
       </div>
       <div class="modal-body">
         <div class="form-grid">
-          <div class="field"><label>Nome completo</label><input type="text" placeholder="Nome do fisioterapeuta"></div>
-          <div class="field"><label>CREFITO</label><input type="text" placeholder="CREFITO-3 00.000-F"></div>
+          <div class="field"><label>Nome completo *</label><input type="text" id="prNome"></div>
+          <div class="field"><label>CREFITO</label><input type="text" id="prCrefito" placeholder="CREFITO-3 00.000-F"></div>
           <div class="field"><label>Especialidade principal</label>
-            <select><option>Ortopedia e Traumato</option><option>Esportiva</option><option>Neurofuncional</option><option>Pilates / RPG</option><option>Respiratória</option><option>Pélvica</option></select>
+            <select id="prEsp"><option>Ortopedia e Traumato</option><option>Fisioterapia Esportiva</option><option>Neurofuncional</option><option>Pilates Clínico · RPG</option><option>Respiratória</option><option>Pélvica</option><option>Geriátrica</option></select>
           </div>
-          <div class="field"><label>Modelo de remuneração</label>
-            <select><option>Comissão 40%</option><option>Comissão 50%</option><option>Fixo + comissão</option><option>Aluguel de sala</option></select>
+          <div class="field"><label>Comissão (%)</label><input type="number" id="prComissao" value="40" min="0" max="100"></div>
+          <div class="field"><label>Cor na agenda</label><input type="color" id="prCor" value="#2D7DD2" style="height:42px;padding:4px;"></div>
+          <div class="field"><label>Ativo</label>
+            <select id="prAtivo"><option value="true">Sim</option><option value="false">Não (desligado)</option></select>
           </div>
-          <div class="field"><label>E-mail de acesso</label><input type="email" placeholder="email@clinica.com"></div>
-          <div class="field"><label>Perfil de acesso</label>
-            <select><option>Fisioterapeuta (agenda própria + prontuários)</option><option>Gestor (acesso total)</option><option>Recepção (agenda + pagamentos)</option></select>
-          </div>
-          <div class="check-row full"><input type="checkbox" checked id="ckPerfil"><label for="ckPerfil" style="margin:0;font-weight:500;">Criar perfil público no diretório PerFisio</label></div>
+        </div>
+        <div style="margin-top:14px;padding:12px 14px;background:var(--bg);border-radius:9px;font-size:.8rem;color:var(--text-soft);">
+          💡 Para dar <b>acesso ao sistema</b> a este profissional, crie um usuário em <a href="configuracoes.html" style="color:var(--primary);font-weight:600;">Configurações → Usuários</a>.
         </div>
       </div>
       <div class="modal-foot">
+        <button class="btn btn-danger" id="btnProExcluir" style="margin-right:auto;display:none;" onclick="excluirPro()">Excluir</button>
         <button class="btn btn-ghost" onclick="App.closeModal('mPro')">Cancelar</button>
-        <button class="btn btn-primary" onclick="App.closeModal('mPro'); App.toast('Convite enviado por e-mail!')">Adicionar à equipe</button>
+        <button class="btn btn-primary" id="btnPro" onclick="salvarPro()">Salvar</button>
       </div>
     </div>
   </div>
 
   <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/api.js"></script>
   <script src="../assets/js/sidebar.js"></script>
   <script>
-    const DADOS = {
-      camila: { ocup: 92, sessoes: 68, faltas: 4, receita: 14280, nota: 4.9, pacientes: 24 },
-      rafael: { ocup: 84, sessoes: 61, faltas: 6, receita: 11890, nota: 4.8, pacientes: 21 },
-      marina: { ocup: 76, sessoes: 74, faltas: 3, receita: 9860, nota: 5.0, pacientes: 26 },
-      pedro:  { ocup: 58, sessoes: 39, faltas: 2, receita: 8120, nota: 4.9, pacientes: 11 },
-    };
+    let FISIOS = [], PACS = [], SESSOES = [], PAGS = [];
+    let editId = null;
+    const hoje = PF.hojeISO();
+    const mesIni = hoje.slice(0, 8) + '01';
 
-    document.getElementById('proGrid').innerHTML = App.FISIOS.map(f => {
-      const d = DADOS[f.id];
-      return `<div class="pro-card">
-        <div class="avatar-lg" style="background:${f.cor};">${App.iniciais(f.nome)}</div>
-        <div class="pro-name">${f.nome}</div>
-        <div class="pro-crefito">${f.crefito}</div>
-        <div class="pro-esp"><span class="badge primary">${f.esp}</span></div>
-        <div style="margin-top:14px;">
-          <div class="hb-top" style="display:flex;justify-content:space-between;font-size:.74rem;margin-bottom:5px;">
-            <span style="color:var(--text-soft);font-weight:600;">Ocupação da agenda</span>
-            <span style="font-weight:700;color:var(--ink);">${d.ocup}%</span>
+    async function boot() {
+      [FISIOS, PACS, SESSOES, PAGS] = await Promise.all([
+        PF.get('fisios'), PF.get('pacientes'),
+        PF.get('sessoes', { from: mesIni, to: hoje.slice(0, 8) + '31' }),
+        PF.get('pagamentos'),
+      ]);
+      render();
+    }
+
+    function statsDe(f) {
+      const sess = SESSOES.filter(s => s.fisio_id === f.id);
+      const pacs = PACS.filter(p => p.fisio_id === f.id && p.status !== 'inativo');
+      const pagosMes = PAGS.filter(p => p.status === 'pago' && ((p.vencimento || p.criado_em) || '').slice(0,7) === hoje.slice(0,7));
+      const receita = pagosMes.filter(p => pacs.some(x => x.id === p.paciente_id)).reduce((a, p) => a + Number(p.valor), 0);
+      return {
+        realizadas: sess.filter(s => s.status === 'realizada').length,
+        agendadas: sess.filter(s => s.status === 'agendada').length,
+        faltas: sess.filter(s => s.status === 'falta').length,
+        pacientes: pacs.length, receita,
+      };
+    }
+
+    function render() {
+      const ativos = FISIOS.filter(f => f.ativo);
+      document.getElementById('eqBadges').innerHTML =
+        `<span class="badge primary">${ativos.length} profissional(is) ativo(s)</span>`;
+
+      document.getElementById('proGrid').innerHTML = FISIOS.map(f => {
+        const d = statsDe(f);
+        const ocup = Math.min(Math.round((d.realizadas + d.agendadas) / 160 * 100), 100);
+        return `<div class="pro-card" style="${f.ativo ? '' : 'opacity:.55;'}">
+          <div class="avatar-lg" style="background:${f.cor};">${App.iniciais(f.nome)}</div>
+          <div class="pro-name">${f.nome}</div>
+          <div class="pro-crefito">${f.crefito || 'CREFITO não informado'}</div>
+          <div class="pro-esp"><span class="badge primary">${f.esp || 'Fisioterapeuta'}</span>${f.ativo ? '' : ' <span class="badge gray">Inativo</span>'}</div>
+          <div style="margin-top:14px;">
+            <div style="display:flex;justify-content:space-between;font-size:.74rem;margin-bottom:5px;">
+              <span style="color:var(--text-soft);font-weight:600;">Ocupação no mês</span>
+              <span style="font-weight:700;color:var(--ink);">${ocup}%</span>
+            </div>
+            <div class="progress"><div style="width:${ocup}%;background:${f.cor};"></div></div>
           </div>
-          <div class="progress"><div style="width:${d.ocup}%;background:${f.cor};"></div></div>
-        </div>
-        <div class="pro-stats">
-          <div><div class="n">${d.pacientes}</div><div class="l">Pacientes</div></div>
-          <div><div class="n">${d.sessoes}</div><div class="l">Sessões/mês</div></div>
-          <div><div class="n">⭐ ${d.nota}</div><div class="l">Avaliação</div></div>
-        </div>
-        <div style="display:flex;gap:8px;justify-content:center;margin-top:15px;">
-          <button class="btn btn-ghost btn-sm" onclick="location.href='agenda.html'">Ver agenda</button>
-          <button class="btn btn-soft btn-sm" onclick="App.toast('Perfil público de ${f.nome} aberto (protótipo)', 'info')">Perfil público</button>
-        </div>
-      </div>`;
-    }).join('');
+          <div class="pro-stats">
+            <div><div class="n">${d.pacientes}</div><div class="l">Pacientes</div></div>
+            <div><div class="n">${d.realizadas}</div><div class="l">Sessões/mês</div></div>
+            <div><div class="n">${d.faltas}</div><div class="l">Faltas</div></div>
+          </div>
+          <div style="display:flex;gap:8px;justify-content:center;margin-top:15px;">
+            <button class="btn btn-ghost btn-sm" onclick="location.href='agenda.html'">Ver agenda</button>
+            <button class="btn btn-soft btn-sm" onclick="abrirEditar('${f.id}')">Editar</button>
+          </div>
+        </div>`;
+      }).join('') || '<div class="empty">Nenhum profissional cadastrado.</div>';
 
-    document.getElementById('prodRows').innerHTML = App.FISIOS.map(f => {
-      const d = DADOS[f.id];
-      return `<tr>
-        <td><div class="cell-person"><span class="avatar-sm" style="background:${f.cor};">${App.iniciais(f.nome)}</span><div><div class="p-name">${f.nome}</div><div class="p-sub">${f.esp}</div></div></div></td>
-        <td>${d.sessoes}</td>
-        <td>${d.faltas}</td>
-        <td style="font-weight:700;">${App.money(d.receita)}</td>
-        <td style="font-weight:600;color:var(--primary-dark);">${App.money(d.receita * 0.4)}</td>
-        <td>⭐ ${d.nota.toFixed(1)}</td>
-      </tr>`;
-    }).join('');
+      document.getElementById('prodRows').innerHTML = FISIOS.filter(f => f.ativo).map(f => {
+        const d = statsDe(f);
+        return `<tr>
+          <td><div class="cell-person"><span class="avatar-sm" style="background:${f.cor};">${App.iniciais(f.nome)}</span><div><div class="p-name">${f.nome}</div><div class="p-sub">${f.esp || ''}</div></div></div></td>
+          <td>${d.realizadas}</td>
+          <td>${d.agendadas}</td>
+          <td>${d.faltas}</td>
+          <td style="font-weight:700;">${App.money(d.receita)}</td>
+          <td style="font-weight:600;color:var(--primary-dark);">${App.money(d.receita * Number(f.comissao) / 100)} <span style="font-size:.7rem;color:var(--text-soft);">(${Number(f.comissao)}%)</span></td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="6" class="empty">Sem profissionais ativos.</td></tr>';
+    }
+
+    function abrirNovo() {
+      editId = null;
+      document.getElementById('mProTitulo').textContent = 'Novo profissional';
+      document.getElementById('btnProExcluir').style.display = 'none';
+      prNome.value = ''; prCrefito.value = ''; prEsp.value = 'Ortopedia e Traumato';
+      prComissao.value = 40; prCor.value = '#2D7DD2'; prAtivo.value = 'true';
+      App.openModal('mPro');
+    }
+
+    function abrirEditar(id) {
+      const f = FISIOS.find(x => x.id === id);
+      if (!f) return;
+      editId = id;
+      document.getElementById('mProTitulo').textContent = f.nome;
+      document.getElementById('btnProExcluir').style.display = '';
+      prNome.value = f.nome; prCrefito.value = f.crefito || ''; prEsp.value = f.esp || 'Ortopedia e Traumato';
+      prComissao.value = Number(f.comissao); prCor.value = f.cor; prAtivo.value = String(f.ativo);
+      App.openModal('mPro');
+    }
+
+    async function salvarPro() {
+      if (!prNome.value.trim()) { App.toast('Informe o nome', 'error'); return; }
+      const body = {
+        nome: prNome.value.trim(), crefito: prCrefito.value.trim() || null, esp: prEsp.value,
+        comissao: Number(prComissao.value) || 0, cor: prCor.value, ativo: prAtivo.value === 'true',
+      };
+      const btn = document.getElementById('btnPro'); btn.disabled = true;
+      try {
+        if (editId) await PF.put('fisios', editId, body);
+        else await PF.post('fisios', body);
+        App.closeModal('mPro');
+        App.toast(editId ? 'Profissional atualizado!' : 'Profissional adicionado à equipe!');
+        FISIOS = await PF.get('fisios');
+        render();
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false;
+    }
+
+    async function excluirPro() {
+      if (!editId || !confirm('Excluir este profissional? Sessões dele ficarão sem responsável.')) return;
+      try {
+        await PF.del('fisios', editId);
+        App.closeModal('mPro');
+        FISIOS = await PF.get('fisios');
+        render();
+        App.toast('Profissional excluído');
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    boot().catch(e => App.toast(e.message, 'error'));
   </script>
 </body>
 </html>

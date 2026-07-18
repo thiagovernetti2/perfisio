@@ -10,149 +10,164 @@
 <body data-page="pacientes" data-title="Pacientes" data-subtitle="Cadastro e acompanhamento de todos os pacientes da clínica">
 
   <div class="page-head">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;" id="filterChips">
-      <button class="chip active" data-s="todos">Todos <span style="font-weight:400;">98</span></button>
-      <button class="chip" data-s="tratamento">Em tratamento <span style="font-weight:400;">76</span></button>
-      <button class="chip" data-s="avaliacao">Em avaliação <span style="font-weight:400;">8</span></button>
-      <button class="chip" data-s="alta">Alta <span style="font-weight:400;">11</span></button>
-      <button class="chip" data-s="inativo">Inativos <span style="font-weight:400;">3</span></button>
-    </div>
-    <button class="btn btn-primary" onclick="App.openModal('mPaciente')">+ Novo paciente</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;" id="filterChips"></div>
+    <button class="btn btn-primary" onclick="abrirNovo()">+ Novo paciente</button>
   </div>
 
   <div class="card">
     <div class="table-wrap">
       <table class="data">
         <thead>
-          <tr><th>Paciente</th><th>Condição</th><th>Fisioterapeuta</th><th>Pacote</th><th>Progresso</th><th>Próx. sessão</th><th>Status</th></tr>
+          <tr><th>Paciente</th><th>Queixa</th><th>Fisioterapeuta</th><th>Pacote</th><th>Progresso</th><th>Status</th></tr>
         </thead>
-        <tbody id="patRows"></tbody>
+        <tbody id="patRows"><tr><td colspan="6" class="empty">Carregando...</td></tr></tbody>
       </table>
     </div>
   </div>
 
-  <!-- MODAL NOVO PACIENTE -->
+  <!-- MODAL NOVO/EDITAR PACIENTE -->
   <div class="modal-overlay" id="mPaciente">
     <div class="modal wide">
       <div class="modal-head">
-        <h3>Novo paciente</h3>
+        <h3 id="mPacTitulo">Novo paciente</h3>
         <button class="close" onclick="App.closeModal('mPaciente')">×</button>
       </div>
       <div class="modal-body">
         <div class="form-grid">
-          <div class="field"><label>Nome completo</label><input type="text" placeholder="Nome do paciente"></div>
-          <div class="field"><label>Data de nascimento</label><input type="date"></div>
-          <div class="field"><label>CPF</label><input type="text" placeholder="000.000.000-00"></div>
-          <div class="field"><label>Telefone / WhatsApp</label><input type="text" placeholder="(11) 9 0000-0000"></div>
-          <div class="field"><label>E-mail</label><input type="email" placeholder="email@exemplo.com"></div>
+          <div class="field"><label>Nome completo *</label><input type="text" id="fNome"></div>
+          <div class="field"><label>Data de nascimento</label><input type="date" id="fNasc"></div>
+          <div class="field"><label>CPF</label><input type="text" id="fCpf" placeholder="000.000.000-00"></div>
+          <div class="field"><label>Telefone / WhatsApp</label><input type="text" id="fTel" placeholder="(11) 9 0000-0000"></div>
+          <div class="field"><label>E-mail</label><input type="email" id="fEmail"></div>
           <div class="field"><label>Convênio</label>
-            <select><option>Particular</option><option>Unimed</option><option>Bradesco Saúde</option><option>SulAmérica</option><option>Amil</option><option>Outro</option></select>
+            <select id="fConv"><option>Particular</option><option>Unimed</option><option>Bradesco Saúde</option><option>SulAmérica</option><option>Amil</option><option>Outro</option></select>
           </div>
-          <div class="field full"><label>Queixa principal</label><input type="text" placeholder="Ex.: dor lombar há 3 meses, irradiando para perna direita"></div>
-          <div class="field"><label>Fisioterapeuta responsável</label>
-            <select><option>Camila Rocha</option><option>Rafael Nunes</option><option>Marina Alves</option><option>Pedro Sampaio</option></select>
+          <div class="field full"><label>Queixa principal</label><input type="text" id="fQueixa" placeholder="Ex.: dor lombar há 3 meses, irradiando para perna direita"></div>
+          <div class="field"><label>Fisioterapeuta responsável</label><select id="fFisio"></select></div>
+          <div class="field"><label>Status</label>
+            <select id="fStatus"><option value="avaliacao">Em avaliação</option><option value="tratamento">Em tratamento</option><option value="alta">Alta</option><option value="inativo">Inativo</option></select>
           </div>
-          <div class="field"><label>Origem do paciente</label>
-            <select><option>Site PerFisio</option><option>Indicação médica</option><option>Indicação de paciente</option><option>Instagram</option><option>Google</option><option>Convênio</option></select>
-          </div>
-          <div class="field full"><label>Observações</label><textarea placeholder="Histórico relevante, medicamentos, restrições..."></textarea></div>
+          <div class="field"><label>Pacote</label><select id="fPacote"></select></div>
+          <div class="field"><label>Sessões já realizadas</label><input type="number" id="fFeitas" value="0" min="0"></div>
+          <div class="field full"><label>Observações</label><textarea id="fObs" placeholder="Histórico relevante, medicamentos, restrições..."></textarea></div>
         </div>
       </div>
       <div class="modal-foot">
+        <button class="btn btn-danger" id="btnExcluir" style="margin-right:auto;display:none;" onclick="excluirPaciente()">Excluir</button>
         <button class="btn btn-ghost" onclick="App.closeModal('mPaciente')">Cancelar</button>
-        <button class="btn btn-primary" onclick="App.closeModal('mPaciente'); App.toast('Paciente cadastrado! Agende a avaliação inicial.')">Cadastrar paciente</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL FICHA DO PACIENTE -->
-  <div class="modal-overlay" id="mFicha">
-    <div class="modal wide">
-      <div class="modal-head">
-        <h3 id="fichaNome">Ficha do paciente</h3>
-        <button class="close" onclick="App.closeModal('mFicha')">×</button>
-      </div>
-      <div class="modal-body" id="fichaBody"></div>
-      <div class="modal-foot">
-        <button class="btn btn-ghost" onclick="App.closeModal('mFicha')">Fechar</button>
-        <button class="btn btn-soft" onclick="location.href='prontuarios.html'">Abrir prontuário</button>
-        <button class="btn btn-primary" onclick="App.closeModal('mFicha'); App.openModal('mPaciente')">Editar cadastro</button>
+        <button class="btn btn-primary" id="btnSalvar" onclick="salvarPaciente()">Salvar</button>
       </div>
     </div>
   </div>
 
   <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/api.js"></script>
   <script src="../assets/js/sidebar.js"></script>
   <script>
-    const PACIENTES = [
-      { nome: 'Marcos Teixeira', idade: 42, conv: 'Unimed', cond: 'Lombalgia crônica', fisio: 'camila', pacote: '10 sessões', done: 7, total: 10, prox: 'Seg 20/07 · 08:00', status: 'tratamento' },
-      { nome: 'Larissa Fontes', idade: 29, conv: 'Particular', cond: 'Pós-op. LCA (joelho D)', fisio: 'rafael', pacote: '20 sessões', done: 7, total: 20, prox: 'Ter 21/07 · 09:00', status: 'tratamento' },
-      { nome: 'Helena Garcia', idade: 63, conv: 'Bradesco Saúde', cond: 'Osteoartrose de quadril', fisio: 'marina', pacote: '20 sessões', done: 18, total: 20, prox: 'Ter 21/07 · 10:00', status: 'tratamento' },
-      { nome: 'João Paulo Dias', idade: 55, conv: 'Particular', cond: 'AVC · reabilitação motora', fisio: 'pedro', pacote: '30 sessões', done: 6, total: 30, prox: 'Seg 20/07 · 14:00', status: 'tratamento' },
-      { nome: 'Sérgio Meireles', idade: 47, conv: 'SulAmérica', cond: 'Tendinopatia de ombro', fisio: 'rafael', pacote: '10 sessões', done: 10, total: 10, prox: 'Reavaliação pendente', status: 'alta' },
-      { nome: 'Renata Campos', idade: 35, conv: 'SulAmérica', cond: 'Cervicalgia + cefaleia', fisio: null, pacote: '—', done: 0, total: 0, prox: 'Avaliação Sex 17/07 · 10:00', status: 'avaliacao' },
-      { nome: 'Tiago Prado', idade: 38, conv: 'Particular', cond: 'Dor no ombro (a investigar)', fisio: null, pacote: '—', done: 0, total: 0, prox: 'Avaliação Qui 16/07 · 11:00', status: 'avaliacao' },
-      { nome: 'Paula Ribeiro', idade: 51, conv: 'Amil', cond: 'Fibromialgia', fisio: 'marina', pacote: 'Mensal Pilates', done: 6, total: 8, prox: 'Sex 17/07 · 15:00', status: 'tratamento' },
-      { nome: 'Eduardo Lima', idade: 33, conv: 'Particular', cond: 'Entorse de tornozelo', fisio: 'rafael', pacote: '8 sessões', done: 8, total: 8, prox: '—', status: 'alta' },
-      { nome: 'Beatriz Nogueira', idade: 27, conv: 'Unimed', cond: 'Escoliose · RPG', fisio: 'marina', pacote: 'Mensal RPG', done: 3, total: 8, prox: 'Qua 22/07 · 11:00', status: 'tratamento' },
-      { nome: 'Antônio Ferraz', idade: 71, conv: 'Bradesco Saúde', cond: 'Parkinson · equilíbrio', fisio: 'pedro', pacote: '30 sessões', done: 22, total: 30, prox: 'Qui 23/07 · 15:00', status: 'tratamento' },
-      { nome: 'Fernanda Sales', idade: 44, conv: 'Particular', cond: 'Hérnia de disco L4-L5', fisio: 'camila', pacote: '15 sessões', done: 15, total: 15, prox: '—', status: 'inativo' },
-    ];
-    const STATUS = {
-      tratamento: '<span class="badge green">Em tratamento</span>',
-      avaliacao: '<span class="badge blue">Avaliação</span>',
-      alta: '<span class="badge purple">Alta</span>',
-      inativo: '<span class="badge gray">Inativo</span>',
-    };
-    const CORES = ['#0DA189', '#2D7DD2', '#7C5CBF', '#D9820B', '#D64545', '#1E9E6A'];
+    let FISIOS = [], PACOTES = [], PACS = [];
+    let filtro = 'todos', editId = null;
+    const busca = new URLSearchParams(location.search).get('q') || '';
+    const CORES = ['#0DA189','#2D7DD2','#7C5CBF','#D9820B','#D64545','#1E9E6A'];
+    const STATUS = { tratamento:'<span class="badge green">Em tratamento</span>', avaliacao:'<span class="badge blue">Avaliação</span>', alta:'<span class="badge purple">Alta</span>', inativo:'<span class="badge gray">Inativo</span>' };
 
-    let filtro = 'todos';
-    function render() {
-      const rows = PACIENTES.filter(p => filtro === 'todos' || p.status === filtro);
-      document.getElementById('patRows').innerHTML = rows.map((p, i) => {
-        const f = p.fisio ? App.fisio(p.fisio) : null;
-        const pct = p.total ? Math.round(p.done / p.total * 100) : 0;
-        return `<tr onclick="ficha(${PACIENTES.indexOf(p)})">
-          <td><div class="cell-person"><span class="avatar-sm" style="background:${CORES[i % CORES.length]};">${App.iniciais(p.nome)}</span><div><div class="p-name">${p.nome}</div><div class="p-sub">${p.idade} anos · ${p.conv}</div></div></div></td>
-          <td>${p.cond}</td>
-          <td>${f ? f.nome : '<span style="color:var(--text-soft);">—</span>'}</td>
-          <td>${p.pacote}</td>
-          <td>${p.total ? `<div class="progress" style="width:90px;"><div style="width:${pct}%;"></div></div><span style="font-size:.72rem;color:var(--text-soft);">${p.done}/${p.total}</span>` : '<span style="color:var(--text-soft);font-size:.8rem;">—</span>'}</td>
-          <td style="font-size:.8rem;">${p.prox}</td>
-          <td>${STATUS[p.status]}</td>
-        </tr>`;
-      }).join('') || '<tr><td colspan="7" class="empty">Nenhum paciente neste filtro.</td></tr>';
-    }
-
-    function ficha(i) {
-      const p = PACIENTES[i];
-      const f = p.fisio ? App.fisio(p.fisio) : null;
-      document.getElementById('fichaNome').textContent = p.nome;
-      document.getElementById('fichaBody').innerHTML = `
-        <div class="form-grid" style="margin-bottom:18px;">
-          <div><div style="font-size:.72rem;color:var(--text-soft);font-weight:600;text-transform:uppercase;letter-spacing:.6px;">Condição</div><div style="font-weight:600;margin-top:3px;">${p.cond}</div></div>
-          <div><div style="font-size:.72rem;color:var(--text-soft);font-weight:600;text-transform:uppercase;letter-spacing:.6px;">Convênio</div><div style="font-weight:600;margin-top:3px;">${p.conv}</div></div>
-          <div><div style="font-size:.72rem;color:var(--text-soft);font-weight:600;text-transform:uppercase;letter-spacing:.6px;">Fisioterapeuta</div><div style="font-weight:600;margin-top:3px;">${f ? f.nome : 'A definir'}</div></div>
-          <div><div style="font-size:.72rem;color:var(--text-soft);font-weight:600;text-transform:uppercase;letter-spacing:.6px;">Pacote</div><div style="font-weight:600;margin-top:3px;">${p.pacote} ${p.total ? `(${p.done}/${p.total})` : ''}</div></div>
-        </div>
-        <h4 style="font-size:.85rem;margin-bottom:12px;color:var(--ink);">Histórico recente</h4>
-        <div class="timeline">
-          <div class="tl-item"><div class="tl-date">14/07/2026</div><div class="tl-text">Sessão realizada — evolução registrada no prontuário.</div></div>
-          <div class="tl-item"><div class="tl-date">09/07/2026</div><div class="tl-text">Sessão realizada — paciente relata redução da dor (EVA 6 → 4).</div></div>
-          <div class="tl-item"><div class="tl-date">02/07/2026</div><div class="tl-text">Pagamento do pacote confirmado via Pix.</div></div>
-          <div class="tl-item"><div class="tl-date">28/06/2026</div><div class="tl-text">Avaliação inicial — plano de tratamento definido.</div></div>
-        </div>`;
-      App.openModal('mFicha');
-    }
-
-    document.querySelectorAll('#filterChips .chip').forEach(c => c.addEventListener('click', () => {
-      document.querySelectorAll('#filterChips .chip').forEach(x => x.classList.remove('active'));
-      c.classList.add('active');
-      filtro = c.dataset.s;
+    async function boot() {
+      [FISIOS, PACOTES, PACS] = await Promise.all([PF.get('fisios'), PF.get('pacotes'), PF.get('pacientes')]);
+      document.getElementById('fFisio').innerHTML = '<option value="">A definir</option>' +
+        FISIOS.filter(f=>f.ativo).map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
+      document.getElementById('fPacote').innerHTML = '<option value="">Sem pacote</option>' +
+        PACOTES.map(p => `<option value="${p.nome}|${p.sessoes}">${p.nome} (${p.sessoes} sessões · ${App.money(Number(p.valor))})</option>`).join('');
       render();
-    }));
+    }
 
-    render();
+    function chips() {
+      const counts = s => s === 'todos' ? PACS.length : PACS.filter(p => p.status === s).length;
+      const defs = [['todos','Todos'],['tratamento','Em tratamento'],['avaliacao','Em avaliação'],['alta','Alta'],['inativo','Inativos']];
+      const el = document.getElementById('filterChips');
+      el.innerHTML = defs.map(([s, l]) =>
+        `<button class="chip${filtro === s ? ' active' : ''}" data-s="${s}">${l} <span style="font-weight:400;">${counts(s)}</span></button>`).join('');
+      el.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => { filtro = c.dataset.s; render(); }));
+    }
+
+    function render() {
+      chips();
+      let rows = PACS.filter(p => filtro === 'todos' || p.status === filtro);
+      if (busca) rows = rows.filter(p => p.nome.toLowerCase().includes(busca.toLowerCase()));
+      document.getElementById('patRows').innerHTML = rows.map((p, i) => {
+        const f = FISIOS.find(x => x.id === p.fisio_id);
+        const pct = p.sessoes_total ? Math.min(Math.round(p.sessoes_feitas / p.sessoes_total * 100), 100) : 0;
+        const idade = PF.idade(p.nascimento);
+        return `<tr onclick="abrirEditar('${p.id}')">
+          <td><div class="cell-person"><span class="avatar-sm" style="background:${CORES[i % 6]};">${App.iniciais(p.nome)}</span><div><div class="p-name">${p.nome}</div><div class="p-sub">${idade ? idade + ' anos · ' : ''}${p.convenio || 'Particular'}${p.telefone ? ' · ' + p.telefone : ''}</div></div></div></td>
+          <td>${p.queixa || '—'}</td>
+          <td>${f ? f.nome : '<span style="color:var(--text-soft);">—</span>'}</td>
+          <td>${p.pacote_nome || '—'}</td>
+          <td>${p.sessoes_total ? `<div class="progress" style="width:90px;"><div style="width:${pct}%;"></div></div><span style="font-size:.72rem;color:var(--text-soft);">${p.sessoes_feitas}/${p.sessoes_total}</span>` : '<span style="color:var(--text-soft);font-size:.8rem;">—</span>'}</td>
+          <td>${STATUS[p.status] || p.status} <a href="prontuarios.html?p=${p.id}" onclick="event.stopPropagation()" style="font-size:.74rem;color:var(--primary);font-weight:600;margin-left:6px;">prontuário →</a></td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="6" class="empty">${busca ? 'Nenhum paciente encontrado para "' + busca + '".' : 'Nenhum paciente neste filtro. Clique em <b>+ Novo paciente</b> para começar.'}</td></tr>`;
+    }
+
+    function limparForm() {
+      ['fNome','fNasc','fCpf','fTel','fEmail','fQueixa','fObs'].forEach(id => document.getElementById(id).value = '');
+      fConv.value = 'Particular'; fStatus.value = 'avaliacao'; fFisio.value = ''; fPacote.value = ''; fFeitas.value = 0;
+    }
+
+    function abrirNovo() {
+      editId = null; limparForm();
+      document.getElementById('mPacTitulo').textContent = 'Novo paciente';
+      document.getElementById('btnExcluir').style.display = 'none';
+      App.openModal('mPaciente');
+    }
+
+    function abrirEditar(id) {
+      const p = PACS.find(x => x.id === id);
+      if (!p) return;
+      editId = id;
+      fNome.value = p.nome; fNasc.value = p.nascimento ? p.nascimento.slice(0,10) : '';
+      fCpf.value = p.cpf || ''; fTel.value = p.telefone || ''; fEmail.value = p.email || '';
+      fConv.value = p.convenio || 'Particular'; fQueixa.value = p.queixa || ''; fObs.value = p.obs || '';
+      fFisio.value = p.fisio_id || ''; fStatus.value = p.status; fFeitas.value = p.sessoes_feitas;
+      const opt = [...fPacote.options].find(o => o.value.startsWith((p.pacote_nome || '') + '|'));
+      fPacote.value = opt ? opt.value : '';
+      document.getElementById('mPacTitulo').textContent = p.nome;
+      document.getElementById('btnExcluir').style.display = '';
+      App.openModal('mPaciente');
+    }
+
+    async function salvarPaciente() {
+      if (!fNome.value.trim()) { App.toast('Informe o nome do paciente', 'error'); return; }
+      const [pacNome, pacSessoes] = fPacote.value ? fPacote.value.split('|') : [null, 0];
+      const body = {
+        nome: fNome.value.trim(), nascimento: fNasc.value || null, cpf: fCpf.value.trim() || null,
+        telefone: fTel.value.trim() || null, email: fEmail.value.trim() || null, convenio: fConv.value,
+        queixa: fQueixa.value.trim() || null, obs: fObs.value.trim() || null,
+        fisio_id: fFisio.value || null, status: fStatus.value,
+        pacote_nome: pacNome, sessoes_total: Number(pacSessoes) || 0, sessoes_feitas: Number(fFeitas.value) || 0,
+      };
+      const btn = document.getElementById('btnSalvar'); btn.disabled = true;
+      try {
+        if (editId) await PF.put('pacientes', editId, body);
+        else await PF.post('pacientes', body);
+        App.closeModal('mPaciente');
+        App.toast(editId ? 'Paciente atualizado!' : 'Paciente cadastrado!');
+        PACS = await PF.get('pacientes');
+        render();
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false;
+    }
+
+    async function excluirPaciente() {
+      if (!editId || !confirm('Excluir este paciente e todo o histórico (sessões, evoluções, prescrições)?')) return;
+      try {
+        await PF.del('pacientes', editId);
+        App.closeModal('mPaciente');
+        App.toast('Paciente excluído');
+        PACS = await PF.get('pacientes');
+        render();
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    boot().catch(e => App.toast(e.message, 'error'));
   </script>
 </body>
 </html>

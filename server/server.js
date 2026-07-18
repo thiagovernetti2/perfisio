@@ -1,0 +1,363 @@
+/* PERFISIO — Backend (Express + PostgreSQL)
+   Multi-tenant por clínica · Auth JWT · API REST em /api · serve o frontend estático */
+const express = require('express');
+const path = require('path');
+const { Pool } = require('pg');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
+const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'perfisio-dev-secret';
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost')
+    ? { rejectUnauthorized: false } : false,
+});
+
+/* ============ MIGRATIONS ============ */
+const SCHEMA = `
+CREATE TABLE IF NOT EXISTS clinicas (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  nome text NOT NULL,
+  cnpj text, telefone text, email text, endereco text, horario text, resp_tecnico text,
+  perfil jsonb NOT NULL DEFAULT '{}'::jsonb,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS usuarios (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+  nome text NOT NULL, email text NOT NULL UNIQUE, senha_hash text NOT NULL,
+  perfil text NOT NULL DEFAULT 'gestor',
+  fisio_id uuid,
+  ultimo_acesso timestamptz,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS fisios (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+  nome text NOT NULL, crefito text, esp text, cor text NOT NULL DEFAULT '#0DA189',
+  comissao numeric NOT NULL DEFAULT 40, ativo boolean NOT NULL DEFAULT true,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS pacientes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+  nome text NOT NULL, nascimento date, cpf text, telefone text, email text,
+  convenio text DEFAULT 'Particular', queixa text, obs text,
+  fisio_id uuid REFERENCES fisios(id) ON DELETE SET NULL,
+  status text NOT NULL DEFAULT 'avaliacao',
+  pacote_nome text, sessoes_total int NOT NULL DEFAULT 0, sessoes_feitas int NOT NULL DEFAULT 0,
+  avaliacao jsonb NOT NULL DEFAULT '{}'::jsonb,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS leads (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+  nome text NOT NULL, telefone text, origem text, interesse text, obs text,
+  valor numeric NOT NULL DEFAULT 0,
+  fisio_id uuid REFERENCES fisios(id) ON DELETE SET NULL,
+  col text NOT NULL DEFAULT 'novo',
+  criado_em timestamptz NOT NULL DEFAULT now(),
+  atualizado_em timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS sessoes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+  paciente_id uuid REFERENCES pacientes(id) ON DELETE CASCADE,
+  fisio_id uuid REFERENCES fisios(id) ON DELETE SET NULL,
+  titulo text, tipo text NOT NULL DEFAULT 'Sessão de tratamento',
+  data date NOT NULL, hora text NOT NULL, duracao text DEFAULT '50 min', obs text,
+  status text NOT NULL DEFAULT 'agendada',
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS evolucoes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+  paciente_id uuid NOT NULL REFERENCES pacientes(id) ON DELETE CASCADE,
+  fisio_id uuid REFERENCES fisios(id) ON DELETE SET NULL,
+  data date NOT NULL DEFAULT CURRENT_DATE,
+  s text, o text, a text, p text, eva int,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS exercicios (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+  nome text NOT NULL, cat text NOT NULL DEFAULT 'coluna', nivel text NOT NULL DEFAULT 'Iniciante',
+  reps text, emoji text DEFAULT '💪', instrucoes text, video text,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS prescricoes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+  paciente_id uuid NOT NULL REFERENCES pacientes(id) ON DELETE CASCADE,
+  itens jsonb NOT NULL DEFAULT '[]'::jsonb,
+  freq text, duracao text,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS pacotes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+  nome text NOT NULL, descricao text, valor numeric NOT NULL DEFAULT 0,
+  sessoes int NOT NULL DEFAULT 1, tipo text DEFAULT 'pacote',
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS pagamentos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+  paciente_id uuid REFERENCES pacientes(id) ON DELETE SET NULL,
+  descricao text, forma text, vencimento date, valor numeric NOT NULL DEFAULT 0,
+  status text NOT NULL DEFAULT 'aberto',
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS convenios (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+  nome text NOT NULL, valor_sessao numeric NOT NULL DEFAULT 0, ativo boolean NOT NULL DEFAULT true,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+`;
+
+/* ============ SEED (por clínica nova) ============ */
+const SEED_EXERCICIOS = [
+  ['Ponte de glúteos','coluna','Iniciante','3 × 12','🧘'],['Bird-dog','coluna','Iniciante','3 × 10/lado','🐦'],
+  ['Prancha frontal','coluna','Intermediário','3 × 30s','🪵'],['Gato-camelo','coluna','Iniciante','2 × 15','🐈'],
+  ['Agachamento na parede','joelho','Iniciante','3 × 45s','🦵'],['Cadeira extensora elástica','joelho','Intermediário','3 × 12','🪑'],
+  ['Step-up com controle','joelho','Avançado','3 × 10/perna','🪜'],['Rotação externa c/ elástico','ombro','Iniciante','3 × 15','💪'],
+  ['Deslizamento na parede','ombro','Iniciante','3 × 12','🧗'],['Y-T-W no solo','ombro','Intermediário','2 × 10 cada','🔤'],
+  ['Concha (clam shell)','quadril','Iniciante','3 × 15/lado','🦪'],['Abdução em pé c/ elástico','quadril','Intermediário','3 × 12/lado','🩰'],
+  ['Marcha estacionária','neuro','Iniciante','3 × 1 min','🚶'],['Treino de equilíbrio unipodal','neuro','Intermediário','3 × 30s/lado','⚖️'],
+  ['Alcance funcional sentado','neuro','Iniciante','3 × 10','🫳'],['The Hundred','pilates','Intermediário','1 × 100','💯'],
+  ['Roll-up','pilates','Intermediário','2 × 8','🌀'],['Swan (extensão torácica)','pilates','Avançado','2 × 8','🦢'],
+];
+const SEED_PACOTES = [
+  ['Sessão avulsa','Fisioterapia ortopédica / esportiva',160,1,'avulsa'],
+  ['Pacote 10 sessões','R$ 140/sessão · validade 3 meses',1400,10,'pacote'],
+  ['Pacote 20 sessões','R$ 130/sessão · validade 5 meses',2600,20,'pacote'],
+  ['Mensal Pilates · 2x/semana','Turmas de até 5 alunos',680,8,'mensal'],
+  ['Atendimento domiciliar','Por sessão · deslocamento incluso',240,1,'avulsa'],
+];
+
+async function seedClinica(client, cid) {
+  for (const [nome, cat, nivel, reps, emoji] of SEED_EXERCICIOS)
+    await client.query('INSERT INTO exercicios (clinica_id,nome,cat,nivel,reps,emoji) VALUES ($1,$2,$3,$4,$5,$6)', [cid, nome, cat, nivel, reps, emoji]);
+  for (const [nome, descricao, valor, sessoes, tipo] of SEED_PACOTES)
+    await client.query('INSERT INTO pacotes (clinica_id,nome,descricao,valor,sessoes,tipo) VALUES ($1,$2,$3,$4,$5,$6)', [cid, nome, descricao, valor, sessoes, tipo]);
+}
+
+/* ============ APP ============ */
+const app = express();
+app.use(express.json({ limit: '1mb' }));
+
+const sign = u => jwt.sign({ uid: u.id, cid: u.clinica_id }, JWT_SECRET, { expiresIn: '30d' });
+
+function auth(req, res, next) {
+  const h = req.headers.authorization || '';
+  const token = h.startsWith('Bearer ') ? h.slice(7) : null;
+  if (!token) return res.status(401).json({ erro: 'Não autenticado' });
+  try { req.auth = jwt.verify(token, JWT_SECRET); next(); }
+  catch { return res.status(401).json({ erro: 'Sessão expirada' }); }
+}
+
+/* ---------- AUTH ---------- */
+app.post('/api/auth/register', async (req, res) => {
+  const { clinica, nome, email, senha } = req.body || {};
+  if (!clinica || !nome || !email || !senha) return res.status(400).json({ erro: 'Preencha todos os campos' });
+  if (senha.length < 6) return res.status(400).json({ erro: 'A senha precisa de ao menos 6 caracteres' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const dup = await client.query('SELECT 1 FROM usuarios WHERE email=$1', [email.toLowerCase()]);
+    if (dup.rowCount) { await client.query('ROLLBACK'); return res.status(409).json({ erro: 'E-mail já cadastrado' }); }
+    const c = (await client.query('INSERT INTO clinicas (nome,email) VALUES ($1,$2) RETURNING id', [clinica, email.toLowerCase()])).rows[0];
+    const f = (await client.query('INSERT INTO fisios (clinica_id,nome,cor) VALUES ($1,$2,$3) RETURNING id', [c.id, nome, '#0DA189'])).rows[0];
+    const hash = bcrypt.hashSync(senha, 10);
+    const u = (await client.query(
+      'INSERT INTO usuarios (clinica_id,nome,email,senha_hash,perfil,fisio_id) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, clinica_id, nome, email, perfil',
+      [c.id, nome, email.toLowerCase(), hash, 'gestor', f.id])).rows[0];
+    await seedClinica(client, c.id);
+    await client.query('COMMIT');
+    res.json({ token: sign(u), usuario: { ...u, clinica_nome: clinica } });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error(e);
+    res.status(500).json({ erro: 'Erro ao criar conta' });
+  } finally { client.release(); }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  const { email, senha } = req.body || {};
+  const r = await pool.query(
+    `SELECT u.*, c.nome AS clinica_nome FROM usuarios u JOIN clinicas c ON c.id = u.clinica_id WHERE u.email=$1`,
+    [(email || '').toLowerCase()]);
+  const u = r.rows[0];
+  if (!u || !bcrypt.compareSync(senha || '', u.senha_hash)) return res.status(401).json({ erro: 'E-mail ou senha inválidos' });
+  pool.query('UPDATE usuarios SET ultimo_acesso=now() WHERE id=$1', [u.id]).catch(() => {});
+  res.json({ token: sign(u), usuario: { id: u.id, clinica_id: u.clinica_id, nome: u.nome, email: u.email, perfil: u.perfil, clinica_nome: u.clinica_nome } });
+});
+
+app.get('/api/me', auth, async (req, res) => {
+  const r = await pool.query(
+    `SELECT u.id, u.clinica_id, u.nome, u.email, u.perfil, c.nome AS clinica_nome FROM usuarios u JOIN clinicas c ON c.id=u.clinica_id WHERE u.id=$1`,
+    [req.auth.uid]);
+  if (!r.rowCount) return res.status(401).json({ erro: 'Usuário não encontrado' });
+  res.json(r.rows[0]);
+});
+
+/* ---------- CLÍNICA (config + perfil público) ---------- */
+app.get('/api/clinica', auth, async (req, res) => {
+  const r = await pool.query('SELECT * FROM clinicas WHERE id=$1', [req.auth.cid]);
+  res.json(r.rows[0]);
+});
+app.put('/api/clinica', auth, async (req, res) => {
+  const { nome, cnpj, telefone, email, endereco, horario, resp_tecnico, perfil } = req.body || {};
+  const r = await pool.query(
+    `UPDATE clinicas SET nome=COALESCE($2,nome), cnpj=COALESCE($3,cnpj), telefone=COALESCE($4,telefone),
+     email=COALESCE($5,email), endereco=COALESCE($6,endereco), horario=COALESCE($7,horario),
+     resp_tecnico=COALESCE($8,resp_tecnico), perfil=COALESCE($9,perfil) WHERE id=$1 RETURNING *`,
+    [req.auth.cid, nome, cnpj, telefone, email, endereco, horario, resp_tecnico, perfil ? JSON.stringify(perfil) : null]);
+  res.json(r.rows[0]);
+});
+
+/* ---------- USUÁRIOS ---------- */
+app.get('/api/usuarios', auth, async (req, res) => {
+  const r = await pool.query('SELECT id, nome, email, perfil, ultimo_acesso, criado_em FROM usuarios WHERE clinica_id=$1 ORDER BY criado_em', [req.auth.cid]);
+  res.json(r.rows);
+});
+app.post('/api/usuarios', auth, async (req, res) => {
+  const { nome, email, senha, perfil } = req.body || {};
+  if (!nome || !email || !senha) return res.status(400).json({ erro: 'Preencha nome, e-mail e senha' });
+  try {
+    const r = await pool.query(
+      'INSERT INTO usuarios (clinica_id,nome,email,senha_hash,perfil) VALUES ($1,$2,$3,$4,$5) RETURNING id, nome, email, perfil',
+      [req.auth.cid, nome, email.toLowerCase(), bcrypt.hashSync(senha, 10), perfil || 'fisio']);
+    res.json(r.rows[0]);
+  } catch { res.status(409).json({ erro: 'E-mail já cadastrado' }); }
+});
+
+/* ---------- CRUD GENÉRICO (escopado por clínica) ---------- */
+const TABLES = {
+  fisios: ['nome', 'crefito', 'esp', 'cor', 'comissao', 'ativo'],
+  pacientes: ['nome', 'nascimento', 'cpf', 'telefone', 'email', 'convenio', 'queixa', 'obs', 'fisio_id', 'status', 'pacote_nome', 'sessoes_total', 'sessoes_feitas', 'avaliacao'],
+  leads: ['nome', 'telefone', 'origem', 'interesse', 'obs', 'valor', 'fisio_id', 'col'],
+  sessoes: ['paciente_id', 'fisio_id', 'titulo', 'tipo', 'data', 'hora', 'duracao', 'obs', 'status'],
+  evolucoes: ['paciente_id', 'fisio_id', 'data', 's', 'o', 'a', 'p', 'eva'],
+  exercicios: ['nome', 'cat', 'nivel', 'reps', 'emoji', 'instrucoes', 'video'],
+  prescricoes: ['paciente_id', 'itens', 'freq', 'duracao'],
+  pacotes: ['nome', 'descricao', 'valor', 'sessoes', 'tipo'],
+  pagamentos: ['paciente_id', 'descricao', 'forma', 'vencimento', 'valor', 'status'],
+  convenios: ['nome', 'valor_sessao', 'ativo'],
+};
+const JSONB_COLS = new Set(['avaliacao', 'itens']);
+const ORDER = {
+  sessoes: 'data, hora', evolucoes: 'data DESC, criado_em DESC', pagamentos: 'vencimento NULLS LAST, criado_em DESC',
+  leads: 'criado_em DESC', prescricoes: 'criado_em DESC',
+};
+
+function tableGuard(req, res, next) {
+  if (!TABLES[req.params.table]) return res.status(404).json({ erro: 'Recurso inexistente' });
+  next();
+}
+
+app.get('/api/:table', auth, tableGuard, async (req, res) => {
+  const t = req.params.table;
+  const cols = TABLES[t];
+  const where = ['clinica_id=$1']; const vals = [req.auth.cid];
+  for (const [k, v] of Object.entries(req.query)) {
+    if (cols.includes(k)) { vals.push(v); where.push(`${k}=$${vals.length}`); }
+  }
+  if (t === 'sessoes') {
+    if (req.query.from) { vals.push(req.query.from); where.push(`data >= $${vals.length}`); }
+    if (req.query.to) { vals.push(req.query.to); where.push(`data <= $${vals.length}`); }
+  }
+  const r = await pool.query(`SELECT * FROM ${t} WHERE ${where.join(' AND ')} ORDER BY ${ORDER[t] || 'criado_em'}`, vals);
+  res.json(r.rows);
+});
+
+app.post('/api/:table', auth, tableGuard, async (req, res) => {
+  const t = req.params.table;
+  const cols = TABLES[t].filter(c => req.body[c] !== undefined);
+  if (!cols.length) return res.status(400).json({ erro: 'Nenhum campo válido' });
+  const vals = cols.map(c => JSONB_COLS.has(c) ? JSON.stringify(req.body[c]) : (req.body[c] === '' ? null : req.body[c]));
+  try {
+    const r = await pool.query(
+      `INSERT INTO ${t} (clinica_id, ${cols.join(',')}) VALUES ($1, ${cols.map((_, i) => `$${i + 2}`).join(',')}) RETURNING *`,
+      [req.auth.cid, ...vals]);
+    res.json(r.rows[0]);
+  } catch (e) { console.error(e); res.status(400).json({ erro: 'Dados inválidos' }); }
+});
+
+app.put('/api/:table/:id', auth, tableGuard, async (req, res) => {
+  const t = req.params.table;
+  const cols = TABLES[t].filter(c => req.body[c] !== undefined);
+  if (!cols.length) return res.status(400).json({ erro: 'Nenhum campo válido' });
+  const vals = cols.map(c => JSONB_COLS.has(c) ? JSON.stringify(req.body[c]) : (req.body[c] === '' ? null : req.body[c]));
+  const sets = cols.map((c, i) => `${c}=$${i + 3}`).join(',');
+  const extra = t === 'leads' ? ', atualizado_em=now()' : '';
+  try {
+    const r = await pool.query(`UPDATE ${t} SET ${sets}${extra} WHERE id=$1 AND clinica_id=$2 RETURNING *`, [req.params.id, req.auth.cid, ...vals]);
+    if (!r.rowCount) return res.status(404).json({ erro: 'Não encontrado' });
+    res.json(r.rows[0]);
+  } catch (e) { console.error(e); res.status(400).json({ erro: 'Dados inválidos' }); }
+});
+
+app.delete('/api/:table/:id', auth, tableGuard, async (req, res) => {
+  const r = await pool.query(`DELETE FROM ${req.params.table} WHERE id=$1 AND clinica_id=$2`, [req.params.id, req.auth.cid]);
+  res.json({ ok: r.rowCount > 0 });
+});
+
+/* ---------- AÇÕES ESPECIAIS ---------- */
+// marcar sessão realizada/falta — incrementa contagem do paciente
+app.patch('/api/sessoes/:id/status', auth, async (req, res) => {
+  const { status } = req.body || {};
+  if (!['agendada', 'realizada', 'falta', 'cancelada'].includes(status)) return res.status(400).json({ erro: 'Status inválido' });
+  const cur = await pool.query('SELECT * FROM sessoes WHERE id=$1 AND clinica_id=$2', [req.params.id, req.auth.cid]);
+  if (!cur.rowCount) return res.status(404).json({ erro: 'Sessão não encontrada' });
+  const s = cur.rows[0];
+  const r = await pool.query('UPDATE sessoes SET status=$3 WHERE id=$1 AND clinica_id=$2 RETURNING *', [req.params.id, req.auth.cid, status]);
+  if (s.paciente_id && status === 'realizada' && s.status !== 'realizada')
+    await pool.query('UPDATE pacientes SET sessoes_feitas = sessoes_feitas + 1 WHERE id=$1', [s.paciente_id]);
+  if (s.paciente_id && s.status === 'realizada' && status !== 'realizada')
+    await pool.query('UPDATE pacientes SET sessoes_feitas = GREATEST(sessoes_feitas - 1, 0) WHERE id=$1', [s.paciente_id]);
+  res.json(r.rows[0]);
+});
+
+// converter lead em paciente
+app.post('/api/leads/:id/converter', auth, async (req, res) => {
+  const cur = await pool.query('SELECT * FROM leads WHERE id=$1 AND clinica_id=$2', [req.params.id, req.auth.cid]);
+  if (!cur.rowCount) return res.status(404).json({ erro: 'Lead não encontrado' });
+  const l = cur.rows[0];
+  const p = await pool.query(
+    'INSERT INTO pacientes (clinica_id,nome,telefone,queixa,fisio_id,status) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
+    [req.auth.cid, l.nome, l.telefone, l.interesse, l.fisio_id, 'avaliacao']);
+  await pool.query(`UPDATE leads SET col='convertido', atualizado_em=now() WHERE id=$1`, [l.id]);
+  res.json({ paciente: p.rows[0] });
+});
+
+/* ---------- ROTAS PÚBLICAS (diretório) ---------- */
+app.get('/api/public/perfis', async (req, res) => {
+  const r = await pool.query(
+    `SELECT id, nome, endereco, perfil FROM clinicas WHERE (perfil->>'visivel')::boolean IS TRUE ORDER BY criado_em DESC LIMIT 24`);
+  res.json(r.rows);
+});
+app.post('/api/public/leads', async (req, res) => {
+  const { clinica_id, nome, telefone, interesse, obs } = req.body || {};
+  if (!clinica_id || !nome) return res.status(400).json({ erro: 'Informe seu nome' });
+  const ok = await pool.query('SELECT 1 FROM clinicas WHERE id=$1', [clinica_id]);
+  if (!ok.rowCount) return res.status(404).json({ erro: 'Clínica não encontrada' });
+  await pool.query(
+    'INSERT INTO leads (clinica_id,nome,telefone,origem,interesse,obs) VALUES ($1,$2,$3,$4,$5,$6)',
+    [clinica_id, nome, telefone, 'Site PerFisio', interesse, obs]);
+  res.json({ ok: true });
+});
+
+/* ---------- ESTÁTICO ---------- */
+const ROOT = path.join(__dirname, '..');
+app.use(express.static(ROOT, { extensions: ['html'] }));
+app.use((req, res) => res.status(404).sendFile(path.join(ROOT, 'index.html')));
+
+/* ---------- BOOT ---------- */
+(async () => {
+  if (!process.env.DATABASE_URL) console.warn('⚠️  DATABASE_URL não definida — a API vai falhar; o site estático continua servido.');
+  else { await pool.query(SCHEMA); console.log('✅ Schema verificado/migrado'); }
+  app.listen(PORT, () => console.log(`PerFisio rodando na porta ${PORT}`));
+})().catch(e => { console.error('Falha ao iniciar:', e); process.exit(1); });
