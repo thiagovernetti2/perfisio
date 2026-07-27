@@ -34,7 +34,7 @@
 
     <!-- PRONTUÁRIO -->
     <div id="prontuario" style="display:none;">
-      <div class="card card-pad" style="margin-bottom:18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+      <div class="card card-pad" style="margin-bottom:18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;position:relative;min-height:118px;padding-right:86px;">
         <span class="avatar-sm" id="pHeadAvatar" style="width:52px;height:52px;font-size:1rem;background:#0DA189;"></span>
         <div style="flex:1;min-width:200px;">
           <div id="pHeadNome" style="font-size:1.1rem;font-weight:800;color:var(--ink);"></div>
@@ -44,6 +44,8 @@
           <span class="badge green" id="pHeadStatus"></span>
           <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨 Imprimir</button>
         </div>
+        <div id="bmMini" style="position:absolute;right:18px;top:50%;transform:translateY(-50%);width:46px;"
+             title="Mapa corporal do paciente — clique numa região marcada para abrir a ocorrência"></div>
       </div>
 
       <!-- OCORRÊNCIAS / TRATAMENTOS -->
@@ -161,21 +163,25 @@
         <button class="close" onclick="App.closeModal('mTrat')">×</button>
       </div>
       <div class="modal-body">
-        <div class="form-grid">
-          <div class="field full"><label>Título *</label><input type="text" id="tTitulo" placeholder="Ex.: Joelho direito — pós-operatório de LCA"></div>
-          <div class="field"><label>Região / tipo</label>
-            <select id="tRegiao">
-              <option value="coluna">🦴 Coluna</option>
-              <option value="joelho">🦵 Joelho</option>
-              <option value="ombro">💪 Ombro</option>
-              <option value="quadril">🦿 Quadril</option>
-              <option value="tornozelo">🦶 Tornozelo / pé</option>
-              <option value="punho">🖐 Punho / mão</option>
-              <option value="neuro">🧠 Neurológico</option>
-              <option value="respiratorio">🫁 Respiratório</option>
-              <option value="outro">🩺 Outro</option>
-            </select>
+        <input type="hidden" id="tRegiao" value="outro">
+        <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;margin-bottom:16px;">
+          <div style="width:150px;flex-shrink:0;">
+            <div style="font-size:.74rem;font-weight:600;color:var(--text-soft);margin-bottom:6px;text-align:center;">Clique onde é o problema</div>
+            <div id="bmNovo"></div>
+            <div style="display:flex;gap:5px;justify-content:center;margin-top:8px;flex-wrap:wrap;">
+              <button class="chip" style="padding:4px 9px;font-size:.72rem;" onclick="selRegiao('neuro')" title="Neurológico">🧠</button>
+              <button class="chip" style="padding:4px 9px;font-size:.72rem;" onclick="selRegiao('respiratorio')" title="Respiratório">🫁</button>
+              <button class="chip" style="padding:4px 9px;font-size:.72rem;" onclick="selRegiao('outro')" title="Outro">🩺</button>
+            </div>
           </div>
+          <div style="flex:1;min-width:220px;">
+            <div id="bmRegiaoLabel" style="font-size:.95rem;font-weight:800;color:var(--ink);margin-bottom:8px;">Selecione uma região</div>
+            <div style="font-size:.74rem;color:var(--text-soft);margin-bottom:8px;" id="bmDica">As condições comuns da região aparecem aqui — clique para usar como título.</div>
+            <div id="bmCondicoes" style="display:flex;flex-wrap:wrap;gap:6px;max-height:210px;overflow-y:auto;"></div>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="field full"><label>Título da ocorrência *</label><input type="text" id="tTitulo" placeholder="Ex.: Joelho direito — pós-operatório de LCA"></div>
           <div class="field"><label>Fisioterapeuta responsável</label><select id="tFisio"></select></div>
           <div class="field"><label>Data de início</label><input type="date" id="tInicio"></div>
         </div>
@@ -189,13 +195,14 @@
 
   <script src="../assets/js/app.js"></script>
   <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/bodymap.js"></script>
   <script src="../assets/js/sidebar.js"></script>
   <script>
     let PACS = [], FISIOS = [], TRATS = [];
     let sel = null, tratSel = null;
     const CORES = ['#0DA189','#2D7DD2','#7C5CBF','#D9820B','#D64545','#1E9E6A'];
     const STATUS_TXT = { tratamento: 'Em tratamento', avaliacao: 'Em avaliação', alta: 'Alta', inativo: 'Inativo' };
-    const REGIAO_ICO = { coluna: '🦴', joelho: '🦵', ombro: '💪', quadril: '🦿', tornozelo: '🦶', punho: '🖐', neuro: '🧠', respiratorio: '🫁', outro: '🩺' };
+    const REGIAO_ICO = Object.fromEntries(Object.entries(BodyMap.REGIOES).map(([k, v]) => [k, v.ico]));
 
     async function boot() {
       [PACS, FISIOS] = await Promise.all([PF.get('pacientes'), PF.get('fisios')]);
@@ -248,6 +255,7 @@
       tratSel = preferId && TRATS.some(t => t.id === preferId) ? preferId
         : (ativos.length ? ativos[ativos.length - 1].id : (TRATS.length ? TRATS[TRATS.length - 1].id : null));
       renderTratBar();
+      renderMiniMapa();
       if (!tratSel) {
         document.getElementById('tratConteudo').style.display = 'none';
         document.getElementById('tratVazio').style.display = '';
@@ -256,6 +264,24 @@
       document.getElementById('tratConteudo').style.display = '';
       document.getElementById('tratVazio').style.display = 'none';
       await selTrat(tratSel);
+    }
+
+    function renderMiniMapa() {
+      const marcadores = {};
+      // ativo tem prioridade visual sobre concluído na mesma região
+      TRATS.forEach(t => {
+        if (!t.regiao || ['neuro', 'respiratorio', 'outro'].includes(t.regiao)) return;
+        if (t.status === 'ativo' || !marcadores[t.regiao]) marcadores[t.regiao] = t.status === 'ativo' ? 'ativo' : 'concluido';
+      });
+      BodyMap.render(document.getElementById('bmMini'), {
+        marcadores, mini: true,
+        onSelect: r => {
+          const doRegiao = TRATS.filter(t => t.regiao === r);
+          if (!doRegiao.length) return;
+          const ativo = doRegiao.filter(t => t.status === 'ativo');
+          selTrat((ativo.length ? ativo[ativo.length - 1] : doRegiao[doRegiao.length - 1]).id);
+        },
+      });
     }
 
     function renderTratBar() {
@@ -287,8 +313,30 @@
       await Promise.all([carregarEvolucoes(), carregarPrescricoes(), carregarAnexos()]);
     }
 
+    /* ---------- Mapa corporal no modal ---------- */
+    function selRegiao(r) {
+      tRegiao.value = r;
+      const info = BodyMap.REGIOES[r];
+      document.getElementById('bmRegiaoLabel').textContent = `${info.ico} ${info.label}`;
+      const conds = BodyMap.CONDICOES[r] || [];
+      document.getElementById('bmDica').style.display = conds.length ? 'none' : '';
+      document.getElementById('bmCondicoes').innerHTML = conds.map(([nome, desc]) =>
+        `<button class="chip" style="font-size:.76rem;" title="${desc}" onclick="usarCondicao('${nome.replace(/'/g, '')}')">${nome}</button>`).join('');
+      BodyMap.render(document.getElementById('bmNovo'), { selecionada: r, onSelect: selRegiao });
+    }
+
+    function usarCondicao(nome) {
+      tTitulo.value = nome;
+      App.toast('Título preenchido — ajuste o lado (D/E) se precisar', 'info');
+    }
+
     function abrirNovoTrat() {
       tTitulo.value = ''; tInicio.value = PF.hojeISO();
+      tRegiao.value = 'outro';
+      document.getElementById('bmRegiaoLabel').textContent = 'Selecione uma região';
+      document.getElementById('bmCondicoes').innerHTML = '';
+      document.getElementById('bmDica').style.display = '';
+      BodyMap.render(document.getElementById('bmNovo'), { onSelect: selRegiao });
       const p = PACS.find(x => x.id === sel);
       if (p && p.fisio_id) tFisio.value = p.fisio_id;
       App.openModal('mTrat');
