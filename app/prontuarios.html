@@ -42,7 +42,7 @@
         </div>
         <div style="display:flex;gap:8px;">
           <span class="badge green" id="pHeadStatus"></span>
-          <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨 Imprimir</button>
+          <button class="btn btn-ghost btn-sm" onclick="imprimirProntuario()">🖨 Imprimir</button>
         </div>
         <div id="bmMini" style="position:absolute;right:18px;top:50%;transform:translateY(-50%);width:46px;"
              title="Mapa corporal do paciente — clique numa região marcada para abrir a ocorrência"></div>
@@ -722,6 +722,150 @@
       e.target.value = '';
       if (ok) { App.toast(`${ok} arquivo(s) salvos no prontuário!`); await carregarAnexos(); }
     });
+
+    /* ---------- Impressão (documento real, não a tela) ---------- */
+    let CLINICA_CACHE = null;
+
+    async function imprimirProntuario() {
+      if (!sel) return;
+      const t = TRATS.find(x => x.id === tratSel);
+      if (!t) { App.toast('Selecione uma ocorrência para imprimir', 'error'); return; }
+      App.toast('Gerando documento para impressão...', 'info');
+      try {
+        if (!CLINICA_CACHE) CLINICA_CACHE = await PF.api('/api/clinica');
+        const [evs, prs, anexos] = await Promise.all([
+          PF.get('evolucoes', { paciente_id: sel, tratamento_id: tratSel }),
+          PF.get('prescricoes', { paciente_id: sel, tratamento_id: tratSel }),
+          PF.get('anexos', { paciente_id: sel }),
+        ]);
+        const p = PACS.find(x => x.id === sel);
+        const c = CLINICA_CACHE;
+        const fisioNome = id => (FISIOS.find(f => f.id === id) || {}).nome || '—';
+        const idade = PF.idade(p.nascimento);
+        const esc = s => (s || '').replace(/</g, '&lt;').replace(/\n/g, '<br>');
+        const fotos = anexos.filter(a => a.tratamento_id === tratSel && a.mime.startsWith('image/'));
+        const pdfs = anexos.filter(a => a.tratamento_id === tratSel && a.mime === 'application/pdf');
+        const av = t.avaliacao || {};
+        const agora = new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+        const secao = (titulo, corpo) => corpo ? `<div class="sec"><h2>${titulo}</h2>${corpo}</div>` : '';
+        const campo = (l, v) => v ? `<p class="campo"><b>${l}:</b> ${esc(v)}</p>` : '';
+
+        const html = `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><title>Prontuário — ${esc(p.nome)}</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  :root { color-scheme: light only; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: #fff !important; }
+  body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; font-size: 12px; line-height: 1.5; padding: 16px; }
+  @media print { body { padding: 0; } }
+  .cab { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2.5px solid #0DA189; padding-bottom: 10px; margin-bottom: 16px; }
+  .cab h1 { font-size: 19px; color: #0A8270; }
+  .cab .sub { font-size: 10.5px; color: #555; margin-top: 3px; }
+  .cab .doc { text-align: right; font-size: 10.5px; color: #555; }
+  .doc b { display: block; font-size: 13px; color: #1a1a1a; }
+  h2 { font-size: 12.5px; text-transform: uppercase; letter-spacing: 1px; color: #0A8270; border-bottom: 1px solid #ccc; padding-bottom: 3px; margin-bottom: 8px; }
+  .sec { margin-bottom: 16px; }
+  .box { border: 1px solid #ccc; border-radius: 4px; padding: 10px 12px; margin-bottom: 8px; page-break-inside: avoid; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 24px; }
+  .campo { margin-bottom: 3px; }
+  .ev { border-left: 3px solid #0DA189; padding: 6px 12px; margin-bottom: 10px; page-break-inside: avoid; }
+  .ev .ev-head { font-weight: bold; font-size: 11.5px; margin-bottom: 4px; }
+  .ev .soap b { color: #0A8270; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th, td { border: 1px solid #ccc; padding: 5px 8px; text-align: left; }
+  th { background: #f0f5f4; text-transform: uppercase; font-size: 9.5px; letter-spacing: .5px; }
+  .fotos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .fotos figure { page-break-inside: avoid; }
+  .fotos img { width: 100%; border: 1px solid #ccc; border-radius: 3px; }
+  .fotos figcaption { font-size: 9.5px; color: #555; margin-top: 2px; }
+  .rodape { margin-top: 28px; padding-top: 10px; border-top: 1px solid #ccc; font-size: 10px; color: #555; display: flex; justify-content: space-between; align-items: flex-end; }
+  .assinatura { text-align: center; width: 260px; }
+  .assinatura .linha { border-top: 1px solid #1a1a1a; margin-top: 42px; padding-top: 4px; font-size: 11px; color: #1a1a1a; }
+</style></head><body>
+
+  <div class="cab">
+    <div>
+      <h1>${esc(c.nome)}</h1>
+      <div class="sub">${[c.endereco, c.telefone, c.cnpj ? 'CNPJ ' + c.cnpj : null].filter(Boolean).map(esc).join(' · ')}</div>
+      ${c.resp_tecnico ? `<div class="sub">Responsável técnico: ${esc(c.resp_tecnico)}</div>` : ''}
+    </div>
+    <div class="doc"><b>Prontuário Fisioterapêutico</b>Emitido em ${agora}</div>
+  </div>
+
+  <div class="sec"><h2>Paciente</h2>
+    <div class="box grid2">
+      ${campo('Nome', p.nome)}
+      ${campo('Nascimento', p.nascimento ? PF.fmtData(p.nascimento.slice(0,10)) + (idade ? ` (${idade} anos)` : '') : null)}
+      ${campo('CPF', p.cpf)}
+      ${campo('Telefone', p.telefone)}
+      ${campo('Convênio', p.convenio || 'Particular')}
+      ${campo('E-mail', p.email)}
+    </div>
+  </div>
+
+  <div class="sec"><h2>Ocorrência / Tratamento</h2>
+    <div class="box">
+      <div class="grid2">
+        ${campo('Título', t.titulo)}
+        ${campo('Região', (BodyMap.REGIOES[t.regiao] || {}).label || t.regiao)}
+        ${campo('Início', PF.fmtData(t.inicio.slice(0,10)))}
+        ${campo('Situação', t.status === 'concluido' ? 'Concluída — alta em ' + PF.fmtData((t.alta || '').slice(0,10)) : 'Em andamento')}
+        ${campo('Fisioterapeuta responsável', t.fisio_id ? fisioNome(t.fisio_id) : null)}
+      </div>
+      ${t.descricao ? `<p style="margin-top:6px;"><b>Descrição:</b> ${esc(t.descricao)}</p>` : ''}
+    </div>
+  </div>
+
+  ${secao('Avaliação Inicial', (av.historia || av.exame || av.diagnostico || av.plano) ? `<div class="box">
+    ${campo('Queixa e história', av.historia)}
+    ${campo('Exame físico', av.exame)}
+    ${campo('Diagnóstico cinético-funcional', av.diagnostico)}
+    ${campo('Plano de tratamento', av.plano)}
+  </div>` : '')}
+
+  ${secao(`Evoluções (${evs.length})`, evs.slice().reverse().map(e => {
+    const se = e.sessao_id ? SESS_TRAT.find(x => x.id === e.sessao_id) : null;
+    return `<div class="ev">
+      <div class="ev-head">${PF.fmtData(e.data.slice(0,10))} · ${fisioNome(e.fisio_id)}${se ? ' · sessão de ' + fmtSessao(se) : ''}${e.eva != null ? ' · EVA ' + e.eva : ''}</div>
+      <div class="soap">
+        ${e.s ? `<p><b>S:</b> ${esc(e.s)}</p>` : ''}${e.o ? `<p><b>O:</b> ${esc(e.o)}</p>` : ''}
+        ${e.a ? `<p><b>A:</b> ${esc(e.a)}</p>` : ''}${e.p ? `<p><b>P:</b> ${esc(e.p)}</p>` : ''}
+      </div>
+    </div>`;
+  }).join(''))}
+
+  ${secao('Exercícios Prescritos', prs.length ? prs.map(pr => `<div class="box">
+    <p><b>${PF.fmtData(pr.criado_em.slice(0,10))}</b>${pr.freq ? ' · ' + pr.freq : ''}${pr.duracao ? ' · ' + pr.duracao : ''}</p>
+    <ul style="margin:4px 0 0 18px;">${(pr.itens || []).map(i => `<li>${esc(i.nome)}${i.reps ? ' — ' + esc(i.reps) : ''}</li>`).join('')}</ul>
+  </div>`).join('') : '')}
+
+  ${secao(`Sessões (${SESS_TRAT.length})`, SESS_TRAT.length ? `<table><thead><tr><th>Data</th><th>Hora</th><th>Tipo</th><th>Fisioterapeuta</th><th>Situação</th></tr></thead><tbody>
+    ${SESS_TRAT.slice().sort((a,b) => (a.data + a.hora).localeCompare(b.data + b.hora)).map(s =>
+      `<tr><td>${PF.fmtData(s.data.slice(0,10))}</td><td>${s.hora.slice(0,5)}</td><td>${esc(s.tipo)}</td><td>${fisioNome(s.fisio_id)}</td><td>${{agendada:'Agendada',realizada:'Realizada',falta:'Falta',cancelada:'Cancelada'}[s.status] || s.status}</td></tr>`).join('')}
+  </tbody></table>` : '')}
+
+  ${secao('Imagens e Exames', (fotos.length || pdfs.length) ? `
+    ${fotos.length ? `<div class="fotos">${fotos.map(a => `<figure><img src="${urlAnexo(a.id)}"><figcaption>${esc(a.nome)} · ${PF.fmtData(a.criado_em.slice(0,10))}</figcaption></figure>`).join('')}</div>` : ''}
+    ${pdfs.length ? `<p style="margin-top:6px;font-size:11px;"><b>Documentos anexados (PDF):</b> ${pdfs.map(a => esc(a.nome)).join(' · ')}</p>` : ''}` : '')}
+
+  <div class="rodape">
+    <div>Documento gerado pelo PerFisio em ${agora} · ${esc((PF.user() || {}).nome || '')}</div>
+    <div class="assinatura"><div class="linha">${esc(t.fisio_id ? fisioNome(t.fisio_id) : (c.resp_tecnico || ''))}<br>Fisioterapeuta</div></div>
+  </div>
+
+  <script>
+    window.onload = () => setTimeout(() => window.print(), ${fotos.length ? 900 : 250});
+  <\/script>
+</body></html>`;
+
+        const w = window.open('', '_blank');
+        if (!w) { App.toast('Habilite pop-ups para gerar a impressão', 'error'); return; }
+        w.document.write(html);
+        w.document.close();
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
 
     document.getElementById('patSearch').addEventListener('input', e => renderList(e.target.value));
     boot().catch(e => App.toast(e.message, 'error'));
