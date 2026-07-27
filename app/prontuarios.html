@@ -38,6 +38,7 @@
         <button class="tab active" data-tab="evolucoes">Evoluções</button>
         <button class="tab" data-tab="avaliacao">Avaliação inicial</button>
         <button class="tab" data-tab="prescricoes">Exercícios prescritos</button>
+        <button class="tab" data-tab="anexos">Fotos & Anexos</button>
       </div>
 
       <!-- EVOLUÇÕES -->
@@ -83,6 +84,37 @@
             <a class="link" href="exercicios.html">Prescrever na biblioteca →</a>
           </div>
           <div class="card-pad" id="presList"></div>
+        </div>
+      </div>
+
+      <!-- ANEXOS -->
+      <div data-tab-panel="anexos" style="display:none;">
+        <div class="card card-pad">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+            <div>
+              <h3 style="font-size:.95rem;">Fotos e anexos do paciente</h3>
+              <div style="font-size:.78rem;color:var(--text-soft);margin-top:3px;">Fotos de avaliação postural, exames, encaminhamentos · JPG, PNG, WebP ou PDF · até 8 MB</div>
+            </div>
+            <label class="btn btn-primary" style="cursor:pointer;">
+              📷 Enviar arquivo
+              <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,application/pdf" style="display:none;" multiple>
+            </label>
+          </div>
+          <div id="uploadStatus" style="display:none;font-size:.84rem;color:var(--primary-dark);font-weight:600;margin-bottom:12px;">Enviando…</div>
+          <div id="anexosGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;"></div>
+        </div>
+      </div>
+
+      <!-- LIGHTBOX -->
+      <div class="modal-overlay" id="mFoto">
+        <div class="modal wide" style="max-width:860px;">
+          <div class="modal-head">
+            <h3 id="fotoNome" style="font-size:.95rem;"></h3>
+            <button class="close" onclick="App.closeModal('mFoto')">×</button>
+          </div>
+          <div class="modal-body" style="text-align:center;">
+            <img id="fotoImg" style="max-width:100%;max-height:64vh;border-radius:10px;" alt="">
+          </div>
         </div>
       </div>
     </div>
@@ -145,8 +177,71 @@
       avHistoria.value = a.historia || ''; avExame.value = a.exame || '';
       avDiag.value = a.diagnostico || ''; avPlano.value = a.plano || '';
       renderList(document.getElementById('patSearch').value);
-      await Promise.all([carregarEvolucoes(), carregarPrescricoes()]);
+      await Promise.all([carregarEvolucoes(), carregarPrescricoes(), carregarAnexos()]);
     }
+
+    /* ---------- Anexos ---------- */
+    const urlAnexo = id => `/api/anexos/${id}/arquivo?t=${encodeURIComponent(PF.token())}`;
+
+    async function carregarAnexos() {
+      const anexos = await PF.get('anexos', { paciente_id: sel });
+      document.getElementById('anexosGrid').innerHTML = anexos.map(a => {
+        const ehImg = a.mime.startsWith('image/');
+        const kb = a.tamanho > 1048576 ? (a.tamanho / 1048576).toFixed(1) + ' MB' : Math.round(a.tamanho / 1024) + ' KB';
+        return `<div class="card" style="overflow:hidden;box-shadow:var(--shadow);">
+          <div style="height:120px;background:var(--bg);display:grid;place-items:center;cursor:pointer;overflow:hidden;"
+               onclick="${ehImg ? `verFoto('${a.id}','${a.nome.replace(/'/g, '')}')` : `window.open(urlAnexo('${a.id}'),'_blank')`}">
+            ${ehImg
+              ? `<img src="${urlAnexo(a.id)}" style="width:100%;height:100%;object-fit:cover;" alt="${a.nome}" loading="lazy">`
+              : `<span style="font-size:2.2rem;">📄</span>`}
+          </div>
+          <div style="padding:10px 12px;">
+            <div style="font-size:.78rem;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${a.nome}">${a.nome}</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+              <span style="font-size:.68rem;color:var(--text-soft);">${PF.fmtData(a.criado_em.slice(0,10))} · ${kb}</span>
+              <button style="background:none;border:none;color:var(--text-soft);font-size:.8rem;cursor:pointer;" title="Excluir" onclick="excluirAnexo('${a.id}')">🗑</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('') || '<div class="empty" style="grid-column:1/-1;">Nenhum anexo. Envie fotos de avaliação ou exames.</div>';
+    }
+
+    function verFoto(id, nome) {
+      document.getElementById('fotoNome').textContent = nome;
+      document.getElementById('fotoImg').src = urlAnexo(id);
+      App.openModal('mFoto');
+    }
+
+    async function excluirAnexo(id) {
+      if (!confirm('Excluir este anexo?')) return;
+      try { await PF.api('/api/anexos/' + id, { method: 'DELETE' }); await carregarAnexos(); App.toast('Anexo excluído'); }
+      catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    document.getElementById('fileInput').addEventListener('change', async e => {
+      const files = [...e.target.files];
+      if (!files.length) return;
+      const st = document.getElementById('uploadStatus');
+      st.style.display = '';
+      let ok = 0;
+      for (const f of files) {
+        st.textContent = `Enviando ${f.name}…`;
+        try {
+          if (f.size > 8 * 1024 * 1024) throw new Error(f.name + ' passa de 8 MB');
+          const b64 = await new Promise((res, rej) => {
+            const r = new FileReader();
+            r.onload = () => res(r.result.split(',')[1]);
+            r.onerror = rej;
+            r.readAsDataURL(f);
+          });
+          await PF.post('anexos', { paciente_id: sel, nome: f.name, mime: f.type, dados: b64 });
+          ok++;
+        } catch (err) { App.toast(err.message, 'error'); }
+      }
+      st.style.display = 'none';
+      e.target.value = '';
+      if (ok) { App.toast(`${ok} arquivo(s) salvos no prontuário!`); await carregarAnexos(); }
+    });
 
     async function carregarEvolucoes() {
       const evs = await PF.get('evolucoes', { paciente_id: sel });

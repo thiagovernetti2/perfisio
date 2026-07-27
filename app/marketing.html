@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marketing — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body data-page="marketing" data-title="Marketing" data-subtitle="Campanhas de e-mail para seus pacientes">
+
+  <div id="smtpBanner" style="display:none;background:var(--amber-soft);border:1px solid #EED9B8;border-radius:12px;padding:14px 18px;margin-bottom:20px;font-size:.86rem;color:var(--amber);">
+    ⚠️ <b>SMTP não configurado</b> — as campanhas rodam em <b>modo simulado</b> (nada é enviado de verdade).
+    Para ativar o envio real, defina as variáveis <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code>, <code>SMTP_PASS</code> (e opcionalmente <code>SMTP_FROM</code>) no serviço do Railway e redeploye.
+  </div>
+
+  <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">
+    <div class="stat-card">
+      <div class="s-top"><span class="s-label">Pacientes com e-mail</span><div class="s-ico" style="background:var(--blue-soft);">✉️</div></div>
+      <div class="s-value" id="stEmails">—</div>
+      <div class="s-delta"><span class="muted" id="stEmailsSub"></span></div>
+    </div>
+    <div class="stat-card">
+      <div class="s-top"><span class="s-label">Campanhas criadas</span><div class="s-ico" style="background:var(--primary-soft);">📣</div></div>
+      <div class="s-value" id="stCamps">—</div>
+      <div class="s-delta"><span class="muted" id="stCampsSub"></span></div>
+    </div>
+    <div class="stat-card">
+      <div class="s-top"><span class="s-label">E-mails enviados</span><div class="s-ico" style="background:var(--green-soft);">📤</div></div>
+      <div class="s-value" id="stEnviados">—</div>
+      <div class="s-delta"><span class="muted" id="stEnviadosSub"></span></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <!-- COMPOSITOR -->
+    <div class="card card-pad">
+      <h3 style="font-size:.98rem;margin-bottom:6px;">Nova campanha</h3>
+      <div style="font-size:.78rem;color:var(--text-soft);margin-bottom:16px;">
+        Use <code>{{nome}}</code> para o primeiro nome do paciente e <code>{{clinica}}</code> para o nome da clínica.
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;" id="templates"></div>
+      <div class="form-grid">
+        <div class="field"><label>Destinatários</label>
+          <select id="cFiltro">
+            <option value="todos">Todos os pacientes</option>
+            <option value="tratamento">Em tratamento</option>
+            <option value="avaliacao">Em avaliação</option>
+            <option value="alta">Alta (pós-tratamento)</option>
+            <option value="inativo">Inativos (reativação)</option>
+          </select>
+        </div>
+        <div class="field"><label>Alcance</label>
+          <input type="text" id="cAlcance" disabled style="background:var(--bg);">
+        </div>
+        <div class="field full"><label>Assunto *</label><input type="text" id="cAssunto" placeholder="Ex.: {{nome}}, sentimos sua falta na {{clinica}}!"></div>
+        <div class="field full"><label>Mensagem *</label><textarea id="cCorpo" style="min-height:170px;" placeholder="Olá {{nome}}, ..."></textarea></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;">
+        <button class="btn btn-primary" id="btnEnviar" onclick="enviar()">📤 Enviar campanha</button>
+      </div>
+    </div>
+
+    <!-- HISTÓRICO -->
+    <div class="card">
+      <div class="card-header"><h3>Histórico de campanhas</h3></div>
+      <div class="card-pad day-list" id="histList"><div class="empty">Carregando...</div></div>
+    </div>
+  </div>
+
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/sidebar.js"></script>
+  <script>
+    let PACS = [], CAMPS = [], SMTP = false;
+
+    const TEMPLATES = [
+      { nome: '🔁 Reativação', filtro: 'inativo', assunto: '{{nome}}, que tal retomar seu tratamento?', corpo: 'Olá {{nome}},\n\nNotamos que faz um tempinho desde sua última sessão na {{clinica}}. Cuidar da recuperação até o fim faz toda a diferença no resultado.\n\nQue tal agendar uma reavaliação? Responda este e-mail ou chame a gente no WhatsApp.\n\nUm abraço,\nEquipe {{clinica}}' },
+      { nome: '⭐ Pós-alta', filtro: 'alta', assunto: 'Como você está se sentindo, {{nome}}?', corpo: 'Olá {{nome}},\n\nJá faz um tempo desde a sua alta na {{clinica}} — queremos saber como você está!\n\nSe sentir qualquer desconforto voltando, não espere piorar: uma sessão de manutenção pode evitar recaídas.\n\nEstamos por aqui. 💚\nEquipe {{clinica}}' },
+      { nome: '💪 Exercícios em casa', filtro: 'tratamento', assunto: '{{nome}}, seus exercícios de hoje', corpo: 'Olá {{nome}},\n\nLembrete carinhoso da {{clinica}}: seus exercícios em casa são metade do resultado do tratamento!\n\nQualquer dúvida sobre a execução, fale com seu fisioterapeuta.\n\nBons treinos! 💪\nEquipe {{clinica}}' },
+    ];
+
+    async function boot() {
+      const [pacs, camps, status] = await Promise.all([
+        PF.get('pacientes'), PF.api('/api/campanhas'), PF.api('/api/marketing/status'),
+      ]);
+      PACS = pacs; CAMPS = camps; SMTP = status.smtp;
+      if (!SMTP) document.getElementById('smtpBanner').style.display = '';
+
+      document.getElementById('templates').innerHTML = TEMPLATES.map((t, i) =>
+        `<button class="chip" onclick="usarTemplate(${i})">${t.nome}</button>`).join('');
+
+      document.getElementById('cFiltro').addEventListener('change', atualizarAlcance);
+      render();
+      atualizarAlcance();
+    }
+
+    const comEmail = filtro => PACS.filter(p => p.email && (filtro === 'todos' || p.status === filtro));
+
+    function atualizarAlcance() {
+      const n = comEmail(cFiltro.value).length;
+      document.getElementById('cAlcance').value = `${n} paciente(s) receberão`;
+    }
+
+    function usarTemplate(i) {
+      const t = TEMPLATES[i];
+      cAssunto.value = t.assunto; cCorpo.value = t.corpo; cFiltro.value = t.filtro;
+      atualizarAlcance();
+      App.toast(`Template "${t.nome}" aplicado — revise antes de enviar`, 'info');
+    }
+
+    function render() {
+      const totalEmail = PACS.filter(p => p.email).length;
+      document.getElementById('stEmails').textContent = totalEmail;
+      document.getElementById('stEmailsSub').textContent = `de ${PACS.length} pacientes cadastrados`;
+      document.getElementById('stCamps').textContent = CAMPS.length;
+      document.getElementById('stCampsSub').textContent = CAMPS.filter(c => c.status === 'enviada').length + ' com envio real';
+      const env = CAMPS.reduce((a, c) => a + c.enviados, 0);
+      const falhas = CAMPS.reduce((a, c) => a + c.falhas, 0);
+      document.getElementById('stEnviados').textContent = env;
+      document.getElementById('stEnviadosSub').textContent = falhas ? falhas + ' falha(s)' : 'sem falhas';
+
+      const FILTRO_TXT = { todos: 'Todos', tratamento: 'Em tratamento', avaliacao: 'Em avaliação', alta: 'Alta', inativo: 'Inativos' };
+      document.getElementById('histList').innerHTML = CAMPS.map(c => `
+        <div class="dl-item">
+          <div class="dl-bar" style="background:${c.status === 'enviada' ? 'var(--green)' : 'var(--amber)'};"></div>
+          <div style="flex:1;">
+            <div class="dl-title">${c.assunto}</div>
+            <div class="dl-sub">${PF.fmtData(c.criado_em.slice(0,10))} · ${FILTRO_TXT[c.filtro] || c.filtro} · ${c.total} destinatário(s)</div>
+          </div>
+          ${c.status === 'enviada'
+            ? `<span class="badge green">✓ ${c.enviados}/${c.total}${c.falhas ? ' · ' + c.falhas + ' falhas' : ''}</span>`
+            : `<span class="badge amber">Simulada</span>`}
+        </div>`).join('') || '<div class="empty">Nenhuma campanha ainda. Monte a primeira ao lado.</div>';
+    }
+
+    async function enviar() {
+      if (!cAssunto.value.trim() || !cCorpo.value.trim()) { App.toast('Preencha assunto e mensagem', 'error'); return; }
+      const n = comEmail(cFiltro.value).length;
+      if (!n) { App.toast('Nenhum paciente com e-mail nesse filtro — cadastre e-mails em Pacientes', 'error'); return; }
+      const aviso = SMTP
+        ? `Enviar e-mail real para ${n} paciente(s)?`
+        : `SMTP não configurado: a campanha será registrada como SIMULADA (nada será enviado). Continuar?`;
+      if (!confirm(aviso)) return;
+      const btn = document.getElementById('btnEnviar');
+      btn.disabled = true; btn.textContent = 'Enviando…';
+      try {
+        const c = await PF.api('/api/campanhas/enviar', { method: 'POST', body: { assunto: cAssunto.value.trim(), corpo: cCorpo.value, filtro: cFiltro.value } });
+        App.toast(c.status === 'enviada' ? `Campanha enviada: ${c.enviados}/${c.total} e-mails!` : 'Campanha registrada em modo simulado');
+        cAssunto.value = ''; cCorpo.value = '';
+        CAMPS = await PF.api('/api/campanhas');
+        render();
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false; btn.textContent = '📤 Enviar campanha';
+    }
+
+    boot().catch(e => App.toast(e.message, 'error'));
+  </script>
+</body>
+</html>

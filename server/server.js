@@ -115,6 +115,22 @@ CREATE TABLE IF NOT EXISTS convenios (
   nome text NOT NULL, valor_sessao numeric NOT NULL DEFAULT 0, ativo boolean NOT NULL DEFAULT true,
   criado_em timestamptz NOT NULL DEFAULT now()
 );
+CREATE TABLE IF NOT EXISTS anexos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+  paciente_id uuid NOT NULL REFERENCES pacientes(id) ON DELETE CASCADE,
+  nome text NOT NULL, mime text NOT NULL, tamanho int NOT NULL DEFAULT 0,
+  dados bytea NOT NULL,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS campanhas (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+  assunto text NOT NULL, corpo text NOT NULL, filtro text DEFAULT 'todos',
+  total int NOT NULL DEFAULT 0, enviados int NOT NULL DEFAULT 0, falhas int NOT NULL DEFAULT 0,
+  status text NOT NULL DEFAULT 'simulada',
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
 -- evoluções de schema (idempotentes)
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS superadmin boolean NOT NULL DEFAULT false;
 ALTER TABLE usuarios ALTER COLUMN clinica_id DROP NOT NULL;
@@ -150,7 +166,7 @@ async function seedClinica(client, cid) {
 
 /* ============ APP ============ */
 const app = express();
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '12mb' })); // fotos de prontuário sobem em base64
 
 const sign = u => jwt.sign({ uid: u.id, cid: u.clinica_id, sa: !!u.superadmin }, JWT_SECRET, { expiresIn: '30d' });
 
@@ -237,6 +253,107 @@ app.post('/api/usuarios', auth, async (req, res) => {
       [req.auth.cid, nome, email.toLowerCase(), bcrypt.hashSync(senha, 10), perfil || 'fisio']);
     res.json(r.rows[0]);
   } catch { res.status(409).json({ erro: 'E-mail já cadastrado' }); }
+});
+
+/* ---------- ANEXOS (fotos/arquivos do prontuário, bytea no Postgres) ---------- */
+const MAX_ANEXO = 8 * 1024 * 1024; // 8 MB
+const MIMES_OK = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'application/pdf'];
+
+app.get('/api/anexos', auth, async (req, res) => {
+  if (!req.query.paciente_id) return res.status(400).json({ erro: 'Informe paciente_id' });
+  const r = await pool.query(
+    'SELECT id, paciente_id, nome, mime, tamanho, criado_em FROM anexos WHERE clinica_id=$1 AND paciente_id=$2 ORDER BY criado_em DESC',
+    [req.auth.cid, req.query.paciente_id]);
+  res.json(r.rows);
+});
+
+app.post('/api/anexos', auth, async (req, res) => {
+  const { paciente_id, nome, mime, dados } = req.body || {};
+  if (!paciente_id || !nome || !mime || !dados) return res.status(400).json({ erro: 'Dados incompletos' });
+  if (!MIMES_OK.includes(mime)) return res.status(400).json({ erro: 'Formato não suportado (use JPG, PNG, WebP ou PDF)' });
+  const buf = Buffer.from(dados, 'base64');
+  if (!buf.length || buf.length > MAX_ANEXO) return res.status(400).json({ erro: 'Arquivo vazio ou maior que 8 MB' });
+  const pac = await pool.query('SELECT 1 FROM pacientes WHERE id=$1 AND clinica_id=$2', [paciente_id, req.auth.cid]);
+  if (!pac.rowCount) return res.status(404).json({ erro: 'Paciente não encontrado' });
+  const r = await pool.query(
+    'INSERT INTO anexos (clinica_id, paciente_id, nome, mime, tamanho, dados) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, nome, mime, tamanho, criado_em',
+    [req.auth.cid, paciente_id, nome, mime, buf.length, buf]);
+  res.json(r.rows[0]);
+});
+
+// arquivo em si — aceita token no header OU em ?t= (para <img src>)
+app.get('/api/anexos/:id/arquivo', async (req, res) => {
+  const h = req.headers.authorization || '';
+  const token = h.startsWith('Bearer ') ? h.slice(7) : req.query.t;
+  let payload;
+  try { payload = jwt.verify(token || '', JWT_SECRET); }
+  catch { return res.status(401).json({ erro: 'Não autenticado' }); }
+  const r = await pool.query('SELECT nome, mime, dados FROM anexos WHERE id=$1 AND clinica_id=$2', [req.params.id, payload.cid]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Anexo não encontrado' });
+  const a = r.rows[0];
+  res.set('Content-Type', a.mime);
+  res.set('Content-Disposition', `inline; filename="${encodeURIComponent(a.nome)}"`);
+  res.set('Cache-Control', 'private, max-age=3600');
+  res.send(a.dados);
+});
+
+app.delete('/api/anexos/:id', auth, async (req, res) => {
+  const r = await pool.query('DELETE FROM anexos WHERE id=$1 AND clinica_id=$2', [req.params.id, req.auth.cid]);
+  res.json({ ok: r.rowCount > 0 });
+});
+
+/* ---------- MARKETING (campanhas de e-mail) ---------- */
+const smtpConfigurado = () => !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+
+app.get('/api/marketing/status', auth, (req, res) => {
+  res.json({ smtp: smtpConfigurado(), from: process.env.SMTP_FROM || process.env.SMTP_USER || null });
+});
+
+app.get('/api/campanhas', auth, async (req, res) => {
+  const r = await pool.query('SELECT * FROM campanhas WHERE clinica_id=$1 ORDER BY criado_em DESC', [req.auth.cid]);
+  res.json(r.rows);
+});
+
+app.post('/api/campanhas/enviar', auth, async (req, res) => {
+  const { assunto, corpo, filtro } = req.body || {};
+  if (!assunto || !corpo) return res.status(400).json({ erro: 'Preencha assunto e mensagem' });
+  const where = ['clinica_id=$1', "email IS NOT NULL", "email <> ''"];
+  const vals = [req.auth.cid];
+  if (filtro && filtro !== 'todos') { vals.push(filtro); where.push(`status=$${vals.length}`); }
+  const pacs = (await pool.query(`SELECT nome, email FROM pacientes WHERE ${where.join(' AND ')}`, vals)).rows;
+  if (!pacs.length) return res.status(400).json({ erro: 'Nenhum paciente com e-mail cadastrado nesse filtro' });
+
+  const clinica = (await pool.query('SELECT nome FROM clinicas WHERE id=$1', [req.auth.cid])).rows[0];
+  const render = (txt, p) => txt
+    .replace(/{{\s*nome\s*}}/gi, p.nome.split(' ')[0])
+    .replace(/{{\s*clinica\s*}}/gi, clinica.nome);
+
+  let enviados = 0, falhas = 0, status = 'simulada';
+  if (smtpConfigurado()) {
+    const nodemailer = require('nodemailer');
+    const porta = Number(process.env.SMTP_PORT || 587);
+    const transporte = nodemailer.createTransport({
+      host: process.env.SMTP_HOST, port: porta, secure: porta === 465,
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    });
+    for (const p of pacs) {
+      try {
+        await transporte.sendMail({
+          from: process.env.SMTP_FROM || `"${clinica.nome}" <${process.env.SMTP_USER}>`,
+          to: p.email,
+          subject: render(assunto, p),
+          html: render(corpo, p).replace(/\n/g, '<br>'),
+        });
+        enviados++;
+      } catch (e) { console.error('e-mail falhou:', p.email, e.message); falhas++; }
+    }
+    status = 'enviada';
+  }
+
+  const camp = await pool.query(
+    'INSERT INTO campanhas (clinica_id, assunto, corpo, filtro, total, enviados, falhas, status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
+    [req.auth.cid, assunto, corpo, filtro || 'todos', pacs.length, enviados, falhas, status]);
+  res.json(camp.rows[0]);
 });
 
 /* ---------- CRUD GENÉRICO (escopado por clínica) ---------- */
