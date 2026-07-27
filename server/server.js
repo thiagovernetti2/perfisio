@@ -131,11 +131,44 @@ CREATE TABLE IF NOT EXISTS campanhas (
   status text NOT NULL DEFAULT 'simulada',
   criado_em timestamptz NOT NULL DEFAULT now()
 );
+CREATE TABLE IF NOT EXISTS tratamentos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+  paciente_id uuid NOT NULL REFERENCES pacientes(id) ON DELETE CASCADE,
+  titulo text NOT NULL,
+  regiao text,
+  fisio_id uuid REFERENCES fisios(id) ON DELETE SET NULL,
+  status text NOT NULL DEFAULT 'ativo',
+  inicio date NOT NULL DEFAULT CURRENT_DATE,
+  alta date,
+  avaliacao jsonb NOT NULL DEFAULT '{}'::jsonb,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
 -- evoluções de schema (idempotentes)
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS superadmin boolean NOT NULL DEFAULT false;
 ALTER TABLE usuarios ALTER COLUMN clinica_id DROP NOT NULL;
 ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS ativa boolean NOT NULL DEFAULT true;
+ALTER TABLE evolucoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
+ALTER TABLE prescricoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
 `;
+
+/* migração de dados: pacientes com histórico ganham um tratamento inicial */
+async function migrarTratamentos() {
+  await pool.query(`
+    INSERT INTO tratamentos (clinica_id, paciente_id, titulo, fisio_id, avaliacao)
+    SELECT p.clinica_id, p.id, COALESCE(NULLIF(p.queixa, ''), 'Tratamento inicial'), p.fisio_id, p.avaliacao
+    FROM pacientes p
+    WHERE NOT EXISTS (SELECT 1 FROM tratamentos t WHERE t.paciente_id = p.id)
+      AND (p.avaliacao <> '{}'::jsonb
+        OR EXISTS (SELECT 1 FROM evolucoes e WHERE e.paciente_id = p.id)
+        OR EXISTS (SELECT 1 FROM prescricoes pr WHERE pr.paciente_id = p.id))`);
+  await pool.query(`
+    UPDATE evolucoes e SET tratamento_id = t.id FROM tratamentos t
+    WHERE e.tratamento_id IS NULL AND t.paciente_id = e.paciente_id`);
+  await pool.query(`
+    UPDATE prescricoes pr SET tratamento_id = t.id FROM tratamentos t
+    WHERE pr.tratamento_id IS NULL AND t.paciente_id = pr.paciente_id`);
+}
 
 /* ============ SEED (por clínica nova) ============ */
 const SEED_EXERCICIOS = [
@@ -362,9 +395,10 @@ const TABLES = {
   pacientes: ['nome', 'nascimento', 'cpf', 'telefone', 'email', 'convenio', 'queixa', 'obs', 'fisio_id', 'status', 'pacote_nome', 'sessoes_total', 'sessoes_feitas', 'avaliacao'],
   leads: ['nome', 'telefone', 'origem', 'interesse', 'obs', 'valor', 'fisio_id', 'col'],
   sessoes: ['paciente_id', 'fisio_id', 'titulo', 'tipo', 'data', 'hora', 'duracao', 'obs', 'status'],
-  evolucoes: ['paciente_id', 'fisio_id', 'data', 's', 'o', 'a', 'p', 'eva'],
+  tratamentos: ['paciente_id', 'titulo', 'regiao', 'fisio_id', 'status', 'inicio', 'alta', 'avaliacao'],
+  evolucoes: ['paciente_id', 'tratamento_id', 'fisio_id', 'data', 's', 'o', 'a', 'p', 'eva'],
   exercicios: ['nome', 'cat', 'nivel', 'reps', 'emoji', 'instrucoes', 'video'],
-  prescricoes: ['paciente_id', 'itens', 'freq', 'duracao'],
+  prescricoes: ['paciente_id', 'tratamento_id', 'itens', 'freq', 'duracao'],
   pacotes: ['nome', 'descricao', 'valor', 'sessoes', 'tipo'],
   pagamentos: ['paciente_id', 'descricao', 'forma', 'vencimento', 'valor', 'status'],
   convenios: ['nome', 'valor_sessao', 'ativo'],
@@ -547,6 +581,7 @@ async function seedSuperadmin() {
   if (!process.env.DATABASE_URL) console.warn('⚠️  DATABASE_URL não definida — a API vai falhar; o site estático continua servido.');
   else {
     await pool.query(SCHEMA);
+    await migrarTratamentos();
     await seedSuperadmin();
     console.log('✅ Schema verificado/migrado');
   }

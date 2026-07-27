@@ -6,8 +6,20 @@
   <title>Prontuários — PerFisio</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../assets/css/app.css">
+  <style>
+    .trat-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+    .trat-chip {
+      display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px;
+      border-radius: 10px; border: 1.5px solid var(--line); background: var(--card);
+      font-size: .84rem; font-weight: 600; color: var(--text-soft); cursor: pointer; transition: all .15s;
+    }
+    .trat-chip:hover { border-color: #C3CFCC; }
+    .trat-chip.active { border-color: var(--primary); background: var(--primary-soft); color: var(--primary-dark); }
+    .trat-chip.done { opacity: .7; }
+    .trat-chip .tc-sub { font-size: .68rem; font-weight: 500; }
+  </style>
 </head>
-<body data-page="prontuarios" data-title="Prontuários" data-subtitle="Prontuário eletrônico com evoluções, avaliações e prescrições">
+<body data-page="prontuarios" data-title="Prontuários" data-subtitle="Prontuário por ocorrência: cada tratamento tem suas evoluções, avaliação e exercícios">
 
   <div class="grid-2" style="grid-template-columns:300px 1fr;">
     <!-- LISTA DE PACIENTES -->
@@ -34,87 +46,89 @@
         </div>
       </div>
 
-      <div class="tabs" id="pTabs" data-auto>
-        <button class="tab active" data-tab="evolucoes">Evoluções</button>
-        <button class="tab" data-tab="avaliacao">Avaliação inicial</button>
-        <button class="tab" data-tab="prescricoes">Exercícios prescritos</button>
-        <button class="tab" data-tab="anexos">Fotos & Anexos</button>
-      </div>
+      <!-- OCORRÊNCIAS / TRATAMENTOS -->
+      <div class="trat-bar" id="tratBar"></div>
 
-      <!-- EVOLUÇÕES -->
-      <div data-tab-panel="evolucoes">
-        <div class="card card-pad" style="margin-bottom:18px;">
-          <h3 style="font-size:.95rem;margin-bottom:12px;">Nova evolução (SOAP)</h3>
-          <div class="form-grid">
-            <div class="field"><label>S — Subjetivo</label><textarea id="evS" placeholder="Relato do paciente..."></textarea></div>
-            <div class="field"><label>O — Objetivo</label><textarea id="evO" placeholder="Achados do fisioterapeuta..."></textarea></div>
-            <div class="field"><label>A — Avaliação</label><textarea id="evA" placeholder="Análise da evolução..."></textarea></div>
-            <div class="field"><label>P — Plano</label><textarea id="evP" placeholder="Conduta para as próximas sessões..."></textarea></div>
-            <div class="field"><label>EVA (dor 0–10)</label><input type="number" id="evEva" min="0" max="10" placeholder="Ex.: 4"></div>
-            <div class="field"><label>Fisioterapeuta</label><select id="evFisio"></select></div>
-          </div>
-          <div style="display:flex;justify-content:flex-end;margin-top:14px;">
-            <button class="btn btn-primary" id="btnEv" onclick="salvarEvolucao()">Salvar evolução</button>
-          </div>
+      <div id="tratConteudo" style="display:none;">
+        <div class="tabs" id="pTabs" data-auto>
+          <button class="tab active" data-tab="evolucoes">Evoluções</button>
+          <button class="tab" data-tab="avaliacao">Avaliação da ocorrência</button>
+          <button class="tab" data-tab="prescricoes">Exercícios prescritos</button>
+          <button class="tab" data-tab="anexos">Fotos & Anexos</button>
         </div>
-        <div id="soapList"></div>
-      </div>
 
-      <!-- AVALIAÇÃO -->
-      <div data-tab-panel="avaliacao" style="display:none;">
-        <div class="card card-pad">
-          <h3 style="font-size:.95rem;margin-bottom:14px;">Avaliação inicial</h3>
-          <div class="form-grid">
-            <div class="field full"><label>Queixa principal e história</label><textarea id="avHistoria" style="min-height:90px;" placeholder="Queixa, início dos sintomas, exames, histórico..."></textarea></div>
-            <div class="field full"><label>Exame físico</label><textarea id="avExame" style="min-height:90px;" placeholder="ADM, força, testes especiais, postura..."></textarea></div>
-            <div class="field full"><label>Diagnóstico cinético-funcional</label><textarea id="avDiag" placeholder="Ex.: lombalgia mecânica crônica com déficit de estabilização..."></textarea></div>
-            <div class="field full"><label>Plano de tratamento e metas</label><textarea id="avPlano" style="min-height:90px;" placeholder="Fases, frequência, metas objetivas (EVA, ADM, retorno ao esporte)..."></textarea></div>
-          </div>
-          <div style="display:flex;justify-content:flex-end;margin-top:14px;">
-            <button class="btn btn-primary" onclick="salvarAvaliacao()">Salvar avaliação</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- PRESCRIÇÕES -->
-      <div data-tab-panel="prescricoes" style="display:none;">
-        <div class="card">
-          <div class="card-header">
-            <h3>Prescrições de exercícios</h3>
-            <a class="link" href="exercicios.html">Prescrever na biblioteca →</a>
-          </div>
-          <div class="card-pad" id="presList"></div>
-        </div>
-      </div>
-
-      <!-- ANEXOS -->
-      <div data-tab-panel="anexos" style="display:none;">
-        <div class="card card-pad">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
-            <div>
-              <h3 style="font-size:.95rem;">Fotos e anexos do paciente</h3>
-              <div style="font-size:.78rem;color:var(--text-soft);margin-top:3px;">Fotos de avaliação postural, exames, encaminhamentos · JPG, PNG, WebP ou PDF · até 8 MB</div>
+        <!-- EVOLUÇÕES -->
+        <div data-tab-panel="evolucoes">
+          <div class="card card-pad" style="margin-bottom:18px;" id="cardNovaEv">
+            <h3 style="font-size:.95rem;margin-bottom:12px;">Nova evolução (SOAP) <span id="evTratLabel" style="font-weight:500;color:var(--text-soft);font-size:.8rem;"></span></h3>
+            <div class="form-grid">
+              <div class="field"><label>S — Subjetivo</label><textarea id="evS" placeholder="Relato do paciente..."></textarea></div>
+              <div class="field"><label>O — Objetivo</label><textarea id="evO" placeholder="Achados do fisioterapeuta..."></textarea></div>
+              <div class="field"><label>A — Avaliação</label><textarea id="evA" placeholder="Análise da evolução..."></textarea></div>
+              <div class="field"><label>P — Plano</label><textarea id="evP" placeholder="Conduta para as próximas sessões..."></textarea></div>
+              <div class="field"><label>EVA (dor 0–10)</label><input type="number" id="evEva" min="0" max="10" placeholder="Ex.: 4"></div>
+              <div class="field"><label>Fisioterapeuta</label><select id="evFisio"></select></div>
             </div>
-            <label class="btn btn-primary" style="cursor:pointer;">
-              📷 Enviar arquivo
-              <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,application/pdf" style="display:none;" multiple>
-            </label>
+            <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+              <button class="btn btn-primary" id="btnEv" onclick="salvarEvolucao()">Salvar evolução</button>
+            </div>
           </div>
-          <div id="uploadStatus" style="display:none;font-size:.84rem;color:var(--primary-dark);font-weight:600;margin-bottom:12px;">Enviando…</div>
-          <div id="anexosGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;"></div>
+          <div id="soapList"></div>
+        </div>
+
+        <!-- AVALIAÇÃO DA OCORRÊNCIA -->
+        <div data-tab-panel="avaliacao" style="display:none;">
+          <div class="card card-pad">
+            <h3 style="font-size:.95rem;margin-bottom:14px;" id="avTitulo">Avaliação inicial da ocorrência</h3>
+            <div class="form-grid">
+              <div class="field full"><label>Queixa principal e história</label><textarea id="avHistoria" style="min-height:90px;" placeholder="Queixa, início dos sintomas, exames, histórico..."></textarea></div>
+              <div class="field full"><label>Exame físico</label><textarea id="avExame" style="min-height:90px;" placeholder="ADM, força, testes especiais, postura..."></textarea></div>
+              <div class="field full"><label>Diagnóstico cinético-funcional</label><textarea id="avDiag" placeholder="Ex.: lombalgia mecânica crônica com déficit de estabilização..."></textarea></div>
+              <div class="field full"><label>Plano de tratamento e metas</label><textarea id="avPlano" style="min-height:90px;" placeholder="Fases, frequência, metas objetivas (EVA, ADM, retorno ao esporte)..."></textarea></div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+              <button class="btn btn-primary" onclick="salvarAvaliacao()">Salvar avaliação</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- PRESCRIÇÕES -->
+        <div data-tab-panel="prescricoes" style="display:none;">
+          <div class="card">
+            <div class="card-header">
+              <h3>Exercícios desta ocorrência</h3>
+              <a class="link" id="linkPrescrever" href="exercicios.html">Prescrever na biblioteca →</a>
+            </div>
+            <div class="card-pad" id="presList"></div>
+          </div>
+        </div>
+
+        <!-- ANEXOS -->
+        <div data-tab-panel="anexos" style="display:none;">
+          <div class="card card-pad">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+              <div>
+                <h3 style="font-size:.95rem;">Fotos e anexos do paciente</h3>
+                <div style="font-size:.78rem;color:var(--text-soft);margin-top:3px;">Fotos de avaliação postural, exames, encaminhamentos · JPG, PNG, WebP ou PDF · até 8 MB</div>
+              </div>
+              <label class="btn btn-primary" style="cursor:pointer;">
+                📷 Enviar arquivo
+                <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,application/pdf" style="display:none;" multiple>
+              </label>
+            </div>
+            <div id="uploadStatus" style="display:none;font-size:.84rem;color:var(--primary-dark);font-weight:600;margin-bottom:12px;">Enviando…</div>
+            <div id="anexosGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;"></div>
+          </div>
         </div>
       </div>
 
-      <!-- LIGHTBOX -->
-      <div class="modal-overlay" id="mFoto">
-        <div class="modal wide" style="max-width:860px;">
-          <div class="modal-head">
-            <h3 id="fotoNome" style="font-size:.95rem;"></h3>
-            <button class="close" onclick="App.closeModal('mFoto')">×</button>
-          </div>
-          <div class="modal-body" style="text-align:center;">
-            <img id="fotoImg" style="max-width:100%;max-height:64vh;border-radius:10px;" alt="">
-          </div>
+      <!-- SEM TRATAMENTO -->
+      <div id="tratVazio" class="card card-pad" style="display:none;">
+        <div class="empty">
+          <div style="font-size:2rem;">🩺</div>
+          <div style="font-weight:700;color:var(--ink);margin-top:8px;">Nenhuma ocorrência registrada para este paciente</div>
+          <div style="margin-top:5px;">Registre a primeira ocorrência (ex.: "Joelho direito — pós-op LCA") para abrir o prontuário.</div>
+          <button class="btn btn-primary" style="margin-top:16px;" onclick="abrirNovoTrat()">+ Nova ocorrência</button>
         </div>
       </div>
     </div>
@@ -126,17 +140,68 @@
     </div>
   </div>
 
+  <!-- LIGHTBOX -->
+  <div class="modal-overlay" id="mFoto">
+    <div class="modal wide" style="max-width:860px;">
+      <div class="modal-head">
+        <h3 id="fotoNome" style="font-size:.95rem;"></h3>
+        <button class="close" onclick="App.closeModal('mFoto')">×</button>
+      </div>
+      <div class="modal-body" style="text-align:center;">
+        <img id="fotoImg" style="max-width:100%;max-height:64vh;border-radius:10px;" alt="">
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL NOVA OCORRÊNCIA -->
+  <div class="modal-overlay" id="mTrat">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Nova ocorrência / tratamento</h3>
+        <button class="close" onclick="App.closeModal('mTrat')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field full"><label>Título *</label><input type="text" id="tTitulo" placeholder="Ex.: Joelho direito — pós-operatório de LCA"></div>
+          <div class="field"><label>Região / tipo</label>
+            <select id="tRegiao">
+              <option value="coluna">🦴 Coluna</option>
+              <option value="joelho">🦵 Joelho</option>
+              <option value="ombro">💪 Ombro</option>
+              <option value="quadril">🦿 Quadril</option>
+              <option value="tornozelo">🦶 Tornozelo / pé</option>
+              <option value="punho">🖐 Punho / mão</option>
+              <option value="neuro">🧠 Neurológico</option>
+              <option value="respiratorio">🫁 Respiratório</option>
+              <option value="outro">🩺 Outro</option>
+            </select>
+          </div>
+          <div class="field"><label>Fisioterapeuta responsável</label><select id="tFisio"></select></div>
+          <div class="field"><label>Data de início</label><input type="date" id="tInicio"></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal('mTrat')">Cancelar</button>
+        <button class="btn btn-primary" id="btnTrat" onclick="salvarTrat()">Abrir ocorrência</button>
+      </div>
+    </div>
+  </div>
+
   <script src="../assets/js/app.js"></script>
   <script src="../assets/js/api.js"></script>
   <script src="../assets/js/sidebar.js"></script>
   <script>
-    let PACS = [], FISIOS = [], sel = null;
+    let PACS = [], FISIOS = [], TRATS = [];
+    let sel = null, tratSel = null;
     const CORES = ['#0DA189','#2D7DD2','#7C5CBF','#D9820B','#D64545','#1E9E6A'];
     const STATUS_TXT = { tratamento: 'Em tratamento', avaliacao: 'Em avaliação', alta: 'Alta', inativo: 'Inativo' };
+    const REGIAO_ICO = { coluna: '🦴', joelho: '🦵', ombro: '💪', quadril: '🦿', tornozelo: '🦶', punho: '🖐', neuro: '🧠', respiratorio: '🫁', outro: '🩺' };
 
     async function boot() {
       [PACS, FISIOS] = await Promise.all([PF.get('pacientes'), PF.get('fisios')]);
-      document.getElementById('evFisio').innerHTML = FISIOS.filter(f=>f.ativo).map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
+      const fisioOpts = FISIOS.filter(f => f.ativo).map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
+      document.getElementById('evFisio').innerHTML = fisioOpts;
+      document.getElementById('tFisio').innerHTML = fisioOpts;
       if (!PACS.length) {
         document.getElementById('vazio').style.display = '';
         document.getElementById('patList').innerHTML = '<div class="empty">Sem pacientes</div>';
@@ -144,7 +209,7 @@
       }
       const urlP = new URLSearchParams(location.search).get('p');
       renderList();
-      selPac(PACS.find(p => p.id === urlP)?.id || PACS[0].id);
+      await selPac(PACS.find(p => p.id === urlP)?.id || PACS[0].id);
     }
 
     function renderList(q = '') {
@@ -166,21 +231,169 @@
       const idade = PF.idade(p.nascimento);
       document.getElementById('pHeadNome').textContent = p.nome;
       document.getElementById('pHeadSub').textContent =
-        [idade ? idade + ' anos' : null, p.convenio || 'Particular', p.queixa, f ? f.nome : null].filter(Boolean).join(' · ');
+        [idade ? idade + ' anos' : null, p.convenio || 'Particular', f ? f.nome : null].filter(Boolean).join(' · ');
       document.getElementById('pHeadStatus').textContent = STATUS_TXT[p.status] + (p.sessoes_total ? ` · ${p.sessoes_feitas}/${p.sessoes_total}` : '');
       const av = document.getElementById('pHeadAvatar');
       av.textContent = App.iniciais(p.nome);
       av.style.background = CORES[PACS.indexOf(p) % 6];
       if (p.fisio_id) document.getElementById('evFisio').value = p.fisio_id;
-      // avaliação
-      const a = p.avaliacao || {};
+      renderList(document.getElementById('patSearch').value);
+      await carregarTrats();
+    }
+
+    /* ---------- Ocorrências / tratamentos ---------- */
+    async function carregarTrats(preferId) {
+      TRATS = await PF.get('tratamentos', { paciente_id: sel });
+      const ativos = TRATS.filter(t => t.status === 'ativo');
+      tratSel = preferId && TRATS.some(t => t.id === preferId) ? preferId
+        : (ativos.length ? ativos[ativos.length - 1].id : (TRATS.length ? TRATS[TRATS.length - 1].id : null));
+      renderTratBar();
+      if (!tratSel) {
+        document.getElementById('tratConteudo').style.display = 'none';
+        document.getElementById('tratVazio').style.display = '';
+        return;
+      }
+      document.getElementById('tratConteudo').style.display = '';
+      document.getElementById('tratVazio').style.display = 'none';
+      await selTrat(tratSel);
+    }
+
+    function renderTratBar() {
+      const bar = document.getElementById('tratBar');
+      bar.innerHTML = TRATS.map(t => `
+        <button class="trat-chip${t.id === tratSel ? ' active' : ''}${t.status === 'concluido' ? ' done' : ''}" onclick="selTrat('${t.id}')">
+          ${REGIAO_ICO[t.regiao] || '🩺'}
+          <span>${t.titulo}<div class="tc-sub">${PF.fmtData(t.inicio.slice(0,10))}${t.status === 'concluido' ? ' → alta ' + PF.fmtData((t.alta || '').slice(0,10)) : ' · em andamento'}</div></span>
+        </button>`).join('') +
+        `<button class="trat-chip" style="border-style:dashed;" onclick="abrirNovoTrat()">＋ Nova ocorrência</button>` +
+        (tratSel && (TRATS.find(t => t.id === tratSel) || {}).status === 'ativo'
+          ? `<button class="btn btn-soft btn-sm" style="margin-left:auto;" onclick="darAlta()">✅ Dar alta nesta ocorrência</button>` : '');
+    }
+
+    async function selTrat(id) {
+      tratSel = id;
+      renderTratBar();
+      const t = TRATS.find(x => x.id === id);
+      document.getElementById('tratConteudo').style.display = '';
+      document.getElementById('tratVazio').style.display = 'none';
+      document.getElementById('evTratLabel').textContent = `→ ${t.titulo}`;
+      document.getElementById('avTitulo').textContent = `Avaliação inicial — ${t.titulo}`;
+      document.getElementById('cardNovaEv').style.display = t.status === 'ativo' ? '' : 'none';
+      document.getElementById('linkPrescrever').href = `exercicios.html?p=${sel}&t=${tratSel}`;
+      if (t.fisio_id) document.getElementById('evFisio').value = t.fisio_id;
+      const a = t.avaliacao || {};
       avHistoria.value = a.historia || ''; avExame.value = a.exame || '';
       avDiag.value = a.diagnostico || ''; avPlano.value = a.plano || '';
-      renderList(document.getElementById('patSearch').value);
       await Promise.all([carregarEvolucoes(), carregarPrescricoes(), carregarAnexos()]);
     }
 
-    /* ---------- Anexos ---------- */
+    function abrirNovoTrat() {
+      tTitulo.value = ''; tInicio.value = PF.hojeISO();
+      const p = PACS.find(x => x.id === sel);
+      if (p && p.fisio_id) tFisio.value = p.fisio_id;
+      App.openModal('mTrat');
+    }
+
+    async function salvarTrat() {
+      if (!tTitulo.value.trim()) { App.toast('Dê um título à ocorrência', 'error'); return; }
+      const btn = document.getElementById('btnTrat'); btn.disabled = true;
+      try {
+        const t = await PF.post('tratamentos', {
+          paciente_id: sel, titulo: tTitulo.value.trim(), regiao: tRegiao.value,
+          fisio_id: tFisio.value || null, inicio: tInicio.value || PF.hojeISO(), status: 'ativo',
+        });
+        App.closeModal('mTrat');
+        App.toast('Ocorrência aberta! Registre a avaliação inicial.');
+        await carregarTrats(t.id);
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false;
+    }
+
+    async function darAlta() {
+      const t = TRATS.find(x => x.id === tratSel);
+      if (!t || !confirm(`Dar alta em "${t.titulo}"? A ocorrência será marcada como concluída (o histórico continua acessível).`)) return;
+      try {
+        await PF.put('tratamentos', tratSel, { status: 'concluido', alta: PF.hojeISO() });
+        App.toast('Alta registrada! 🎉');
+        await carregarTrats(tratSel);
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    /* ---------- Evoluções ---------- */
+    async function carregarEvolucoes() {
+      const evs = await PF.get('evolucoes', { paciente_id: sel, tratamento_id: tratSel });
+      document.getElementById('soapList').innerHTML = evs.map(e => {
+        const f = FISIOS.find(x => x.id === e.fisio_id);
+        return `<div class="soap-block">
+          <div class="sp-head">
+            <span class="sp-date">${PF.fmtData(e.data.slice(0,10))}${f ? ' · ' + f.nome : ''}</span>
+            <span>${e.eva != null ? `<span class="badge ${e.eva <= 3 ? 'green' : e.eva <= 6 ? 'amber' : 'red'}">EVA ${e.eva}</span>` : ''}
+            <button style="background:none;border:none;color:var(--text-soft);font-size:.8rem;" title="Excluir" onclick="excluirEv('${e.id}')">✕</button></span>
+          </div>
+          ${e.s ? `<div class="sp-row"><b>S</b> ${e.s}</div>` : ''}
+          ${e.o ? `<div class="sp-row"><b>O</b> ${e.o}</div>` : ''}
+          ${e.a ? `<div class="sp-row"><b>A</b> ${e.a}</div>` : ''}
+          ${e.p ? `<div class="sp-row"><b>P</b> ${e.p}</div>` : ''}
+        </div>`;
+      }).join('') || '<div class="empty">Nenhuma evolução nesta ocorrência ainda.</div>';
+    }
+
+    async function salvarEvolucao() {
+      const body = {
+        paciente_id: sel, tratamento_id: tratSel, fisio_id: evFisio.value || null,
+        s: evS.value.trim() || null, o: evO.value.trim() || null,
+        a: evA.value.trim() || null, p: evP.value.trim() || null,
+        eva: evEva.value === '' ? null : Number(evEva.value),
+        data: PF.hojeISO(),
+      };
+      if (!body.s && !body.o && !body.a && !body.p) { App.toast('Preencha ao menos um campo da evolução', 'error'); return; }
+      const btn = document.getElementById('btnEv'); btn.disabled = true;
+      try {
+        await PF.post('evolucoes', body);
+        ['evS','evO','evA','evP','evEva'].forEach(id => document.getElementById(id).value = '');
+        App.toast('Evolução registrada na ocorrência!');
+        await carregarEvolucoes();
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false;
+    }
+
+    async function excluirEv(id) {
+      if (!confirm('Excluir esta evolução?')) return;
+      try { await PF.del('evolucoes', id); await carregarEvolucoes(); App.toast('Evolução excluída'); }
+      catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    /* ---------- Avaliação da ocorrência ---------- */
+    async function salvarAvaliacao() {
+      try {
+        const avaliacao = { historia: avHistoria.value.trim(), exame: avExame.value.trim(), diagnostico: avDiag.value.trim(), plano: avPlano.value.trim() };
+        await PF.put('tratamentos', tratSel, { avaliacao });
+        const t = TRATS.find(x => x.id === tratSel); if (t) t.avaliacao = avaliacao;
+        App.toast('Avaliação salva na ocorrência!');
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    /* ---------- Prescrições da ocorrência ---------- */
+    async function carregarPrescricoes() {
+      const prs = await PF.get('prescricoes', { paciente_id: sel, tratamento_id: tratSel });
+      document.getElementById('presList').innerHTML = prs.map(pr => `
+        <div class="soap-block">
+          <div class="sp-head">
+            <span class="sp-date">${PF.fmtData(pr.criado_em.slice(0,10))} · ${pr.freq || ''} ${pr.duracao ? '· ' + pr.duracao : ''}</span>
+            <button style="background:none;border:none;color:var(--text-soft);font-size:.8rem;" title="Excluir" onclick="excluirPres('${pr.id}')">✕</button>
+          </div>
+          ${(pr.itens || []).map(i => `<div class="sp-row">💪 <b style="text-transform:none;letter-spacing:0;">${i.nome}</b> ${i.reps || ''}</div>`).join('')}
+        </div>`).join('') ||
+        `<div class="empty">Nenhum exercício vinculado a esta ocorrência.<br><a href="exercicios.html?p=${sel}&t=${tratSel}" style="color:var(--primary);font-weight:600;">Prescrever na biblioteca →</a></div>`;
+    }
+
+    async function excluirPres(id) {
+      if (!confirm('Excluir esta prescrição?')) return;
+      try { await PF.del('prescricoes', id); await carregarPrescricoes(); App.toast('Prescrição excluída'); }
+      catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    /* ---------- Anexos (por paciente) ---------- */
     const urlAnexo = id => `/api/anexos/${id}/arquivo?t=${encodeURIComponent(PF.token())}`;
 
     async function carregarAnexos() {
@@ -242,67 +455,6 @@
       e.target.value = '';
       if (ok) { App.toast(`${ok} arquivo(s) salvos no prontuário!`); await carregarAnexos(); }
     });
-
-    async function carregarEvolucoes() {
-      const evs = await PF.get('evolucoes', { paciente_id: sel });
-      document.getElementById('soapList').innerHTML = evs.map(e => {
-        const f = FISIOS.find(x => x.id === e.fisio_id);
-        return `<div class="soap-block">
-          <div class="sp-head">
-            <span class="sp-date">${PF.fmtData(e.data.slice(0,10))}${f ? ' · ' + f.nome : ''}</span>
-            <span>${e.eva != null ? `<span class="badge ${e.eva <= 3 ? 'green' : e.eva <= 6 ? 'amber' : 'red'}">EVA ${e.eva}</span>` : ''}
-            <button style="background:none;border:none;color:var(--text-soft);font-size:.8rem;" title="Excluir" onclick="excluirEv('${e.id}')">✕</button></span>
-          </div>
-          ${e.s ? `<div class="sp-row"><b>S</b> ${e.s}</div>` : ''}
-          ${e.o ? `<div class="sp-row"><b>O</b> ${e.o}</div>` : ''}
-          ${e.a ? `<div class="sp-row"><b>A</b> ${e.a}</div>` : ''}
-          ${e.p ? `<div class="sp-row"><b>P</b> ${e.p}</div>` : ''}
-        </div>`;
-      }).join('') || '<div class="empty">Nenhuma evolução registrada ainda.</div>';
-    }
-
-    async function carregarPrescricoes() {
-      const prs = await PF.get('prescricoes', { paciente_id: sel });
-      document.getElementById('presList').innerHTML = prs.map(pr => `
-        <div class="soap-block">
-          <div class="sp-head"><span class="sp-date">${PF.fmtData(pr.criado_em.slice(0,10))} · ${pr.freq || ''} ${pr.duracao ? '· ' + pr.duracao : ''}</span></div>
-          ${(pr.itens || []).map(i => `<div class="sp-row">💪 <b style="text-transform:none;letter-spacing:0;">${i.nome}</b> ${i.reps || ''}</div>`).join('')}
-        </div>`).join('') || '<div class="empty">Nenhuma prescrição. Monte uma na <a href="exercicios.html" style="color:var(--primary);font-weight:600;">biblioteca de exercícios</a>.</div>';
-    }
-
-    async function salvarEvolucao() {
-      const body = {
-        paciente_id: sel, fisio_id: evFisio.value || null,
-        s: evS.value.trim() || null, o: evO.value.trim() || null,
-        a: evA.value.trim() || null, p: evP.value.trim() || null,
-        eva: evEva.value === '' ? null : Number(evEva.value),
-        data: PF.hojeISO(),
-      };
-      if (!body.s && !body.o && !body.a && !body.p) { App.toast('Preencha ao menos um campo da evolução', 'error'); return; }
-      const btn = document.getElementById('btnEv'); btn.disabled = true;
-      try {
-        await PF.post('evolucoes', body);
-        ['evS','evO','evA','evP','evEva'].forEach(id => document.getElementById(id).value = '');
-        App.toast('Evolução registrada no prontuário!');
-        await carregarEvolucoes();
-      } catch (e) { App.toast(e.message, 'error'); }
-      btn.disabled = false;
-    }
-
-    async function excluirEv(id) {
-      if (!confirm('Excluir esta evolução?')) return;
-      try { await PF.del('evolucoes', id); await carregarEvolucoes(); App.toast('Evolução excluída'); }
-      catch (e) { App.toast(e.message, 'error'); }
-    }
-
-    async function salvarAvaliacao() {
-      try {
-        const avaliacao = { historia: avHistoria.value.trim(), exame: avExame.value.trim(), diagnostico: avDiag.value.trim(), plano: avPlano.value.trim() };
-        await PF.put('pacientes', sel, { avaliacao });
-        const p = PACS.find(x => x.id === sel); if (p) p.avaliacao = avaliacao;
-        App.toast('Avaliação salva no prontuário!');
-      } catch (e) { App.toast(e.message, 'error'); }
-    }
 
     document.getElementById('patSearch').addEventListener('input', e => renderList(e.target.value));
     boot().catch(e => App.toast(e.message, 'error'));

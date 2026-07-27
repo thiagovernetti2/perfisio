@@ -57,7 +57,8 @@
       </div>
       <div class="modal-body">
         <div class="form-grid">
-          <div class="field full"><label>Paciente *</label><select id="prPaciente"></select></div>
+          <div class="field"><label>Paciente *</label><select id="prPaciente"></select></div>
+          <div class="field"><label>Ocorrência / tratamento *</label><select id="prTrat"></select></div>
           <div class="field"><label>Frequência</label>
             <select id="prFreq"><option>Diária</option><option>2x ao dia</option><option>3x por semana</option><option>Dias de sessão</option></select>
           </div>
@@ -87,7 +88,32 @@
       [EX, PACS] = await Promise.all([PF.get('exercicios'), PF.get('pacientes')]);
       document.getElementById('prPaciente').innerHTML = PACS.filter(p => p.status !== 'inativo')
         .map(p => `<option value="${p.id}">${p.nome}</option>`).join('') || '<option value="">Nenhum paciente cadastrado</option>';
+      document.getElementById('prPaciente').addEventListener('change', () => carregarTrats());
+      // pré-seleção vinda do prontuário (?p=paciente&t=tratamento)
+      const q = new URLSearchParams(location.search);
+      if (q.get('p') && PACS.some(p => p.id === q.get('p'))) {
+        prPaciente.value = q.get('p');
+        tratPre = q.get('t') || null;
+        App.toast('Selecione os exercícios e clique em "Prescrever selecionados"', 'info');
+      }
+      await carregarTrats();
       renderChips(); render();
+    }
+
+    let TRATS = [], tratPre = null;
+    async function carregarTrats() {
+      const pid = prPaciente.value;
+      const sel = document.getElementById('prTrat');
+      if (!pid) { TRATS = []; sel.innerHTML = '<option value="">—</option>'; return; }
+      TRATS = await PF.get('tratamentos', { paciente_id: pid });
+      const ativos = TRATS.filter(t => t.status === 'ativo');
+      sel.innerHTML = TRATS.map(t =>
+        `<option value="${t.id}">${t.titulo}${t.status === 'concluido' ? ' (concluído)' : ''}</option>`).join('') +
+        `<option value="__novo__">＋ Nova ocorrência (usa a queixa do paciente)</option>`;
+      if (tratPre && TRATS.some(t => t.id === tratPre)) sel.value = tratPre;
+      else if (ativos.length) sel.value = ativos[ativos.length - 1].id;
+      else if (!TRATS.length) sel.value = '__novo__';
+      tratPre = null;
     }
 
     function renderChips() {
@@ -130,10 +156,19 @@
     async function salvarPrescricao() {
       const btn = document.getElementById('btnPr'); btn.disabled = true;
       try {
+        let tratId = prTrat.value;
+        if (tratId === '__novo__' || !tratId) {
+          const p = PACS.find(x => x.id === prPaciente.value);
+          const novo = await PF.post('tratamentos', {
+            paciente_id: p.id, titulo: p.queixa || 'Tratamento inicial',
+            regiao: 'outro', fisio_id: p.fisio_id || null, status: 'ativo',
+          });
+          tratId = novo.id;
+        }
         const itens = [...selecionados].map(id => { const e = EX.find(x => x.id === id); return { id: e.id, nome: e.nome, reps: e.reps }; });
-        await PF.post('prescricoes', { paciente_id: prPaciente.value, itens, freq: prFreq.value, duracao: prDur.value });
+        await PF.post('prescricoes', { paciente_id: prPaciente.value, tratamento_id: tratId, itens, freq: prFreq.value, duracao: prDur.value });
         App.closeModal('mPrescricao');
-        App.toast('Prescrição salva no prontuário do paciente!');
+        App.toast('Prescrição vinculada à ocorrência no prontuário!');
         selecionados.clear(); render();
       } catch (e) { App.toast(e.message, 'error'); }
       btn.disabled = false;

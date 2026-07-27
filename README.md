@@ -50,7 +50,22 @@ O schema é criado/verificado automaticamente no boot (`CREATE TABLE IF NOT EXIS
 - `DATABASE_URL` → referência `${{Postgres-2Cvg.DATABASE_URL}}`
 - `JWT_SECRET` → segredo forte (já configurado)
 
+## E-mail (módulo Marketing)
+
+O envio real de campanhas usa SMTP via nodemailer. Configure no serviço do Railway:
+
+- `SMTP_HOST`, `SMTP_PORT` (587 ou 465), `SMTP_USER`, `SMTP_PASS`
+- `SMTP_FROM` (opcional, ex.: `"Clínica Movimente" <contato@movimente.com.br>`)
+
+Sem essas variáveis, as campanhas são registradas como **simuladas** (nada é enviado).
+Exemplos de provedor: Gmail (senha de app), Brevo, Resend SMTP, Amazon SES.
+
+## Anexos do prontuário
+
+Fotos (JPG/PNG/WebP) e PDFs até 8 MB, armazenados como `bytea` no Postgres — sem
+dependência de S3. O arquivo é servido em `/api/anexos/:id/arquivo` com autenticação
+por header ou `?t=<jwt>` (para `<img src>`).
+
 ## Pendências conhecidas
 
-- Upload de anexos (exames) exige storage externo (S3/R2) — hoje fora do escopo.
 - Lembretes por WhatsApp são um ponto de integração futuro (ex.: Z-API / Twilio).
