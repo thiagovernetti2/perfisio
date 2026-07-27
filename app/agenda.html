@@ -41,6 +41,9 @@
           <div class="field full"><label>Paciente (ou deixe vazio p/ turma)</label>
             <select id="fPaciente"></select>
           </div>
+          <div class="field full" id="fTratWrap" style="display:none;"><label>Ocorrência / tratamento</label>
+            <select id="fTrat"></select>
+          </div>
           <div class="field full" id="fTituloWrap" style="display:none;"><label>Título (turma / bloqueio)</label><input type="text" id="fTitulo" placeholder="Ex.: Pilates — turma das 15h"></div>
           <div class="field"><label>Fisioterapeuta</label><select id="fFisio"></select></div>
           <div class="field"><label>Tipo</label>
@@ -80,17 +83,44 @@
     const pacById = id => PACS.find(p => p.id === id);
     const nomeEv = e => { const p = pacById(e.paciente_id); return p ? p.nome : (e.titulo || e.tipo); };
 
+    let TRATS_ALL = [];
+    const tratById = id => TRATS_ALL.find(t => t.id === id);
+
     async function boot() {
-      [FISIOS, PACS] = await Promise.all([PF.get('fisios'), PF.get('pacientes')]);
+      [FISIOS, PACS, TRATS_ALL] = await Promise.all([PF.get('fisios'), PF.get('pacientes'), PF.get('tratamentos')]);
       document.getElementById('fFisio').innerHTML = FISIOS.filter(f=>f.ativo).map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
       document.getElementById('fPaciente').innerHTML = '<option value="">— Sem paciente (turma/bloqueio) —</option>' +
         PACS.filter(p => p.status !== 'inativo').map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
       document.getElementById('fPaciente').addEventListener('change', e => {
         document.getElementById('fTituloWrap').style.display = e.target.value ? 'none' : '';
+        montarTratSelect(e.target.value);
       });
       document.getElementById('fTituloWrap').style.display = '';
       renderChips();
       await carregarMes();
+      // vindo do prontuário: ?p=paciente&t=tratamento abre o modal pré-preenchido
+      const q = new URLSearchParams(location.search);
+      if (q.get('p') && PACS.some(p => p.id === q.get('p'))) {
+        abrirNova();
+        fPaciente.value = q.get('p');
+        document.getElementById('fTituloWrap').style.display = 'none';
+        montarTratSelect(q.get('p'), q.get('t'));
+        const pac = PACS.find(p => p.id === q.get('p'));
+        if (pac && pac.fisio_id) fFisio.value = pac.fisio_id;
+      }
+    }
+
+    function montarTratSelect(pacienteId, preferId) {
+      const wrap = document.getElementById('fTratWrap');
+      const selEl = document.getElementById('fTrat');
+      if (!pacienteId) { wrap.style.display = 'none'; selEl.innerHTML = ''; return; }
+      const doPac = TRATS_ALL.filter(t => t.paciente_id === pacienteId);
+      wrap.style.display = '';
+      selEl.innerHTML = '<option value="">— Sem vínculo (avaliação livre) —</option>' +
+        doPac.map(t => `<option value="${t.id}">${t.titulo}${t.status === 'concluido' ? ' (concluído)' : ''}</option>`).join('');
+      const ativos = doPac.filter(t => t.status === 'ativo');
+      if (preferId && doPac.some(t => t.id === preferId)) selEl.value = preferId;
+      else if (ativos.length) selEl.value = ativos[ativos.length - 1].id;
     }
 
     function renderChips() {
@@ -160,19 +190,24 @@
       if (!evs.length) { list.innerHTML = `<div class="empty">Nenhuma sessão neste dia.</div>`; return; }
       list.innerHTML = evs.map(e => {
         const f = fisioById(e.fisio_id);
+        const t = e.tratamento_id ? tratById(e.tratamento_id) : null;
         const badge = e.status === 'realizada' ? '<span class="badge green">✓ realizada</span>'
           : e.status === 'falta' ? '<span class="badge red">falta</span>' : '';
+        const linkPront = e.paciente_id
+          ? `<a href="prontuarios.html?p=${e.paciente_id}${e.tratamento_id ? '&t=' + e.tratamento_id : ''}" style="color:var(--primary);font-weight:600;font-size:.74rem;">📋 ${e.status === 'realizada' ? 'registrar evolução' : 'prontuário'} →</a>`
+          : '';
         return `<div class="dl-item">
           <div class="dl-time">${e.hora.slice(0,5)}</div>
           <div class="dl-bar" style="background:${f ? f.cor : '#94A8A5'};"></div>
           <div style="flex:1;">
             <div class="dl-title">${nomeEv(e)} ${badge}</div>
-            <div class="dl-sub">${e.tipo}${f ? ' · ' + f.nome : ''}${e.obs ? ' · ' + e.obs : ''}</div>
-            ${e.status === 'agendada' ? `<div style="display:flex;gap:6px;margin-top:7px;">
+            <div class="dl-sub">${e.tipo}${t ? ' · 🩺 ' + t.titulo : ''}${f ? ' · ' + f.nome : ''}${e.obs ? ' · ' + e.obs : ''}</div>
+            ${e.status === 'agendada' ? `<div style="display:flex;gap:6px;margin-top:7px;align-items:center;">
               <button class="btn btn-soft btn-sm" onclick="mudarStatus('${e.id}','realizada')">✓ Realizada</button>
               <button class="btn btn-ghost btn-sm" onclick="mudarStatus('${e.id}','falta')">Falta</button>
               <button class="btn btn-ghost btn-sm" onclick="excluir('${e.id}')" title="Excluir">🗑</button>
-            </div>` : ''}
+              ${linkPront}
+            </div>` : `<div style="margin-top:5px;">${linkPront}</div>`}
           </div>
         </div>`;
       }).join('');
@@ -187,6 +222,7 @@
       const btn = document.getElementById('btnSalvarSessao');
       const base = {
         paciente_id: fPaciente.value || null,
+        tratamento_id: fPaciente.value ? (fTrat.value || null) : null,
         titulo: fPaciente.value ? null : (fTitulo.value.trim() || null),
         fisio_id: fFisio.value, tipo: fTipo.value,
         data: fData.value, hora: fHora.value, duracao: fDuracao.value,

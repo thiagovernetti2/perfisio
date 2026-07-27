@@ -150,6 +150,7 @@ ALTER TABLE usuarios ALTER COLUMN clinica_id DROP NOT NULL;
 ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS ativa boolean NOT NULL DEFAULT true;
 ALTER TABLE evolucoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
 ALTER TABLE prescricoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
+ALTER TABLE sessoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
 `;
 
 /* migração de dados: pacientes com histórico ganham um tratamento inicial */
@@ -168,6 +169,11 @@ async function migrarTratamentos() {
   await pool.query(`
     UPDATE prescricoes pr SET tratamento_id = t.id FROM tratamentos t
     WHERE pr.tratamento_id IS NULL AND t.paciente_id = pr.paciente_id`);
+  // sessões antigas: vincula apenas quando o paciente tem UMA ocorrência (sem ambiguidade)
+  await pool.query(`
+    UPDATE sessoes s SET tratamento_id = t.id FROM tratamentos t
+    WHERE s.tratamento_id IS NULL AND s.paciente_id IS NOT NULL AND t.paciente_id = s.paciente_id
+      AND (SELECT count(*) FROM tratamentos x WHERE x.paciente_id = s.paciente_id) = 1`);
 }
 
 /* ============ SEED (por clínica nova) ============ */
@@ -394,7 +400,7 @@ const TABLES = {
   fisios: ['nome', 'crefito', 'esp', 'cor', 'comissao', 'ativo'],
   pacientes: ['nome', 'nascimento', 'cpf', 'telefone', 'email', 'convenio', 'queixa', 'obs', 'fisio_id', 'status', 'pacote_nome', 'sessoes_total', 'sessoes_feitas', 'avaliacao'],
   leads: ['nome', 'telefone', 'origem', 'interesse', 'obs', 'valor', 'fisio_id', 'col'],
-  sessoes: ['paciente_id', 'fisio_id', 'titulo', 'tipo', 'data', 'hora', 'duracao', 'obs', 'status'],
+  sessoes: ['paciente_id', 'tratamento_id', 'fisio_id', 'titulo', 'tipo', 'data', 'hora', 'duracao', 'obs', 'status'],
   tratamentos: ['paciente_id', 'titulo', 'regiao', 'fisio_id', 'status', 'inicio', 'alta', 'avaliacao'],
   evolucoes: ['paciente_id', 'tratamento_id', 'fisio_id', 'data', 's', 'o', 'a', 'p', 'eva'],
   exercicios: ['nome', 'cat', 'nivel', 'reps', 'emoji', 'instrucoes', 'video'],

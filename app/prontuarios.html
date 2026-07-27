@@ -54,9 +54,26 @@
       <div id="tratConteudo" style="display:none;">
         <div class="tabs" id="pTabs" data-auto>
           <button class="tab active" data-tab="evolucoes">Evoluções</button>
+          <button class="tab" data-tab="sessoes">Sessões</button>
           <button class="tab" data-tab="avaliacao">Avaliação da ocorrência</button>
           <button class="tab" data-tab="prescricoes">Exercícios prescritos</button>
           <button class="tab" data-tab="anexos">Fotos & Anexos</button>
+        </div>
+
+        <!-- SESSÕES DA OCORRÊNCIA -->
+        <div data-tab-panel="sessoes" style="display:none;">
+          <div class="card">
+            <div class="card-header">
+              <h3>Sessões desta ocorrência <span id="sesResumo" style="font-weight:500;font-size:.78rem;color:var(--text-soft);"></span></h3>
+              <a class="link" id="linkAgendar" href="agenda.html">＋ Agendar sessão →</a>
+            </div>
+            <div class="table-wrap" style="padding-top:8px;">
+              <table class="data">
+                <thead><tr><th>Data</th><th>Hora</th><th>Tipo</th><th>Fisioterapeuta</th><th>Status</th></tr></thead>
+                <tbody id="sesRows"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
         <!-- EVOLUÇÕES -->
@@ -214,10 +231,12 @@
         document.getElementById('patList').innerHTML = '<div class="empty">Sem pacientes</div>';
         return;
       }
-      const urlP = new URLSearchParams(location.search).get('p');
+      const url = new URLSearchParams(location.search);
+      urlTrat = url.get('t');
       renderList();
-      await selPac(PACS.find(p => p.id === urlP)?.id || PACS[0].id);
+      await selPac(PACS.find(p => p.id === url.get('p'))?.id || PACS[0].id);
     }
+    let urlTrat = null;
 
     function renderList(q = '') {
       document.getElementById('patList').innerHTML = PACS
@@ -245,7 +264,8 @@
       av.style.background = CORES[PACS.indexOf(p) % 6];
       if (p.fisio_id) document.getElementById('evFisio').value = p.fisio_id;
       renderList(document.getElementById('patSearch').value);
-      await carregarTrats();
+      await carregarTrats(urlTrat);
+      urlTrat = null; // só vale para a primeira seleção (link vindo da agenda)
     }
 
     /* ---------- Ocorrências / tratamentos ---------- */
@@ -310,7 +330,36 @@
       const a = t.avaliacao || {};
       avHistoria.value = a.historia || ''; avExame.value = a.exame || '';
       avDiag.value = a.diagnostico || ''; avPlano.value = a.plano || '';
-      await Promise.all([carregarEvolucoes(), carregarPrescricoes(), carregarAnexos()]);
+      document.getElementById('linkAgendar').href = `agenda.html?p=${sel}&t=${tratSel}`;
+      await Promise.all([carregarEvolucoes(), carregarPrescricoes(), carregarAnexos(), carregarSessoes()]);
+    }
+
+    /* ---------- Sessões da ocorrência ---------- */
+    async function carregarSessoes() {
+      const sess = await PF.get('sessoes', { tratamento_id: tratSel });
+      const BADGE = {
+        agendada: '<span class="badge blue">Agendada</span>', realizada: '<span class="badge green">✓ Realizada</span>',
+        falta: '<span class="badge red">Falta</span>', cancelada: '<span class="badge gray">Cancelada</span>',
+      };
+      const hoje = PF.hojeISO();
+      const feitas = sess.filter(s => s.status === 'realizada').length;
+      const faltas = sess.filter(s => s.status === 'falta').length;
+      const prox = sess.filter(s => s.status === 'agendada' && s.data.slice(0,10) >= hoje).length;
+      document.getElementById('sesResumo').textContent = sess.length
+        ? `· ${feitas} realizada(s) · ${faltas} falta(s) · ${prox} agendada(s)` : '';
+      document.getElementById('sesRows').innerHTML = sess
+        .sort((a, b) => (b.data + b.hora).localeCompare(a.data + a.hora))
+        .map(s => {
+          const f = FISIOS.find(x => x.id === s.fisio_id);
+          return `<tr>
+            <td>${PF.fmtData(s.data.slice(0,10))}</td>
+            <td>${s.hora.slice(0,5)}</td>
+            <td>${s.tipo}</td>
+            <td>${f ? f.nome : '—'}</td>
+            <td>${BADGE[s.status] || s.status}</td>
+          </tr>`;
+        }).join('') ||
+        `<tr><td colspan="5" class="empty">Nenhuma sessão vinculada a esta ocorrência.<br><a href="agenda.html?p=${sel}&t=${tratSel}" style="color:var(--primary);font-weight:600;">Agendar a primeira →</a></td></tr>`;
     }
 
     /* ---------- Mapa corporal no modal ---------- */
