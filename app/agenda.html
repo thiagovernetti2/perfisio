@@ -67,6 +67,18 @@
     </div>
   </div>
 
+  <!-- MODAL DETALHES DO EVENTO -->
+  <div class="modal-overlay" id="mEvento">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="evmTitulo">Sessão</h3>
+        <button class="close" onclick="App.closeModal('mEvento')">×</button>
+      </div>
+      <div class="modal-body" id="evmBody"></div>
+      <div class="modal-foot" id="evmFoot" style="flex-wrap:wrap;"></div>
+    </div>
+  </div>
+
   <script src="../assets/js/app.js"></script>
   <script src="../assets/js/api.js"></script>
   <script src="../assets/js/sidebar.js"></script>
@@ -169,7 +181,7 @@
         const isHoje = iso(d) === hojeISO;
         html += `<div class="cal-cell${isHoje ? ' today' : ''}" onclick="selDay(${d})" style="cursor:pointer;">
           <div class="c-day">${d}</div>
-          ${shown.map(e => `<span class="cal-ev" style="background:${(fisioById(e.fisio_id)||{cor:'#94A8A5'}).cor};${e.status==='falta'?'opacity:.5;text-decoration:line-through;':''}">${e.hora.slice(0,5)} ${nomeEv(e)}</span>`).join('')}
+          ${shown.map(e => `<span class="cal-ev" onclick="event.stopPropagation();selDay(${d});abrirEvento('${e.id}')" style="background:${(fisioById(e.fisio_id)||{cor:'#94A8A5'}).cor};${e.status==='falta'?'opacity:.5;text-decoration:line-through;':''}">${e.hora.slice(0,5)} ${nomeEv(e)}</span>`).join('')}
           ${extra > 0 ? `<span class="cal-more">+${extra} sessões</span>` : ''}
         </div>`;
       }
@@ -210,7 +222,7 @@
           <div class="dl-time">${e.hora.slice(0,5)}</div>
           <div class="dl-bar" style="background:${f ? f.cor : '#94A8A5'};"></div>
           <div style="flex:1;">
-            <div class="dl-title">${nomeEv(e)} ${badge}</div>
+            <div class="dl-title" style="cursor:pointer;" onclick="abrirEvento('${e.id}')" title="Ver detalhes">${nomeEv(e)} ${badge}</div>
             <div class="dl-sub">${e.tipo}${t ? ' · 🩺 ' + t.titulo : ''}${f ? ' · ' + f.nome : ''}${e.obs ? ' · ' + e.obs : ''}</div>
             ${e.status === 'agendada' ? `<div style="display:flex;gap:6px;margin-top:7px;align-items:center;">
               <button class="btn btn-soft btn-sm" onclick="mudarStatus('${e.id}','realizada')">✓ Realizada</button>
@@ -254,6 +266,44 @@
         await carregarMes();
       } catch (e) { App.toast(e.message, 'error'); }
       btn.disabled = false;
+    }
+
+    /* ---------- Detalhes do evento ---------- */
+    function abrirEvento(id) {
+      const e = EVENTOS.find(x => x.id === id);
+      if (!e) return;
+      const f = fisioById(e.fisio_id);
+      const pac = pacById(e.paciente_id);
+      const t = e.tratamento_id ? tratById(e.tratamento_id) : null;
+      const ST = {
+        agendada: '<span class="badge blue">Agendada</span>', realizada: '<span class="badge green">✓ Realizada</span>',
+        falta: '<span class="badge red">Falta</span>', cancelada: '<span class="badge gray">Cancelada</span>',
+      };
+      let cred = '';
+      if (pac && pac.sessoes_total > 0) {
+        const saldo = pac.sessoes_total - pac.sessoes_feitas;
+        cred = saldo > 0 ? `<span class="badge primary">🎫 ${saldo} crédito(s) — ${pac.pacote_nome}</span>` : '<span class="badge red">🎫 sem créditos</span>';
+      }
+      document.getElementById('evmTitulo').textContent = nomeEv(e);
+      const linha = (l, v) => v ? `<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid #EDF1F0;font-size:.87rem;">
+        <span style="min-width:110px;color:var(--text-soft);font-weight:600;font-size:.74rem;text-transform:uppercase;letter-spacing:.5px;padding-top:2px;">${l}</span><span style="flex:1;">${v}</span></div>` : '';
+      document.getElementById('evmBody').innerHTML =
+        linha('Status', `${ST[e.status] || e.status} ${cred}`) +
+        linha('Quando', `${PF.fmtData(e.data.slice(0,10))} às ${e.hora.slice(0,5)} · ${e.duracao || ''}`) +
+        linha('Tipo', e.tipo) +
+        linha('Paciente', pac ? pac.nome : null) +
+        linha('Ocorrência', t ? `🩺 ${t.titulo}${t.status === 'concluido' ? ' (concluída)' : ''}` : (pac ? '<span style="color:var(--text-soft);">sem vínculo</span>' : null)) +
+        linha('Fisioterapeuta', f ? f.nome : null) +
+        linha('Observações', e.obs);
+      const foot = [];
+      if (e.status === 'agendada') {
+        foot.push(`<button class="btn btn-soft" onclick="App.closeModal('mEvento');mudarStatus('${e.id}','realizada')">✓ Realizada</button>`);
+        foot.push(`<button class="btn btn-ghost" onclick="App.closeModal('mEvento');mudarStatus('${e.id}','falta')">Falta</button>`);
+      }
+      foot.push(`<button class="btn btn-danger" onclick="App.closeModal('mEvento');excluir('${e.id}')">🗑 Excluir</button>`);
+      if (pac) foot.push(`<button class="btn btn-primary" style="margin-left:auto;" onclick="location.href='prontuarios.html?p=${e.paciente_id}${e.tratamento_id ? '&t=' + e.tratamento_id : ''}&s=${e.id}'">📋 Registrar evolução no prontuário</button>`);
+      document.getElementById('evmFoot').innerHTML = foot.join('');
+      App.openModal('mEvento');
     }
 
     async function mudarStatus(id, status) {

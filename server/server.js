@@ -153,6 +153,7 @@ ALTER TABLE prescricoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES t
 ALTER TABLE sessoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
 ALTER TABLE tratamentos ADD COLUMN IF NOT EXISTS descricao text;
 ALTER TABLE anexos ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
+ALTER TABLE evolucoes ADD COLUMN IF NOT EXISTS sessao_id uuid REFERENCES sessoes(id) ON DELETE SET NULL;
 `;
 
 /* migração de dados: pacientes com histórico ganham um tratamento inicial */
@@ -404,7 +405,7 @@ const TABLES = {
   leads: ['nome', 'telefone', 'origem', 'interesse', 'obs', 'valor', 'fisio_id', 'col'],
   sessoes: ['paciente_id', 'tratamento_id', 'fisio_id', 'titulo', 'tipo', 'data', 'hora', 'duracao', 'obs', 'status'],
   tratamentos: ['paciente_id', 'titulo', 'regiao', 'descricao', 'fisio_id', 'status', 'inicio', 'alta', 'avaliacao'],
-  evolucoes: ['paciente_id', 'tratamento_id', 'fisio_id', 'data', 's', 'o', 'a', 'p', 'eva'],
+  evolucoes: ['paciente_id', 'tratamento_id', 'sessao_id', 'fisio_id', 'data', 's', 'o', 'a', 'p', 'eva'],
   exercicios: ['nome', 'cat', 'nivel', 'reps', 'emoji', 'instrucoes', 'video'],
   prescricoes: ['paciente_id', 'tratamento_id', 'itens', 'freq', 'duracao'],
   pacotes: ['nome', 'descricao', 'valor', 'sessoes', 'tipo'],

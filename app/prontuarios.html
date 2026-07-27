@@ -88,6 +88,7 @@
               <div class="field"><label>P — Plano</label><textarea id="evP" placeholder="Conduta para as próximas sessões..."></textarea></div>
               <div class="field"><label>EVA (dor 0–10)</label><input type="number" id="evEva" min="0" max="10" placeholder="Ex.: 4"></div>
               <div class="field"><label>Fisioterapeuta</label><select id="evFisio"></select></div>
+              <div class="field full"><label>Sessão vinculada (da agenda)</label><select id="evSessao"></select></div>
             </div>
             <div style="display:flex;justify-content:flex-end;margin-top:14px;">
               <button class="btn btn-primary" id="btnEv" onclick="salvarEvolucao()">Salvar evolução</button>
@@ -118,7 +119,7 @@
           <div class="card">
             <div class="card-header">
               <h3>Exercícios desta ocorrência</h3>
-              <a class="link" id="linkPrescrever" href="exercicios.html">Prescrever na biblioteca →</a>
+              <button class="btn btn-soft btn-sm" onclick="abrirPrescrever()">＋ Prescrever exercícios</button>
             </div>
             <div class="card-pad" id="presList"></div>
           </div>
@@ -170,6 +171,36 @@
       </div>
       <div class="modal-body" style="text-align:center;">
         <img id="fotoImg" style="max-width:100%;max-height:64vh;border-radius:10px;" alt="">
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PRESCREVER EXERCÍCIOS -->
+  <div class="modal-overlay" id="mPrescreverEx">
+    <div class="modal wide">
+      <div class="modal-head">
+        <h3>Prescrever exercícios <span id="prescTratTitulo" style="font-weight:500;font-size:.8rem;color:var(--text-soft);"></span></h3>
+        <button class="close" onclick="App.closeModal('mPrescreverEx')">×</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;">
+          <div id="prescCats" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+          <input type="text" id="prescBusca" placeholder="🔍 Buscar exercício..." style="margin-left:auto;padding:7px 12px;border:1px solid var(--line);border-radius:9px;font-size:.82rem;outline:none;min-width:180px;">
+        </div>
+        <div id="prescLista" style="max-height:280px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;"></div>
+        <div class="form-grid" style="margin-top:14px;">
+          <div class="field"><label>Frequência</label>
+            <select id="prescFreq"><option>Diária</option><option>2x ao dia</option><option>3x por semana</option><option>Dias de sessão</option></select>
+          </div>
+          <div class="field"><label>Duração do programa</label>
+            <select id="prescDur"><option>2 semanas</option><option>4 semanas</option><option>Até reavaliação</option></select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <a class="link" href="exercicios.html" style="margin-right:auto;font-size:.8rem;">Gerenciar biblioteca →</a>
+        <button class="btn btn-ghost" onclick="App.closeModal('mPrescreverEx')">Cancelar</button>
+        <button class="btn btn-primary" id="btnPresc" onclick="salvarPrescricaoModal()">Prescrever (0)</button>
       </div>
     </div>
   </div>
@@ -246,10 +277,11 @@
       }
       const url = new URLSearchParams(location.search);
       urlTrat = url.get('t');
+      urlSess = url.get('s');
       renderList();
       await selPac(PACS.find(p => p.id === url.get('p'))?.id || PACS[0].id);
     }
-    let urlTrat = null;
+    let urlTrat = null, urlSess = null, SESS_TRAT = [];
 
     function renderList(q = '') {
       document.getElementById('patList').innerHTML = PACS
@@ -338,7 +370,6 @@
       document.getElementById('evTratLabel').textContent = `→ ${t.titulo}`;
       document.getElementById('avTitulo').textContent = `Avaliação inicial — ${t.titulo}`;
       document.getElementById('cardNovaEv').style.display = t.status === 'ativo' ? '' : 'none';
-      document.getElementById('linkPrescrever').href = `exercicios.html?p=${sel}&t=${tratSel}`;
       if (t.fisio_id) document.getElementById('evFisio').value = t.fisio_id;
       const a = t.avaliacao || {};
       avHistoria.value = a.historia || ''; avExame.value = a.exame || '';
@@ -348,12 +379,24 @@
       descEl.style.display = t.descricao ? '' : 'none';
       descEl.innerHTML = t.descricao ? `📝 ${t.descricao.replace(/\n/g, '<br>')}` : '';
       document.getElementById('linkAgendar').href = `agenda.html?p=${sel}&t=${tratSel}`;
-      await Promise.all([carregarEvolucoes(), carregarPrescricoes(), carregarAnexos(), carregarSessoes()]);
+      await carregarSessoes(); // primeiro: evoluções e o select do SOAP dependem das sessões
+      await Promise.all([carregarEvolucoes(), carregarPrescricoes(), carregarAnexos()]);
     }
+
+    const fmtSessao = s => `${PF.fmtData(s.data.slice(0,10))} ${s.hora.slice(0,5)}`;
 
     /* ---------- Sessões da ocorrência ---------- */
     async function carregarSessoes() {
       const sess = await PF.get('sessoes', { tratamento_id: tratSel });
+      SESS_TRAT = sess;
+      // select do formulário SOAP: vincular evolução a uma sessão
+      const ST = { agendada: 'agendada', realizada: '✓ realizada', falta: 'falta', cancelada: 'cancelada' };
+      const ordenadas = [...sess].sort((a, b) => (b.data + b.hora).localeCompare(a.data + a.hora));
+      evSessao.innerHTML = '<option value="">— Sem vínculo com sessão —</option>' +
+        ordenadas.map(s => `<option value="${s.id}">${fmtSessao(s)} · ${s.tipo} · ${ST[s.status] || s.status}</option>`).join('');
+      const realizadas = ordenadas.filter(s => s.status === 'realizada');
+      if (urlSess && sess.some(s => s.id === urlSess)) { evSessao.value = urlSess; urlSess = null; }
+      else if (realizadas.length) evSessao.value = realizadas[0].id;
       const BADGE = {
         agendada: '<span class="badge blue">Agendada</span>', realizada: '<span class="badge green">✓ Realizada</span>',
         falta: '<span class="badge red">Falta</span>', cancelada: '<span class="badge gray">Cancelada</span>',
@@ -485,9 +528,10 @@
       const evs = await PF.get('evolucoes', { paciente_id: sel, tratamento_id: tratSel });
       document.getElementById('soapList').innerHTML = evs.map(e => {
         const f = FISIOS.find(x => x.id === e.fisio_id);
+        const se = e.sessao_id ? SESS_TRAT.find(x => x.id === e.sessao_id) : null;
         return `<div class="soap-block">
           <div class="sp-head">
-            <span class="sp-date">${PF.fmtData(e.data.slice(0,10))}${f ? ' · ' + f.nome : ''}</span>
+            <span class="sp-date">${PF.fmtData(e.data.slice(0,10))}${f ? ' · ' + f.nome : ''}${se ? ` · <span class="badge blue" style="font-size:.62rem;">🗓 sessão ${fmtSessao(se)}</span>` : ''}</span>
             <span>${e.eva != null ? `<span class="badge ${e.eva <= 3 ? 'green' : e.eva <= 6 ? 'amber' : 'red'}">EVA ${e.eva}</span>` : ''}
             <button style="background:none;border:none;color:var(--text-soft);font-size:.8rem;" title="Excluir" onclick="excluirEv('${e.id}')">✕</button></span>
           </div>
@@ -501,7 +545,8 @@
 
     async function salvarEvolucao() {
       const body = {
-        paciente_id: sel, tratamento_id: tratSel, fisio_id: evFisio.value || null,
+        paciente_id: sel, tratamento_id: tratSel, sessao_id: evSessao.value || null,
+        fisio_id: evFisio.value || null,
         s: evS.value.trim() || null, o: evO.value.trim() || null,
         a: evA.value.trim() || null, p: evP.value.trim() || null,
         eva: evEva.value === '' ? null : Number(evEva.value),
@@ -550,8 +595,62 @@
           </div>
           ${(pr.itens || []).map(i => `<div class="sp-row">💪 <b style="text-transform:none;letter-spacing:0;">${i.nome}</b> ${i.reps || ''}</div>`).join('')}
         </div>`).join('') ||
-        `<div class="empty">Nenhum exercício vinculado a esta ocorrência.<br><a href="exercicios.html?p=${sel}&t=${tratSel}" style="color:var(--primary);font-weight:600;">Prescrever na biblioteca →</a></div>`;
+        `<div class="empty">Nenhum exercício vinculado a esta ocorrência.<br><button class="btn btn-soft btn-sm" style="margin-top:10px;" onclick="abrirPrescrever()">＋ Prescrever exercícios</button></div>`;
     }
+
+    /* ---------- Modal de prescrição (biblioteca embutida) ---------- */
+    let EXS = null, prescCat = 'todos', prescQ = '';
+    const prescSel = new Set();
+    const CATS = [['todos','Todos'],['coluna','Coluna'],['joelho','Joelho'],['ombro','Ombro'],['quadril','Quadril'],['neuro','Neuro'],['pilates','Pilates']];
+
+    async function abrirPrescrever() {
+      if (!EXS) EXS = await PF.get('exercicios');
+      prescSel.clear(); prescQ = '';
+      const t = TRATS.find(x => x.id === tratSel);
+      // pré-filtra pela região da ocorrência quando bate com uma categoria
+      prescCat = EXS.some(e => e.cat === (t || {}).regiao) ? t.regiao : 'todos';
+      document.getElementById('prescTratTitulo').textContent = t ? `→ ${t.titulo}` : '';
+      document.getElementById('prescBusca').value = '';
+      renderPrescModal();
+      App.openModal('mPrescreverEx');
+    }
+
+    function renderPrescModal() {
+      const cats = document.getElementById('prescCats');
+      cats.innerHTML = CATS.map(([c, l]) =>
+        `<button class="chip${prescCat === c ? ' active' : ''}" style="font-size:.74rem;" onclick="prescCat='${c}';renderPrescModal()">${l}</button>`).join('');
+      const itens = EXS.filter(e => (prescCat === 'todos' || e.cat === prescCat) &&
+        e.nome.toLowerCase().includes(prescQ.toLowerCase()));
+      document.getElementById('prescLista').innerHTML = itens.map(e => {
+        const on = prescSel.has(e.id);
+        return `<div onclick="togglePresc('${e.id}')" style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid #EDF1F0;cursor:pointer;${on ? 'background:var(--primary-soft);' : ''}">
+          <input type="checkbox" ${on ? 'checked' : ''} style="pointer-events:none;accent-color:var(--primary);">
+          <span style="font-size:1.1rem;">${e.emoji || '💪'}</span>
+          <div style="flex:1;">
+            <div style="font-size:.85rem;font-weight:600;color:var(--ink);">${e.nome}</div>
+            <div style="font-size:.7rem;color:var(--text-soft);">${e.cat} · ${e.nivel}${e.reps ? ' · ' + e.reps : ''}</div>
+          </div>
+        </div>`;
+      }).join('') || '<div class="empty">Nenhum exercício encontrado.</div>';
+      document.getElementById('btnPresc').textContent = `Prescrever (${prescSel.size})`;
+    }
+
+    function togglePresc(id) { prescSel.has(id) ? prescSel.delete(id) : prescSel.add(id); renderPrescModal(); }
+
+    async function salvarPrescricaoModal() {
+      if (!prescSel.size) { App.toast('Selecione ao menos um exercício', 'error'); return; }
+      const btn = document.getElementById('btnPresc'); btn.disabled = true;
+      try {
+        const itens = [...prescSel].map(id => { const e = EXS.find(x => x.id === id); return { id: e.id, nome: e.nome, reps: e.reps }; });
+        await PF.post('prescricoes', { paciente_id: sel, tratamento_id: tratSel, itens, freq: prescFreq.value, duracao: prescDur.value });
+        App.closeModal('mPrescreverEx');
+        App.toast(`${itens.length} exercício(s) prescritos nesta ocorrência!`);
+        await carregarPrescricoes();
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false;
+    }
+
+    document.getElementById('prescBusca').addEventListener('input', e => { prescQ = e.target.value; renderPrescModal(); });
 
     async function excluirPres(id) {
       if (!confirm('Excluir esta prescrição?')) return;
