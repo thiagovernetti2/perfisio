@@ -115,6 +115,10 @@ CREATE TABLE IF NOT EXISTS convenios (
   nome text NOT NULL, valor_sessao numeric NOT NULL DEFAULT 0, ativo boolean NOT NULL DEFAULT true,
   criado_em timestamptz NOT NULL DEFAULT now()
 );
+-- evoluções de schema (idempotentes)
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS superadmin boolean NOT NULL DEFAULT false;
+ALTER TABLE usuarios ALTER COLUMN clinica_id DROP NOT NULL;
+ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS ativa boolean NOT NULL DEFAULT true;
 `;
 
 /* ============ SEED (por clínica nova) ============ */
@@ -148,7 +152,7 @@ async function seedClinica(client, cid) {
 const app = express();
 app.use(express.json({ limit: '1mb' }));
 
-const sign = u => jwt.sign({ uid: u.id, cid: u.clinica_id }, JWT_SECRET, { expiresIn: '30d' });
+const sign = u => jwt.sign({ uid: u.id, cid: u.clinica_id, sa: !!u.superadmin }, JWT_SECRET, { expiresIn: '30d' });
 
 function auth(req, res, next) {
   const h = req.headers.authorization || '';
@@ -187,17 +191,18 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   const { email, senha } = req.body || {};
   const r = await pool.query(
-    `SELECT u.*, c.nome AS clinica_nome FROM usuarios u JOIN clinicas c ON c.id = u.clinica_id WHERE u.email=$1`,
+    `SELECT u.*, c.nome AS clinica_nome, c.ativa AS clinica_ativa FROM usuarios u LEFT JOIN clinicas c ON c.id = u.clinica_id WHERE u.email=$1`,
     [(email || '').toLowerCase()]);
   const u = r.rows[0];
   if (!u || !bcrypt.compareSync(senha || '', u.senha_hash)) return res.status(401).json({ erro: 'E-mail ou senha inválidos' });
+  if (!u.superadmin && u.clinica_ativa === false) return res.status(403).json({ erro: 'Clínica desativada. Fale com o suporte do PerFisio.' });
   pool.query('UPDATE usuarios SET ultimo_acesso=now() WHERE id=$1', [u.id]).catch(() => {});
-  res.json({ token: sign(u), usuario: { id: u.id, clinica_id: u.clinica_id, nome: u.nome, email: u.email, perfil: u.perfil, clinica_nome: u.clinica_nome } });
+  res.json({ token: sign(u), usuario: { id: u.id, clinica_id: u.clinica_id, nome: u.nome, email: u.email, perfil: u.perfil, clinica_nome: u.clinica_nome, superadmin: u.superadmin } });
 });
 
 app.get('/api/me', auth, async (req, res) => {
   const r = await pool.query(
-    `SELECT u.id, u.clinica_id, u.nome, u.email, u.perfil, c.nome AS clinica_nome FROM usuarios u JOIN clinicas c ON c.id=u.clinica_id WHERE u.id=$1`,
+    `SELECT u.id, u.clinica_id, u.nome, u.email, u.perfil, u.superadmin, c.nome AS clinica_nome FROM usuarios u LEFT JOIN clinicas c ON c.id=u.clinica_id WHERE u.id=$1`,
     [req.auth.uid]);
   if (!r.rowCount) return res.status(401).json({ erro: 'Usuário não encontrado' });
   res.json(r.rows[0]);
@@ -333,10 +338,59 @@ app.post('/api/leads/:id/converter', auth, async (req, res) => {
   res.json({ paciente: p.rows[0] });
 });
 
+/* ---------- SUPERADMIN ---------- */
+function superauth(req, res, next) {
+  auth(req, res, () => {
+    if (!req.auth.sa) return res.status(403).json({ erro: 'Acesso restrito ao superadmin' });
+    next();
+  });
+}
+
+app.get('/api/admin/clinicas', superauth, async (req, res) => {
+  const r = await pool.query(`
+    SELECT c.id, c.nome, c.email, c.endereco, c.ativa, c.criado_em,
+      (c.perfil->>'visivel')::boolean AS visivel,
+      (SELECT count(*)::int FROM usuarios u WHERE u.clinica_id = c.id) AS usuarios,
+      (SELECT count(*)::int FROM pacientes p WHERE p.clinica_id = c.id) AS pacientes,
+      (SELECT count(*)::int FROM leads l WHERE l.clinica_id = c.id) AS leads,
+      (SELECT count(*)::int FROM sessoes s WHERE s.clinica_id = c.id AND s.data >= CURRENT_DATE - 30) AS sessoes_30d,
+      (SELECT coalesce(sum(pg.valor), 0)::numeric FROM pagamentos pg WHERE pg.clinica_id = c.id AND pg.status = 'pago') AS receita,
+      GREATEST(
+        (SELECT max(s.criado_em) FROM sessoes s WHERE s.clinica_id = c.id),
+        (SELECT max(u.ultimo_acesso) FROM usuarios u WHERE u.clinica_id = c.id)
+      ) AS ult_atividade
+    FROM clinicas c ORDER BY c.criado_em DESC`);
+  res.json(r.rows);
+});
+
+app.get('/api/admin/metricas', superauth, async (req, res) => {
+  const tot = (await pool.query(`SELECT
+    (SELECT count(*)::int FROM clinicas) AS clinicas,
+    (SELECT count(*)::int FROM clinicas WHERE ativa) AS clinicas_ativas,
+    (SELECT count(*)::int FROM clinicas WHERE (perfil->>'visivel')::boolean IS TRUE) AS no_diretorio,
+    (SELECT count(*)::int FROM pacientes) AS pacientes,
+    (SELECT count(*)::int FROM sessoes WHERE data >= CURRENT_DATE - 30) AS sessoes_30d,
+    (SELECT count(*)::int FROM leads WHERE origem = 'Site PerFisio') AS leads_site,
+    (SELECT coalesce(sum(valor), 0)::numeric FROM pagamentos WHERE status = 'pago') AS receita_total`)).rows[0];
+  const porMes = (await pool.query(`
+    SELECT to_char(date_trunc('month', criado_em), 'YYYY-MM') AS mes, count(*)::int AS novas
+    FROM clinicas WHERE criado_em >= date_trunc('month', now()) - interval '5 months'
+    GROUP BY 1 ORDER BY 1`)).rows;
+  res.json({ ...tot, clinicas_por_mes: porMes });
+});
+
+app.patch('/api/admin/clinicas/:id', superauth, async (req, res) => {
+  const { ativa } = req.body || {};
+  if (typeof ativa !== 'boolean') return res.status(400).json({ erro: 'Informe ativa: true/false' });
+  const r = await pool.query('UPDATE clinicas SET ativa=$2 WHERE id=$1 RETURNING id, nome, ativa', [req.params.id, ativa]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Clínica não encontrada' });
+  res.json(r.rows[0]);
+});
+
 /* ---------- ROTAS PÚBLICAS (diretório) ---------- */
 app.get('/api/public/perfis', async (req, res) => {
   const r = await pool.query(
-    `SELECT id, nome, endereco, perfil FROM clinicas WHERE (perfil->>'visivel')::boolean IS TRUE ORDER BY criado_em DESC LIMIT 24`);
+    `SELECT id, nome, endereco, perfil FROM clinicas WHERE (perfil->>'visivel')::boolean IS TRUE AND ativa ORDER BY criado_em DESC LIMIT 24`);
   res.json(r.rows);
 });
 app.post('/api/public/leads', async (req, res) => {
@@ -356,8 +410,28 @@ app.use(express.static(ROOT, { extensions: ['html'] }));
 app.use((req, res) => res.status(404).sendFile(path.join(ROOT, 'index.html')));
 
 /* ---------- BOOT ---------- */
+async function seedSuperadmin() {
+  const email = (process.env.SUPERADMIN_EMAIL || '').toLowerCase();
+  const senha = process.env.SUPERADMIN_PASSWORD;
+  if (!email || !senha) return;
+  const existe = await pool.query('SELECT id FROM usuarios WHERE email=$1', [email]);
+  if (existe.rowCount) {
+    // garante flag + senha sincronizada com a env (permite trocar a senha via variável)
+    await pool.query('UPDATE usuarios SET superadmin=true, senha_hash=$2 WHERE id=$1', [existe.rows[0].id, bcrypt.hashSync(senha, 10)]);
+  } else {
+    await pool.query(
+      'INSERT INTO usuarios (clinica_id, nome, email, senha_hash, perfil, superadmin) VALUES (NULL, $1, $2, $3, $4, true)',
+      ['Superadmin', email, bcrypt.hashSync(senha, 10), 'superadmin']);
+    console.log('✅ Superadmin criado:', email);
+  }
+}
+
 (async () => {
   if (!process.env.DATABASE_URL) console.warn('⚠️  DATABASE_URL não definida — a API vai falhar; o site estático continua servido.');
-  else { await pool.query(SCHEMA); console.log('✅ Schema verificado/migrado'); }
+  else {
+    await pool.query(SCHEMA);
+    await seedSuperadmin();
+    console.log('✅ Schema verificado/migrado');
+  }
   app.listen(PORT, () => console.log(`PerFisio rodando na porta ${PORT}`));
 })().catch(e => { console.error('Falha ao iniciar:', e); process.exit(1); });

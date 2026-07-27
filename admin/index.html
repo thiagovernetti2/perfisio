@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Superadmin — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/app.css">
+  <style>
+    body { background: var(--bg); }
+    .adm-topbar {
+      background: var(--ink); color: #fff; padding: 16px 5vw;
+      display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 50;
+    }
+    .adm-topbar .mark { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); display: grid; place-items: center; font-weight: 800; }
+    .adm-topbar .t-name { font-weight: 900; font-size: 1.05rem; }
+    .adm-topbar .t-sub { font-size: .68rem; color: #7C918F; text-transform: uppercase; letter-spacing: 1.4px; }
+    .adm-wrap { max-width: 1180px; margin: 0 auto; padding: 28px 5vw 60px; }
+    .adm-login { max-width: 400px; margin: 8vh auto; }
+    .badge.dark { background: #DCE5E3; color: var(--ink); }
+  </style>
+</head>
+<body>
+
+  <div class="adm-topbar">
+    <span class="mark">P</span>
+    <div>
+      <div class="t-name">PerFisio</div>
+      <div class="t-sub">Painel do Superadmin</div>
+    </div>
+    <div style="flex:1;"></div>
+    <span id="admUser" style="font-size:.84rem;color:#BFCDCB;"></span>
+    <button class="btn btn-soft btn-sm" id="btnSair" style="display:none;" onclick="sair()">Sair</button>
+  </div>
+
+  <!-- LOGIN -->
+  <div class="adm-login" id="loginBox" style="display:none;">
+    <div class="card card-pad">
+      <h2 style="font-size:1.3rem;font-weight:800;color:var(--ink);margin-bottom:4px;">Acesso restrito</h2>
+      <div style="font-size:.86rem;color:var(--text-soft);margin-bottom:20px;">Entre com a conta de superadmin do PerFisio.</div>
+      <div class="erro-box" id="erroBox" style="display:none;background:var(--red-soft);color:var(--red);border-radius:9px;padding:10px 14px;font-size:.85rem;font-weight:600;margin-bottom:14px;"></div>
+      <div class="field" style="margin-bottom:14px;"><label>E-mail</label><input type="email" id="loEmail"></div>
+      <div class="field" style="margin-bottom:18px;"><label>Senha</label><input type="password" id="loSenha" onkeydown="if(event.key==='Enter')entrar()"></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;" id="btnEntrar" onclick="entrar()">Entrar</button>
+    </div>
+  </div>
+
+  <!-- PAINEL -->
+  <div class="adm-wrap" id="painel" style="display:none;">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="s-top"><span class="s-label">Clínicas cadastradas</span><div class="s-ico" style="background:var(--primary-soft);">🏥</div></div>
+        <div class="s-value" id="mClinicas">—</div>
+        <div class="s-delta"><span class="muted" id="mClinicasSub"></span></div>
+      </div>
+      <div class="stat-card">
+        <div class="s-top"><span class="s-label">Pacientes na plataforma</span><div class="s-ico" style="background:var(--blue-soft);">👥</div></div>
+        <div class="s-value" id="mPacientes">—</div>
+        <div class="s-delta"><span class="muted" id="mPacientesSub"></span></div>
+      </div>
+      <div class="stat-card">
+        <div class="s-top"><span class="s-label">Sessões (30 dias)</span><div class="s-ico" style="background:var(--green-soft);">📅</div></div>
+        <div class="s-value" id="mSessoes">—</div>
+        <div class="s-delta"><span class="muted">em toda a plataforma</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="s-top"><span class="s-label">Receita registrada</span><div class="s-ico" style="background:var(--amber-soft);">💰</div></div>
+        <div class="s-value" id="mReceita">—</div>
+        <div class="s-delta"><span class="muted" id="mReceitaSub"></span></div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="grid-template-columns:1fr 320px;">
+      <div class="card">
+        <div class="card-header"><h3>Clínicas</h3><span style="font-size:.78rem;color:var(--text-soft);" id="clinCount"></span></div>
+        <div class="table-wrap" style="padding-top:8px;">
+          <table class="data">
+            <thead><tr><th>Clínica</th><th>Usuários</th><th>Pacientes</th><th>Sessões 30d</th><th>Receita</th><th>Diretório</th><th>Última atividade</th><th>Status</th><th></th></tr></thead>
+            <tbody id="clinRows"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card card-pad">
+        <h3 style="font-size:.98rem;margin-bottom:16px;">Novas clínicas por mês</h3>
+        <div class="bar-chart" id="chartNovas" style="height:150px;"></div>
+        <div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--line);">
+          <div style="font-size:.8rem;color:var(--text-soft);line-height:1.7;" id="resumoExtra"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/api.js"></script>
+  <script>
+    function erro(msg) {
+      const b = document.getElementById('erroBox');
+      b.textContent = msg; b.style.display = 'block';
+      setTimeout(() => b.style.display = 'none', 5000);
+    }
+
+    async function entrar() {
+      const btn = document.getElementById('btnEntrar');
+      btn.disabled = true; btn.textContent = 'Entrando...';
+      try {
+        const r = await PF.api('/api/auth/login', { method: 'POST', body: { email: loEmail.value.trim(), senha: loSenha.value } });
+        if (!r.usuario.superadmin) { erro('Esta conta não é superadmin.'); btn.disabled = false; btn.textContent = 'Entrar'; return; }
+        PF.setSession(r.token, r.usuario);
+        boot();
+      } catch (e) { erro(e.message); btn.disabled = false; btn.textContent = 'Entrar'; }
+    }
+
+    function sair() {
+      localStorage.removeItem('pf_token'); localStorage.removeItem('pf_user');
+      location.reload();
+    }
+
+    function fmtDataHora(iso) {
+      return iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+    }
+
+    async function boot() {
+      let me = null;
+      if (PF.token()) { try { me = await PF.api('/api/me'); } catch (e) { /* token inválido */ } }
+      if (!me || !me.superadmin) {
+        document.getElementById('loginBox').style.display = '';
+        document.getElementById('painel').style.display = 'none';
+        return;
+      }
+      document.getElementById('loginBox').style.display = 'none';
+      document.getElementById('painel').style.display = '';
+      document.getElementById('btnSair').style.display = '';
+      document.getElementById('admUser').textContent = me.email;
+      await carregar();
+    }
+
+    async function carregar() {
+      const [m, clinicas] = await Promise.all([
+        PF.api('/api/admin/metricas'), PF.api('/api/admin/clinicas'),
+      ]);
+
+      document.getElementById('mClinicas').textContent = m.clinicas;
+      document.getElementById('mClinicasSub').textContent = `${m.clinicas_ativas} ativas · ${m.no_diretorio} no diretório`;
+      document.getElementById('mPacientes').textContent = m.pacientes;
+      document.getElementById('mPacientesSub').textContent = `${m.leads_site} leads vieram do site`;
+      document.getElementById('mSessoes').textContent = m.sessoes_30d;
+      document.getElementById('mReceita').textContent = App.money(Number(m.receita_total));
+      document.getElementById('mReceitaSub').textContent = 'somando todas as clínicas';
+
+      /* gráfico novas clínicas */
+      const agora = new Date();
+      const meses = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+        meses.push({ key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, label: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][d.getMonth()] });
+      }
+      const vals = meses.map(mm => (m.clinicas_por_mes.find(x => x.mes === mm.key) || {}).novas || 0);
+      const max = Math.max(...vals, 1);
+      document.getElementById('chartNovas').innerHTML = vals.map((v, i) => `
+        <div class="bc-item">
+          <span class="bc-val">${v}</span>
+          <div class="bc-bar${i === 5 ? '' : ' muted'}" style="height:${Math.max(Math.round(v / max * 100), 3)}%;"></div>
+          <span class="bc-label">${meses[i].label}</span>
+        </div>`).join('');
+
+      document.getElementById('resumoExtra').innerHTML =
+        `💡 <b style="color:var(--ink);">${m.no_diretorio}</b> clínica(s) visíveis no diretório público geram leads pelo site.<br>
+         Clínicas desativadas não conseguem fazer login e saem do diretório.`;
+
+      /* tabela */
+      document.getElementById('clinCount').textContent = clinicas.length + ' no total';
+      const CORES = ['#0DA189','#2D7DD2','#7C5CBF','#D9820B','#D64545','#1E9E6A'];
+      document.getElementById('clinRows').innerHTML = clinicas.map((c, i) => `
+        <tr>
+          <td><div class="cell-person"><span class="avatar-sm" style="background:${CORES[i % 6]};">${App.iniciais(c.nome)}</span>
+            <div><div class="p-name">${c.nome}</div><div class="p-sub">${c.email || ''}${c.endereco ? ' · ' + c.endereco : ''}</div></div></div></td>
+          <td>${c.usuarios}</td>
+          <td>${c.pacientes}</td>
+          <td>${c.sessoes_30d}</td>
+          <td style="font-weight:700;">${App.money(Number(c.receita))}</td>
+          <td>${c.visivel ? '<span class="badge green">Visível</span>' : '<span class="badge gray">Oculto</span>'}</td>
+          <td style="font-size:.78rem;">${fmtDataHora(c.ult_atividade)}</td>
+          <td>${c.ativa ? '<span class="badge green">Ativa</span>' : '<span class="badge red">Desativada</span>'}</td>
+          <td>
+            ${c.ativa
+              ? `<button class="btn btn-danger btn-sm" onclick="mudar('${c.id}', false, '${c.nome.replace(/'/g, '')}')">Desativar</button>`
+              : `<button class="btn btn-soft btn-sm" onclick="mudar('${c.id}', true, '${c.nome.replace(/'/g, '')}')">Reativar</button>`}
+          </td>
+        </tr>`).join('') || '<tr><td colspan="9" class="empty">Nenhuma clínica cadastrada ainda.</td></tr>';
+    }
+
+    async function mudar(id, ativa, nome) {
+      if (!ativa && !confirm(`Desativar "${nome}"? Os usuários da clínica não conseguirão mais entrar e ela sai do diretório.`)) return;
+      try {
+        await PF.api(`/api/admin/clinicas/${id}`, { method: 'PATCH', body: { ativa } });
+        App.toast(ativa ? `${nome} reativada` : `${nome} desativada`);
+        await carregar();
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    boot();
+  </script>
+</body>
+</html>
