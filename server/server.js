@@ -151,6 +151,8 @@ ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS ativa boolean NOT NULL DEFAULT tru
 ALTER TABLE evolucoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
 ALTER TABLE prescricoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
 ALTER TABLE sessoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
+ALTER TABLE tratamentos ADD COLUMN IF NOT EXISTS descricao text;
+ALTER TABLE anexos ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
 `;
 
 /* migração de dados: pacientes com histórico ganham um tratamento inicial */
@@ -301,13 +303,13 @@ const MIMES_OK = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'applic
 app.get('/api/anexos', auth, async (req, res) => {
   if (!req.query.paciente_id) return res.status(400).json({ erro: 'Informe paciente_id' });
   const r = await pool.query(
-    'SELECT id, paciente_id, nome, mime, tamanho, criado_em FROM anexos WHERE clinica_id=$1 AND paciente_id=$2 ORDER BY criado_em DESC',
+    'SELECT id, paciente_id, tratamento_id, nome, mime, tamanho, criado_em FROM anexos WHERE clinica_id=$1 AND paciente_id=$2 ORDER BY criado_em DESC',
     [req.auth.cid, req.query.paciente_id]);
   res.json(r.rows);
 });
 
 app.post('/api/anexos', auth, async (req, res) => {
-  const { paciente_id, nome, mime, dados } = req.body || {};
+  const { paciente_id, tratamento_id, nome, mime, dados } = req.body || {};
   if (!paciente_id || !nome || !mime || !dados) return res.status(400).json({ erro: 'Dados incompletos' });
   if (!MIMES_OK.includes(mime)) return res.status(400).json({ erro: 'Formato não suportado (use JPG, PNG, WebP ou PDF)' });
   const buf = Buffer.from(dados, 'base64');
@@ -315,8 +317,8 @@ app.post('/api/anexos', auth, async (req, res) => {
   const pac = await pool.query('SELECT 1 FROM pacientes WHERE id=$1 AND clinica_id=$2', [paciente_id, req.auth.cid]);
   if (!pac.rowCount) return res.status(404).json({ erro: 'Paciente não encontrado' });
   const r = await pool.query(
-    'INSERT INTO anexos (clinica_id, paciente_id, nome, mime, tamanho, dados) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, nome, mime, tamanho, criado_em',
-    [req.auth.cid, paciente_id, nome, mime, buf.length, buf]);
+    'INSERT INTO anexos (clinica_id, paciente_id, tratamento_id, nome, mime, tamanho, dados) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, nome, mime, tamanho, criado_em',
+    [req.auth.cid, paciente_id, tratamento_id || null, nome, mime, buf.length, buf]);
   res.json(r.rows[0]);
 });
 
@@ -401,7 +403,7 @@ const TABLES = {
   pacientes: ['nome', 'nascimento', 'cpf', 'telefone', 'email', 'convenio', 'queixa', 'obs', 'fisio_id', 'status', 'pacote_nome', 'sessoes_total', 'sessoes_feitas', 'avaliacao'],
   leads: ['nome', 'telefone', 'origem', 'interesse', 'obs', 'valor', 'fisio_id', 'col'],
   sessoes: ['paciente_id', 'tratamento_id', 'fisio_id', 'titulo', 'tipo', 'data', 'hora', 'duracao', 'obs', 'status'],
-  tratamentos: ['paciente_id', 'titulo', 'regiao', 'fisio_id', 'status', 'inicio', 'alta', 'avaliacao'],
+  tratamentos: ['paciente_id', 'titulo', 'regiao', 'descricao', 'fisio_id', 'status', 'inicio', 'alta', 'avaliacao'],
   evolucoes: ['paciente_id', 'tratamento_id', 'fisio_id', 'data', 's', 'o', 'a', 'p', 'eva'],
   exercicios: ['nome', 'cat', 'nivel', 'reps', 'emoji', 'instrucoes', 'video'],
   prescricoes: ['paciente_id', 'tratamento_id', 'itens', 'freq', 'duracao'],
@@ -480,7 +482,13 @@ app.patch('/api/sessoes/:id/status', auth, async (req, res) => {
     await pool.query('UPDATE pacientes SET sessoes_feitas = sessoes_feitas + 1 WHERE id=$1', [s.paciente_id]);
   if (s.paciente_id && s.status === 'realizada' && status !== 'realizada')
     await pool.query('UPDATE pacientes SET sessoes_feitas = GREATEST(sessoes_feitas - 1, 0) WHERE id=$1', [s.paciente_id]);
-  res.json(r.rows[0]);
+  // devolve o saldo de créditos do pacote (agenda ↔ financeiro)
+  let creditos = null;
+  if (s.paciente_id) {
+    const p = (await pool.query('SELECT nome, pacote_nome, sessoes_total, sessoes_feitas FROM pacientes WHERE id=$1', [s.paciente_id])).rows[0];
+    if (p) creditos = { pacote: p.pacote_nome, total: p.sessoes_total, usadas: p.sessoes_feitas, saldo: p.sessoes_total - p.sessoes_feitas };
+  }
+  res.json({ ...r.rows[0], creditos });
 });
 
 // converter lead em paciente

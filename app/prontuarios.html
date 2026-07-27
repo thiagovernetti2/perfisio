@@ -52,6 +52,7 @@
       <div class="trat-bar" id="tratBar"></div>
 
       <div id="tratConteudo" style="display:none;">
+        <div id="tratDescricao" class="card card-pad" style="display:none;margin-bottom:16px;padding:14px 18px;font-size:.86rem;color:var(--text);line-height:1.55;border-left:4px solid var(--primary);"></div>
         <div class="tabs" id="pTabs" data-auto>
           <button class="tab active" data-tab="evolucoes">Evoluções</button>
           <button class="tab" data-tab="sessoes">Sessões</button>
@@ -100,6 +101,7 @@
           <div class="card card-pad">
             <h3 style="font-size:.95rem;margin-bottom:14px;" id="avTitulo">Avaliação inicial da ocorrência</h3>
             <div class="form-grid">
+              <div class="field full"><label>Descrição / contexto da ocorrência</label><textarea id="avDescricao" style="min-height:90px;" placeholder="História da ocorrência: como começou, exames, cirurgias, objetivo do paciente..."></textarea></div>
               <div class="field full"><label>Queixa principal e história</label><textarea id="avHistoria" style="min-height:90px;" placeholder="Queixa, início dos sintomas, exames, histórico..."></textarea></div>
               <div class="field full"><label>Exame físico</label><textarea id="avExame" style="min-height:90px;" placeholder="ADM, força, testes especiais, postura..."></textarea></div>
               <div class="field full"><label>Diagnóstico cinético-funcional</label><textarea id="avDiag" placeholder="Ex.: lombalgia mecânica crônica com déficit de estabilização..."></textarea></div>
@@ -199,8 +201,19 @@
         </div>
         <div class="form-grid">
           <div class="field full"><label>Título da ocorrência *</label><input type="text" id="tTitulo" placeholder="Ex.: Joelho direito — pós-operatório de LCA"></div>
+          <div class="field full"><label>Descrição / contexto da ocorrência</label>
+            <textarea id="tDescricao" style="min-height:110px;" placeholder="Conte a história: como começou, há quanto tempo, o que piora/melhora, cirurgias, exames já feitos, medicamentos, objetivo do paciente..."></textarea>
+          </div>
           <div class="field"><label>Fisioterapeuta responsável</label><select id="tFisio"></select></div>
           <div class="field"><label>Data de início</label><input type="date" id="tInicio"></div>
+          <div class="field full">
+            <label>Fotos e exames (JPG, PNG, WebP ou PDF · até 8 MB cada)</label>
+            <label class="btn btn-soft btn-sm" style="cursor:pointer;">
+              📎 Anexar arquivos
+              <input type="file" id="tAnexos" accept="image/jpeg,image/png,image/webp,application/pdf" multiple style="display:none;">
+            </label>
+            <div id="tAnexosLista" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
+          </div>
         </div>
       </div>
       <div class="modal-foot">
@@ -330,6 +343,10 @@
       const a = t.avaliacao || {};
       avHistoria.value = a.historia || ''; avExame.value = a.exame || '';
       avDiag.value = a.diagnostico || ''; avPlano.value = a.plano || '';
+      avDescricao.value = t.descricao || '';
+      const descEl = document.getElementById('tratDescricao');
+      descEl.style.display = t.descricao ? '' : 'none';
+      descEl.innerHTML = t.descricao ? `📝 ${t.descricao.replace(/\n/g, '<br>')}` : '';
       document.getElementById('linkAgendar').href = `agenda.html?p=${sel}&t=${tratSel}`;
       await Promise.all([carregarEvolucoes(), carregarPrescricoes(), carregarAnexos(), carregarSessoes()]);
     }
@@ -379,9 +396,13 @@
       App.toast('Título preenchido — ajuste o lado (D/E) se precisar', 'info');
     }
 
+    let arquivosNovaOcorrencia = [];
+
     function abrirNovoTrat() {
-      tTitulo.value = ''; tInicio.value = PF.hojeISO();
+      tTitulo.value = ''; tDescricao.value = ''; tInicio.value = PF.hojeISO();
       tRegiao.value = 'outro';
+      arquivosNovaOcorrencia = [];
+      renderListaAnexosModal();
       document.getElementById('bmRegiaoLabel').textContent = 'Selecione uma região';
       document.getElementById('bmCondicoes').innerHTML = '';
       document.getElementById('bmDica').style.display = '';
@@ -391,19 +412,62 @@
       App.openModal('mTrat');
     }
 
+    function renderListaAnexosModal() {
+      document.getElementById('tAnexosLista').innerHTML = arquivosNovaOcorrencia.map((f, i) => {
+        const kb = f.size > 1048576 ? (f.size / 1048576).toFixed(1) + ' MB' : Math.round(f.size / 1024) + ' KB';
+        return `<span class="chip" style="font-size:.74rem;cursor:default;">
+          ${f.type === 'application/pdf' ? '📄' : '🖼'} ${f.name} <span style="font-weight:400;color:var(--text-soft);">${kb}</span>
+          <button style="background:none;border:none;color:var(--text-soft);cursor:pointer;padding:0 0 0 4px;" title="Remover" onclick="removerAnexoModal(${i})">✕</button>
+        </span>`;
+      }).join('');
+    }
+
+    function removerAnexoModal(i) {
+      arquivosNovaOcorrencia.splice(i, 1);
+      renderListaAnexosModal();
+    }
+
+    document.getElementById('tAnexos').addEventListener('change', e => {
+      for (const f of e.target.files) {
+        if (f.size > 8 * 1024 * 1024) { App.toast(`${f.name} passa de 8 MB`, 'error'); continue; }
+        arquivosNovaOcorrencia.push(f);
+      }
+      e.target.value = '';
+      renderListaAnexosModal();
+    });
+
+    const lerBase64 = f => new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result.split(',')[1]);
+      r.onerror = rej;
+      r.readAsDataURL(f);
+    });
+
     async function salvarTrat() {
       if (!tTitulo.value.trim()) { App.toast('Dê um título à ocorrência', 'error'); return; }
       const btn = document.getElementById('btnTrat'); btn.disabled = true;
       try {
         const t = await PF.post('tratamentos', {
           paciente_id: sel, titulo: tTitulo.value.trim(), regiao: tRegiao.value,
+          descricao: tDescricao.value.trim() || null,
           fisio_id: tFisio.value || null, inicio: tInicio.value || PF.hojeISO(), status: 'ativo',
         });
+        // sobe os anexos vinculados à ocorrência
+        let enviados = 0;
+        for (const f of arquivosNovaOcorrencia) {
+          btn.textContent = `Enviando ${f.name}…`;
+          try {
+            const b64 = await lerBase64(f);
+            await PF.post('anexos', { paciente_id: sel, tratamento_id: t.id, nome: f.name, mime: f.type, dados: b64 });
+            enviados++;
+          } catch (err) { App.toast(`Falha ao enviar ${f.name}: ${err.message}`, 'error'); }
+        }
         App.closeModal('mTrat');
-        App.toast('Ocorrência aberta! Registre a avaliação inicial.');
+        App.toast(`Ocorrência aberta${enviados ? ` com ${enviados} anexo(s)` : ''}! Registre a avaliação inicial.`);
         await carregarTrats(t.id);
       } catch (e) { App.toast(e.message, 'error'); }
       btn.disabled = false;
+      btn.textContent = 'Abrir ocorrência';
     }
 
     async function darAlta() {
@@ -464,8 +528,13 @@
     async function salvarAvaliacao() {
       try {
         const avaliacao = { historia: avHistoria.value.trim(), exame: avExame.value.trim(), diagnostico: avDiag.value.trim(), plano: avPlano.value.trim() };
-        await PF.put('tratamentos', tratSel, { avaliacao });
-        const t = TRATS.find(x => x.id === tratSel); if (t) t.avaliacao = avaliacao;
+        const descricao = avDescricao.value.trim() || null;
+        await PF.put('tratamentos', tratSel, { avaliacao, descricao });
+        const t = TRATS.find(x => x.id === tratSel);
+        if (t) { t.avaliacao = avaliacao; t.descricao = descricao; }
+        const descEl = document.getElementById('tratDescricao');
+        descEl.style.display = descricao ? '' : 'none';
+        descEl.innerHTML = descricao ? `📝 ${descricao.replace(/\n/g, '<br>')}` : '';
         App.toast('Avaliação salva na ocorrência!');
       } catch (e) { App.toast(e.message, 'error'); }
     }
@@ -507,6 +576,8 @@
           </div>
           <div style="padding:10px 12px;">
             <div style="font-size:.78rem;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${a.nome}">${a.nome}</div>
+            ${a.tratamento_id && TRATS.find(t => t.id === a.tratamento_id)
+              ? `<div style="margin-top:3px;"><span class="badge ${a.tratamento_id === tratSel ? 'primary' : 'gray'}" style="font-size:.62rem;">🩺 ${TRATS.find(t => t.id === a.tratamento_id).titulo.slice(0, 26)}</span></div>` : ''}
             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
               <span style="font-size:.68rem;color:var(--text-soft);">${PF.fmtData(a.criado_em.slice(0,10))} · ${kb}</span>
               <button style="background:none;border:none;color:var(--text-soft);font-size:.8rem;cursor:pointer;" title="Excluir" onclick="excluirAnexo('${a.id}')">🗑</button>
@@ -544,7 +615,7 @@
             r.onerror = rej;
             r.readAsDataURL(f);
           });
-          await PF.post('anexos', { paciente_id: sel, nome: f.name, mime: f.type, dados: b64 });
+          await PF.post('anexos', { paciente_id: sel, tratamento_id: tratSel, nome: f.name, mime: f.type, dados: b64 });
           ok++;
         } catch (err) { App.toast(err.message, 'error'); }
       }

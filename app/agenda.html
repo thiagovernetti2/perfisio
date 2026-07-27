@@ -191,8 +191,18 @@
       list.innerHTML = evs.map(e => {
         const f = fisioById(e.fisio_id);
         const t = e.tratamento_id ? tratById(e.tratamento_id) : null;
+        const pac = pacById(e.paciente_id);
+        let credBadge = '';
+        if (pac && pac.sessoes_total > 0) {
+          const saldo = pac.sessoes_total - pac.sessoes_feitas;
+          credBadge = saldo > 0
+            ? `<span class="badge primary" title="${pac.pacote_nome || 'Pacote'}: ${pac.sessoes_feitas}/${pac.sessoes_total} usadas">🎫 ${saldo} crédito(s)</span>`
+            : `<span class="badge red" title="Pacote esgotado — renovar no financeiro">🎫 sem créditos</span>`;
+        } else if (pac) {
+          credBadge = `<span class="badge gray" title="Paciente sem pacote — sessão avulsa">sem pacote</span>`;
+        }
         const badge = e.status === 'realizada' ? '<span class="badge green">✓ realizada</span>'
-          : e.status === 'falta' ? '<span class="badge red">falta</span>' : '';
+          : e.status === 'falta' ? '<span class="badge red">falta</span>' : credBadge;
         const linkPront = e.paciente_id
           ? `<a href="prontuarios.html?p=${e.paciente_id}${e.tratamento_id ? '&t=' + e.tratamento_id : ''}" style="color:var(--primary);font-weight:600;font-size:.74rem;">📋 ${e.status === 'realizada' ? 'registrar evolução' : 'prontuário'} →</a>`
           : '';
@@ -248,8 +258,16 @@
 
     async function mudarStatus(id, status) {
       try {
-        await PF.api(`/api/sessoes/${id}/status`, { method: 'PATCH', body: { status } });
-        App.toast(status === 'realizada' ? 'Sessão realizada — contagem do paciente atualizada' : 'Falta registrada');
+        const r = await PF.api(`/api/sessoes/${id}/status`, { method: 'PATCH', body: { status } });
+        const c = r.creditos;
+        if (status === 'realizada' && c && c.total > 0) {
+          if (c.saldo >= 0) App.toast(`Sessão paga com crédito do pacote 🎫 — saldo: ${c.saldo} de ${c.total}`);
+          if (c.saldo <= 0) setTimeout(() => App.toast(
+            c.saldo < 0 ? 'Paciente está além do pacote — cobre avulsa ou renove no Financeiro' : 'Pacote chegou ao fim — proponha a renovação no Financeiro', 'info'), 700);
+        } else {
+          App.toast(status === 'realizada' ? 'Sessão realizada (sem pacote — considere cobrança avulsa)' : 'Falta registrada');
+        }
+        PACS = await PF.get('pacientes'); // atualiza saldos nos badges
         await carregarMes();
       } catch (e) { App.toast(e.message, 'error'); }
     }

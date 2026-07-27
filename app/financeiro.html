@@ -94,6 +94,10 @@
             <select id="pgStatus"><option value="pago">Pago (recebido agora)</option><option value="aberto">Em aberto (a receber)</option><option value="agendado">Agendado</option></select>
           </div>
           <div class="field full"><label>Descrição</label><input type="text" id="pgDesc" placeholder="Ex.: Pacote 10 sessões · parcela 1/2"></div>
+          <div class="check-row full" id="pgCreditarWrap" style="display:none;background:var(--primary-soft);border-radius:9px;padding:10px 12px;">
+            <input type="checkbox" checked id="pgCreditar">
+            <label for="pgCreditar" style="margin:0;font-weight:500;" id="pgCreditarLabel">Creditar sessões ao paciente</label>
+          </div>
         </div>
       </div>
       <div class="modal-foot">
@@ -167,10 +171,8 @@
         PACS.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
       document.getElementById('pgPacote').innerHTML = '<option value="">— Livre —</option>' +
         PACOTES.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
-      document.getElementById('pgPacote').addEventListener('change', e => {
-        const p = PACOTES.find(x => x.id === e.target.value);
-        if (p) { pgValor.value = Number(p.valor); pgDesc.value = p.nome; }
-      });
+      document.getElementById('pgPacote').addEventListener('change', atualizarCreditar);
+      document.getElementById('pgPaciente').addEventListener('change', atualizarCreditar);
       renderTudo();
     }
 
@@ -250,10 +252,26 @@
     }
 
     /* ---- ações ---- */
+    function atualizarCreditar() {
+      const p = PACOTES.find(x => x.id === pgPacote.value);
+      if (p) { pgValor.value = Number(p.valor); pgDesc.value = p.nome; }
+      const pac = PACS.find(x => x.id === pgPaciente.value);
+      const wrap = document.getElementById('pgCreditarWrap');
+      if (p && pac && p.sessoes > 0) {
+        wrap.style.display = '';
+        const saldo = (pac.sessoes_total || 0) - (pac.sessoes_feitas || 0);
+        document.getElementById('pgCreditarLabel').innerHTML =
+          `Creditar <b>${p.sessoes} sessão(ões)</b> a ${pac.nome.split(' ')[0]} <span style="color:var(--text-soft);font-weight:400;">(saldo atual: ${saldo})</span> — as sessões da agenda consomem esses créditos no check-in`;
+      } else wrap.style.display = 'none';
+    }
+
     function abrirPagamento() {
       pgValor.value = ''; pgDesc.value = ''; pgVenc.value = hoje; pgStatus.value = 'pago';
+      document.getElementById('pgCreditarWrap').style.display = 'none';
+      pgCreditar.checked = true;
       App.openModal('mPagamento');
     }
+
     async function salvarPagamento() {
       if (!Number(pgValor.value)) { App.toast('Informe o valor', 'error'); return; }
       const btn = document.getElementById('btnPg'); btn.disabled = true;
@@ -263,8 +281,18 @@
           forma: pgForma.value, vencimento: pgVenc.value || null,
           valor: Number(pgValor.value), status: pgStatus.value,
         });
+        // credita as sessões do pacote ao paciente (agenda consome no check-in)
+        const p = PACOTES.find(x => x.id === pgPacote.value);
+        const pac = PACS.find(x => x.id === pgPaciente.value);
+        if (p && pac && p.sessoes > 0 && pgCreditar.checked && document.getElementById('pgCreditarWrap').style.display !== 'none') {
+          const novoTotal = (pac.sessoes_total || 0) + p.sessoes;
+          await PF.put('pacientes', pac.id, { pacote_nome: p.nome, sessoes_total: novoTotal });
+          pac.sessoes_total = novoTotal; pac.pacote_nome = p.nome;
+          App.toast(`${p.sessoes} sessão(ões) creditadas a ${pac.nome.split(' ')[0]} — saldo: ${novoTotal - (pac.sessoes_feitas || 0)} 🎫`);
+        } else {
+          App.toast('Cobrança registrada!');
+        }
         App.closeModal('mPagamento');
-        App.toast('Cobrança registrada!');
         PAGS = await PF.get('pagamentos'); renderTudo();
       } catch (e) { App.toast(e.message, 'error'); }
       btn.disabled = false;
