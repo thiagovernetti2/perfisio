@@ -10,7 +10,12 @@
 <body data-page="pacientes" data-title="Pacientes" data-subtitle="Cadastro e acompanhamento de todos os pacientes da clínica">
 
   <div class="page-head">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;" id="filterChips"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;flex:1;">
+      <div style="display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:8px 12px;min-width:240px;">
+        🔍 <input id="buscaPac" type="text" placeholder="Buscar por nome, telefone ou queixa..." style="border:none;background:none;outline:none;width:100%;font-size:.85rem;">
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;" id="filterChips"></div>
+    </div>
     <button class="btn btn-primary" onclick="abrirNovo()">+ Novo paciente</button>
   </div>
 
@@ -66,7 +71,7 @@
   <script>
     let FISIOS = [], PACOTES = [], PACS = [];
     let filtro = 'todos', editId = null;
-    const busca = new URLSearchParams(location.search).get('q') || '';
+    let busca = new URLSearchParams(location.search).get('q') || '';
     const CORES = ['#0DA189','#2D7DD2','#7C5CBF','#D9820B','#D64545','#1E9E6A'];
     const STATUS = { tratamento:'<span class="badge green">Em tratamento</span>', avaliacao:'<span class="badge blue">Avaliação</span>', alta:'<span class="badge purple">Alta</span>', inativo:'<span class="badge gray">Inativo</span>' };
 
@@ -91,7 +96,13 @@
     function render() {
       chips();
       let rows = PACS.filter(p => filtro === 'todos' || p.status === filtro);
-      if (busca) rows = rows.filter(p => p.nome.toLowerCase().includes(busca.toLowerCase()));
+      if (busca) {
+        const q = busca.toLowerCase();
+        rows = rows.filter(p => p.nome.toLowerCase().includes(q)
+          || (p.telefone || '').toLowerCase().includes(q)
+          || (p.queixa || '').toLowerCase().includes(q)
+          || (p.convenio || '').toLowerCase().includes(q));
+      }
       document.getElementById('patRows').innerHTML = rows.map((p, i) => {
         const f = FISIOS.find(x => x.id === p.fisio_id);
         const pct = p.sessoes_total ? Math.min(Math.round(p.sessoes_feitas / p.sessoes_total * 100), 100) : 0;
@@ -166,6 +177,10 @@
         render();
       } catch (e) { App.toast(e.message, 'error'); }
     }
+
+    const buscaInput = document.getElementById('buscaPac');
+    buscaInput.value = busca;
+    buscaInput.addEventListener('input', e => { busca = e.target.value.trim(); render(); });
 
     boot().catch(e => App.toast(e.message, 'error'));
   </script>

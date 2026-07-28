@@ -6,15 +6,34 @@
   <title>Agenda — PerFisio</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../assets/css/app.css">
+  <style>
+    /* grade horária (vistas semana/dia) */
+    .tg-wrap { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: auto; box-shadow: var(--shadow); max-height: calc(100vh - 210px); }
+    .tg { display: grid; min-width: 560px; }
+    .tg-corner, .tg-head { position: sticky; top: 0; background: #F9FBFA; border-bottom: 1px solid var(--line); z-index: 2; }
+    .tg-head { padding: 9px 6px; text-align: center; font-size: .72rem; font-weight: 600; color: var(--text-soft); border-left: 1px solid #EDF1F0; cursor: pointer; }
+    .tg-head b { display: block; font-size: .95rem; color: var(--ink); }
+    .tg-head.today { background: var(--primary-soft); }
+    .tg-head.today b { color: var(--primary-dark); }
+    .tg-hora { padding: 6px 8px; font-size: .68rem; font-weight: 700; color: var(--text-soft); text-align: right; border-bottom: 1px solid #F0F4F3; }
+    .tg-cell { border-left: 1px solid #EDF1F0; border-bottom: 1px solid #F0F4F3; min-height: 40px; padding: 3px 4px; cursor: pointer; transition: background .12s; }
+    .tg-cell:hover { background: var(--primary-soft); }
+  </style>
 </head>
 <body data-page="agenda" data-title="Agenda" data-subtitle="Sessões, avaliações e turmas da clínica">
 
   <div class="cal-toolbar">
     <div class="cal-nav">
-      <button onclick="mudarMes(-1)">‹</button>
-      <button onclick="mudarMes(1)">›</button>
+      <button onclick="mudarPeriodo(-1)">‹</button>
+      <button onclick="mudarPeriodo(1)">›</button>
+      <button onclick="irHoje()" style="width:auto;padding:0 12px;font-size:.78rem;font-weight:600;">Hoje</button>
     </div>
     <div class="cal-month" id="calMonth"></div>
+    <div style="display:flex;gap:4px;" id="vistaChips">
+      <button class="chip active" data-v="mes">Mês</button>
+      <button class="chip" data-v="semana">Semana</button>
+      <button class="chip" data-v="dia">Dia</button>
+    </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;" id="fisioChips"></div>
     <div style="flex:1;"></div>
     <button class="btn btn-primary" onclick="abrirNova()">+ Nova sessão</button>
@@ -119,11 +138,18 @@
     const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
     let ano, mes; // mes: 0-11
     { const d = new Date(); ano = d.getFullYear(); mes = d.getMonth(); }
-    let filtro = 'todos', diaSel = new Date().getDate();
+    let filtro = 'todos', diaSel = new Date().getDate(), vista = 'mes';
     let FISIOS = [], PACS = [], EVENTOS = [];
     const hojeISO = PF.hojeISO();
 
     const iso = d => `${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isoData = dt => `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+    const ancora = () => new Date(ano, mes, diaSel);
+    function semanaDe(d) {
+      const i = new Date(d); i.setDate(d.getDate() - d.getDay());
+      const f = new Date(i); f.setDate(i.getDate() + 6);
+      return [i, f];
+    }
     const fisioById = id => FISIOS.find(f => f.id === id);
     const pacById = id => PACS.find(p => p.id === id);
     const nomeEv = e => { const p = pacById(e.paciente_id); return p ? p.nome : (e.titulo || e.tipo); };
@@ -194,27 +220,111 @@
         el.querySelectorAll('.chip').forEach(x => x.classList.remove('active'));
         c.classList.add('active');
         filtro = c.dataset.f;
-        renderCal(); renderDay();
+        render();
+      }));
+      const vc = document.getElementById('vistaChips');
+      vc.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => {
+        vc.querySelectorAll('.chip').forEach(x => x.classList.remove('active'));
+        c.classList.add('active');
+        vista = c.dataset.v;
+        if (vista !== 'mes' && diaSel === 1 && !EVENTOS.length) { const d = new Date(); if (d.getFullYear() === ano && d.getMonth() === mes) diaSel = d.getDate(); }
+        carregarMes().catch(e => App.toast(e.message, 'error'));
       }));
     }
 
-    async function carregarMes() {
-      const ultimo = new Date(ano, mes + 1, 0).getDate();
-      EVENTOS = await PF.get('sessoes', { from: iso(1), to: iso(ultimo) });
-      document.getElementById('calMonth').textContent = `${MESES[mes]} ${ano}`;
-      renderCal(); renderDay();
+    async function carregarMes() { // carrega o período da vista atual
+      let from, to;
+      if (vista === 'mes') { from = iso(1); to = iso(new Date(ano, mes + 1, 0).getDate()); }
+      else if (vista === 'semana') { const [i, f] = semanaDe(ancora()); from = isoData(i); to = isoData(f); }
+      else { from = to = isoData(ancora()); }
+      EVENTOS = await PF.get('sessoes', { from, to });
+      atualizarLabel();
+      render();
     }
 
-    function mudarMes(dir) {
-      mes += dir;
-      if (mes < 0) { mes = 11; ano--; }
-      if (mes > 11) { mes = 0; ano++; }
-      diaSel = 1;
+    function atualizarLabel() {
+      const el = document.getElementById('calMonth');
+      if (vista === 'mes') el.textContent = `${MESES[mes]} ${ano}`;
+      else if (vista === 'semana') {
+        const [i, f] = semanaDe(ancora());
+        el.textContent = `${i.getDate()} ${MESES[i.getMonth()].slice(0,3)} – ${f.getDate()} ${MESES[f.getMonth()].slice(0,3)} ${f.getFullYear()}`;
+      } else {
+        const d = ancora();
+        el.textContent = `${['dom','seg','ter','qua','qui','sex','sáb'][d.getDay()]}, ${d.getDate()} de ${MESES[d.getMonth()]}`;
+      }
+    }
+
+    function render() {
+      const grid = document.getElementById('calGrid');
+      grid.className = vista === 'mes' ? 'cal-grid' : 'tg-wrap';
+      if (vista === 'mes') renderCal(); else renderGrade();
+      renderDay();
+    }
+
+    function mudarPeriodo(dir) {
+      if (vista === 'mes') {
+        mes += dir;
+        if (mes < 0) { mes = 11; ano--; }
+        if (mes > 11) { mes = 0; ano++; }
+        diaSel = 1;
+      } else {
+        const d = ancora();
+        d.setDate(d.getDate() + dir * (vista === 'semana' ? 7 : 1));
+        ano = d.getFullYear(); mes = d.getMonth(); diaSel = d.getDate();
+      }
       carregarMes().catch(e => App.toast(e.message, 'error'));
     }
 
-    function evsDo(d) {
-      return EVENTOS.filter(e => Number(e.data.slice(8,10)) === d && (filtro === 'todos' || e.fisio_id === filtro) && e.status !== 'cancelada');
+    function irHoje() {
+      const d = new Date();
+      ano = d.getFullYear(); mes = d.getMonth(); diaSel = d.getDate();
+      carregarMes().catch(e => App.toast(e.message, 'error'));
+    }
+
+    function evsDoISO(dISO) {
+      return EVENTOS.filter(e => e.data.slice(0,10) === dISO && (filtro === 'todos' || e.fisio_id === filtro) && e.status !== 'cancelada');
+    }
+    const evsDo = d => evsDoISO(iso(d));
+
+    function selDia(dISO) {
+      const [y, m, d] = dISO.split('-').map(Number);
+      ano = y; mes = m - 1; diaSel = d;
+      renderDay();
+    }
+
+    function clicarSlot(ev, dISO, h) {
+      if (!ev.target.classList.contains('tg-cell')) return;
+      selDia(dISO);
+      abrirNova(dISO, `${String(h).padStart(2, '0')}:00`);
+    }
+
+    function clicarDia(ev, d) {
+      diaSel = d; renderDay();
+      // clique no espaço vazio da célula abre o modal já com a data
+      if (ev.target.classList.contains('cal-cell') || ev.target.classList.contains('c-day')) abrirNova(iso(d));
+    }
+
+    function renderGrade() {
+      const dias = vista === 'semana'
+        ? (() => { const [i] = semanaDe(ancora()); return [...Array(7)].map((_, k) => { const d = new Date(i); d.setDate(i.getDate() + k); return d; }); })()
+        : [ancora()];
+      let html = `<div class="tg" style="grid-template-columns:56px repeat(${dias.length},1fr);">`;
+      html += `<div class="tg-corner"></div>` + dias.map(d => {
+        const dISO = isoData(d);
+        return `<div class="tg-head${dISO === hojeISO ? ' today' : ''}" onclick="selDia('${dISO}')">${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d.getDay()]} <b>${d.getDate()}</b></div>`;
+      }).join('');
+      for (let h = 7; h <= 20; h++) {
+        html += `<div class="tg-hora">${String(h).padStart(2,'0')}:00</div>`;
+        for (const d of dias) {
+          const dISO = isoData(d);
+          const evs = evsDoISO(dISO).filter(e => Number(e.hora.slice(0,2)) === h).sort((a,b) => a.hora.localeCompare(b.hora));
+          html += `<div class="tg-cell" onclick="clicarSlot(event,'${dISO}',${h})" title="Clique para agendar às ${String(h).padStart(2,'0')}:00">` +
+            evs.map(e => `<span class="cal-ev" onclick="event.stopPropagation();selDia('${dISO}');abrirEvento('${e.id}')" style="background:${(fisioById(e.fisio_id)||{cor:'#94A8A5'}).cor};${e.status==='falta'?'opacity:.5;text-decoration:line-through;':''}">${e.hora.slice(0,5)} ${nomeEv(e)}</span>`).join('') +
+          `</div>`;
+        }
+      }
+      html += '</div>';
+      document.getElementById('calGrid').innerHTML = html;
     }
 
     function renderCal() {
@@ -230,7 +340,7 @@
         const shown = evs.slice(0, 3);
         const extra = evs.length - shown.length;
         const isHoje = iso(d) === hojeISO;
-        html += `<div class="cal-cell${isHoje ? ' today' : ''}" onclick="selDay(${d})" style="cursor:pointer;">
+        html += `<div class="cal-cell${isHoje ? ' today' : ''}" onclick="clicarDia(event, ${d})" style="cursor:pointer;" title="Clique no espaço vazio para agendar">
           <div class="c-day">${d}</div>
           ${shown.map(e => `<span class="cal-ev" onclick="event.stopPropagation();selDay(${d});abrirEvento('${e.id}')" style="background:${(fisioById(e.fisio_id)||{cor:'#94A8A5'}).cor};${e.status==='falta'?'opacity:.5;text-decoration:line-through;':''}">${e.hora.slice(0,5)} ${nomeEv(e)}</span>`).join('')}
           ${extra > 0 ? `<span class="cal-more">+${extra} sessões</span>` : ''}
@@ -286,8 +396,9 @@
       }).join('');
     }
 
-    function abrirNova() {
-      document.getElementById('fData').value = iso(diaSel);
+    function abrirNova(data, hora) {
+      document.getElementById('fData').value = data || iso(diaSel);
+      if (hora) fHora.value = hora;
       ['npNome', 'npTel', 'ntTitulo'].forEach(id => document.getElementById(id).value = '');
       npConv.value = 'Particular'; ntRegiao.value = 'outro';
       document.getElementById('fNovoPacWrap').style.display = 'none';
