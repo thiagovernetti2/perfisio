@@ -41,8 +41,41 @@
           <div class="field full"><label>Paciente (ou deixe vazio p/ turma)</label>
             <select id="fPaciente"></select>
           </div>
+          <div class="field full" id="fNovoPacWrap" style="display:none;background:var(--primary-soft);border-radius:10px;padding:12px 14px;">
+            <div style="font-size:.78rem;font-weight:700;color:var(--primary-dark);margin-bottom:8px;">🆕 Novo paciente</div>
+            <div class="form-grid">
+              <div class="field"><label>Nome completo *</label><input type="text" id="npNome"></div>
+              <div class="field"><label>Telefone / WhatsApp</label><input type="text" id="npTel" placeholder="(11) 9 0000-0000"></div>
+              <div class="field full"><label>Convênio</label>
+                <select id="npConv"><option>Particular</option><option>Unimed</option><option>Bradesco Saúde</option><option>SulAmérica</option><option>Amil</option><option>Outro</option></select>
+              </div>
+            </div>
+            <div style="font-size:.72rem;color:var(--text-soft);margin-top:8px;">O cadastro completo pode ser feito depois em Pacientes.</div>
+          </div>
           <div class="field full" id="fTratWrap" style="display:none;"><label>Ocorrência / tratamento</label>
             <select id="fTrat"></select>
+          </div>
+          <div class="field full" id="fNovoTratWrap" style="display:none;background:var(--primary-soft);border-radius:10px;padding:12px 14px;">
+            <div style="font-size:.78rem;font-weight:700;color:var(--primary-dark);margin-bottom:8px;">🩺 Nova ocorrência</div>
+            <div class="form-grid">
+              <div class="field"><label>Título</label><input type="text" id="ntTitulo" placeholder="Ex.: Dor no joelho direito (padrão: Avaliação inicial)"></div>
+              <div class="field"><label>Região</label>
+                <select id="ntRegiao">
+                  <option value="outro">🩺 A definir na avaliação</option>
+                  <option value="cervical">🦴 Cervical / pescoço</option>
+                  <option value="ombro">💪 Ombro</option>
+                  <option value="cotovelo">💪 Cotovelo</option>
+                  <option value="punho">🖐 Punho / mão</option>
+                  <option value="coluna">🦴 Coluna torácica</option>
+                  <option value="lombar">🦴 Coluna lombar</option>
+                  <option value="quadril">🦿 Quadril</option>
+                  <option value="joelho">🦵 Joelho</option>
+                  <option value="tornozelo">🦶 Tornozelo / pé</option>
+                  <option value="neuro">🧠 Neurológico</option>
+                  <option value="respiratorio">🫁 Respiratório</option>
+                </select>
+              </div>
+            </div>
           </div>
           <div class="field full" id="fTituloWrap" style="display:none;"><label>Título (turma / bloqueio)</label><input type="text" id="fTitulo" placeholder="Ex.: Pilates — turma das 15h"></div>
           <div class="field"><label>Fisioterapeuta</label><select id="fFisio"></select></div>
@@ -102,10 +135,24 @@
       [FISIOS, PACS, TRATS_ALL] = await Promise.all([PF.get('fisios'), PF.get('pacientes'), PF.get('tratamentos')]);
       document.getElementById('fFisio').innerHTML = FISIOS.filter(f=>f.ativo).map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
       document.getElementById('fPaciente').innerHTML = '<option value="">— Sem paciente (turma/bloqueio) —</option>' +
+        '<option value="__novo__">＋ Cadastrar novo paciente…</option>' +
         PACS.filter(p => p.status !== 'inativo').map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
       document.getElementById('fPaciente').addEventListener('change', e => {
-        document.getElementById('fTituloWrap').style.display = e.target.value ? 'none' : '';
-        montarTratSelect(e.target.value);
+        const v = e.target.value;
+        document.getElementById('fTituloWrap').style.display = v ? 'none' : '';
+        document.getElementById('fNovoPacWrap').style.display = v === '__novo__' ? '' : 'none';
+        if (v === '__novo__') {
+          // paciente novo → primeira ocorrência criada junto
+          document.getElementById('fTratWrap').style.display = 'none';
+          document.getElementById('fNovoTratWrap').style.display = '';
+          fTipo.value = 'Avaliação inicial';
+        } else {
+          document.getElementById('fNovoTratWrap').style.display = 'none';
+          montarTratSelect(v);
+        }
+      });
+      document.getElementById('fTrat').addEventListener('change', e => {
+        document.getElementById('fNovoTratWrap').style.display = e.target.value === '__novo__' ? '' : 'none';
       });
       document.getElementById('fTituloWrap').style.display = '';
       renderChips();
@@ -125,14 +172,18 @@
     function montarTratSelect(pacienteId, preferId) {
       const wrap = document.getElementById('fTratWrap');
       const selEl = document.getElementById('fTrat');
-      if (!pacienteId) { wrap.style.display = 'none'; selEl.innerHTML = ''; return; }
+      const novoWrap = document.getElementById('fNovoTratWrap');
+      if (!pacienteId) { wrap.style.display = 'none'; novoWrap.style.display = 'none'; selEl.innerHTML = ''; return; }
       const doPac = TRATS_ALL.filter(t => t.paciente_id === pacienteId);
       wrap.style.display = '';
       selEl.innerHTML = '<option value="">— Sem vínculo (avaliação livre) —</option>' +
-        doPac.map(t => `<option value="${t.id}">${t.titulo}${t.status === 'concluido' ? ' (concluído)' : ''}</option>`).join('');
+        doPac.map(t => `<option value="${t.id}">${t.titulo}${t.status === 'concluido' ? ' (concluído)' : ''}</option>`).join('') +
+        '<option value="__novo__">＋ Nova ocorrência…</option>';
       const ativos = doPac.filter(t => t.status === 'ativo');
       if (preferId && doPac.some(t => t.id === preferId)) selEl.value = preferId;
       else if (ativos.length) selEl.value = ativos[ativos.length - 1].id;
+      else if (!doPac.length) selEl.value = '__novo__';
+      novoWrap.style.display = selEl.value === '__novo__' ? '' : 'none';
     }
 
     function renderChips() {
@@ -237,22 +288,48 @@
 
     function abrirNova() {
       document.getElementById('fData').value = iso(diaSel);
+      ['npNome', 'npTel', 'ntTitulo'].forEach(id => document.getElementById(id).value = '');
+      npConv.value = 'Particular'; ntRegiao.value = 'outro';
+      document.getElementById('fNovoPacWrap').style.display = 'none';
+      document.getElementById('fNovoTratWrap').style.display = fPaciente.value === '__novo__' ? '' : 'none';
       App.openModal('mSessao');
     }
 
     async function salvarSessao() {
       const btn = document.getElementById('btnSalvarSessao');
-      const base = {
-        paciente_id: fPaciente.value || null,
-        tratamento_id: fPaciente.value ? (fTrat.value || null) : null,
-        titulo: fPaciente.value ? null : (fTitulo.value.trim() || null),
-        fisio_id: fFisio.value, tipo: fTipo.value,
-        data: fData.value, hora: fHora.value, duracao: fDuracao.value,
-        obs: fObs.value.trim() || null,
-      };
-      if (!base.data || !base.hora || !base.fisio_id) { App.toast('Preencha data, horário e fisioterapeuta', 'error'); return; }
+      if (!fData.value || !fHora.value || !fFisio.value) { App.toast('Preencha data, horário e fisioterapeuta', 'error'); return; }
+      if (fPaciente.value === '__novo__' && !npNome.value.trim()) { App.toast('Informe o nome do novo paciente', 'error'); return; }
       btn.disabled = true;
       try {
+        /* 1) cria o paciente, se for novo */
+        let pacienteId = fPaciente.value === '__novo__' ? null : (fPaciente.value || null);
+        if (fPaciente.value === '__novo__') {
+          const novoPac = await PF.post('pacientes', {
+            nome: npNome.value.trim(), telefone: npTel.value.trim() || null, convenio: npConv.value,
+            fisio_id: fFisio.value, status: 'avaliacao',
+          });
+          pacienteId = novoPac.id;
+          PACS = await PF.get('pacientes');
+        }
+        /* 2) cria a ocorrência, se for nova */
+        let tratId = pacienteId ? (fPaciente.value === '__novo__' ? '__novo__' : (fTrat.value || null)) : null;
+        if (tratId === '__novo__') {
+          const novoTrat = await PF.post('tratamentos', {
+            paciente_id: pacienteId,
+            titulo: ntTitulo.value.trim() || 'Avaliação inicial',
+            regiao: ntRegiao.value, fisio_id: fFisio.value, status: 'ativo',
+          });
+          tratId = novoTrat.id;
+          TRATS_ALL = await PF.get('tratamentos');
+        }
+        const base = {
+          paciente_id: pacienteId,
+          tratamento_id: tratId,
+          titulo: pacienteId ? null : (fTitulo.value.trim() || null),
+          fisio_id: fFisio.value, tipo: fTipo.value,
+          data: fData.value, hora: fHora.value, duracao: fDuracao.value,
+          obs: fObs.value.trim() || null,
+        };
         const rep = Number(fRepetir.value);
         const datas = [base.data];
         if (rep > 0) {
@@ -263,6 +340,16 @@
         for (const data of datas) await PF.post('sessoes', { ...base, data });
         App.closeModal('mSessao');
         App.toast(datas.length > 1 ? `${datas.length} sessões agendadas!` : 'Sessão agendada!');
+        if (fPaciente.value === '__novo__') {
+          // reconstrói o select com o paciente recém-criado selecionado
+          fPaciente.innerHTML = '<option value="">— Sem paciente (turma/bloqueio) —</option>' +
+            '<option value="__novo__">＋ Cadastrar novo paciente…</option>' +
+            PACS.filter(p => p.status !== 'inativo').map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+          fPaciente.value = pacienteId;
+          document.getElementById('fNovoPacWrap').style.display = 'none';
+          document.getElementById('fNovoTratWrap').style.display = 'none';
+          montarTratSelect(pacienteId, tratId);
+        }
         await carregarMes();
       } catch (e) { App.toast(e.message, 'error'); }
       btn.disabled = false;
