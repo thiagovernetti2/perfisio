@@ -30,7 +30,7 @@
     .search-bar .divider { width: 1px; background: var(--line); margin: 6px 0; }
     .hero .tags { margin-top: 18px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 
-    .section { padding: 56px 6vw; }
+    .section { padding: 56px 6vw; scroll-margin-top: 78px; }
     .section h2 { font-size: 1.6rem; font-weight: 800; color: var(--ink); letter-spacing: -.4px; text-align: center; }
     .section .sec-sub { text-align: center; color: var(--text-soft); margin: 8px auto 34px; max-width: 520px; font-size: .95rem; }
 
@@ -63,6 +63,7 @@
 
     .lp-footer { border-top: 1px solid var(--line); padding: 28px 6vw; display: flex; align-items: center; gap: 16px; font-size: .8rem; color: var(--text-soft); flex-wrap: wrap; }
     .lp-footer .spacer { flex: 1; }
+    @media (max-width: 860px) { .preco-grid { grid-template-columns: 1fr !important; } }
     @media (max-width: 720px) { .lp-header nav { display: none; } }
   </style>
 </head>
@@ -73,6 +74,7 @@
     <nav>
       <a href="#profissionais">Encontrar fisioterapeuta</a>
       <a href="#clinicas">Para clínicas</a>
+      <a href="#precos">Preço</a>
       <a href="login.html" class="btn btn-ghost btn-sm">Entrar</a>
       <a href="login.html#registro" class="btn btn-primary btn-sm">Criar perfil grátis</a>
     </nav>
@@ -117,7 +119,7 @@
   <!-- PARA CLÍNICAS -->
   <section class="section" id="clinicas" style="background:var(--bg);">
     <h2>Gestão completa para sua clínica ou consultório</h2>
-    <p class="sec-sub">Muito além do perfil: o PerFisio é um CRM e sistema de gestão feito para fisioterapeutas.</p>
+    <p class="sec-sub">Muito além do perfil: o PerFisio é um CRM e sistema de gestão feito para fisioterapeutas — por <b>meia consulta ao mês</b> por profissional.</p>
     <div class="feat-grid">
       <div class="feat"><div class="f-ico">🎯</div><h3>CRM de captação</h3><p>Leads do seu perfil público caem direto no funil. Acompanhe do primeiro contato até a conversão em paciente.</p></div>
       <div class="feat"><div class="f-ico">📅</div><h3>Agenda inteligente</h3><p>Sessões recorrentes, turmas de pilates e lembretes automáticos por WhatsApp que reduzem faltas em até 40%.</p></div>
@@ -128,11 +130,40 @@
     </div>
   </section>
 
+  <!-- PREÇO -->
+  <section class="section" id="precos">
+    <h2>Quanto custa? <em style="color:var(--primary);font-style:normal;">Meia consulta.</em></h2>
+    <p class="sec-sub">Por fisioterapeuta, por mês, o PerFisio custa a <b>metade do valor de uma consulta</b> sua. Meio atendimento no mês e o sistema já se pagou.</p>
+    <div style="max-width:900px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:stretch;" class="preco-grid">
+      <div style="border:1px solid var(--line);border-radius:16px;padding:28px;background:#fff;box-shadow:var(--shadow);">
+        <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-soft);margin-bottom:18px;">Calcule para a sua clínica</div>
+        <label style="font-size:.88rem;font-weight:600;color:var(--ink);">Quanto custa a sua consulta?</label>
+        <div style="display:flex;align-items:center;gap:14px;margin:10px 0 22px;">
+          <input type="range" id="pcValor" min="80" max="400" step="10" value="160" style="flex:1;accent-color:var(--primary);">
+          <b id="pcValorLabel" style="min-width:74px;text-align:right;color:var(--ink);">R$ 160</b>
+        </div>
+        <label style="font-size:.88rem;font-weight:600;color:var(--ink);">Quantos fisioterapeutas atendem?</label>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:10px;">
+          <button class="btn btn-ghost btn-sm" onclick="pcFisios(-1)" style="width:38px;">−</button>
+          <b id="pcFisiosLabel" style="font-size:1.15rem;color:var(--ink);min-width:24px;text-align:center;">1</b>
+          <button class="btn btn-ghost btn-sm" onclick="pcFisios(1)" style="width:38px;">＋</button>
+        </div>
+      </div>
+      <div style="border:2px solid var(--primary);border-radius:16px;padding:28px;background:linear-gradient(180deg,#F0FAF7,#fff);display:flex;flex-direction:column;justify-content:center;text-align:center;">
+        <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--primary-dark);">Você paga</div>
+        <div style="font-size:2.6rem;font-weight:900;color:var(--ink);letter-spacing:-1px;margin-top:6px;"><span id="pcMensal">R$ 80</span><span style="font-size:1rem;font-weight:600;color:var(--text-soft);">/mês por fisio</span></div>
+        <div id="pcTotal" style="font-size:.95rem;font-weight:700;color:var(--ink);margin-top:8px;">Total: R$ 80/mês</div>
+        <div style="font-size:.8rem;color:var(--text-soft);margin-top:12px;line-height:1.6;">Tudo incluso: agenda, prontuário eletrônico, CRM, financeiro, marketing e perfil no diretório.<br>Sem fidelidade · cancele quando quiser.</div>
+        <a href="login.html#registro" class="btn btn-primary" style="margin:18px auto 0;">Começar grátis →</a>
+      </div>
+    </div>
+  </section>
+
   <!-- CTA -->
   <section style="padding-top:56px;">
     <div class="cta-band">
       <h2>Comece grátis hoje</h2>
-      <p>Crie seu perfil no diretório, receba pacientes e gerencie sua clínica em um só lugar. Sem cartão de crédito.</p>
+      <p>Crie seu perfil no diretório, receba pacientes e gerencie sua clínica em um só lugar. Depois, pague só <b style="color:#fff;">meia consulta por fisioterapeuta/mês</b>. Sem cartão de crédito para começar.</p>
       <a href="login.html#registro" class="btn btn-primary" style="padding:13px 28px;font-size:.95rem;">Criar minha conta →</a>
     </div>
   </section>
@@ -225,6 +256,28 @@
       } catch (e) { App.toast(e.message, 'error'); }
       btn.disabled = false;
     }
+
+    /* ---------- Calculadora "meia consulta" ---------- */
+    let pcQtd = 1;
+    const brl = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+
+    function calcPreco() {
+      const consulta = Number(document.getElementById('pcValor').value);
+      const porFisio = consulta / 2;
+      document.getElementById('pcValorLabel').textContent = brl(consulta);
+      document.getElementById('pcFisiosLabel').textContent = pcQtd;
+      document.getElementById('pcMensal').textContent = brl(porFisio);
+      document.getElementById('pcTotal').textContent =
+        pcQtd === 1 ? `Total: ${brl(porFisio)}/mês` : `Total: ${brl(porFisio * pcQtd)}/mês · ${pcQtd} fisioterapeutas`;
+    }
+
+    function pcFisios(d) {
+      pcQtd = Math.min(Math.max(pcQtd + d, 1), 20);
+      calcPreco();
+    }
+
+    document.getElementById('pcValor').addEventListener('input', calcPreco);
+    calcPreco();
 
     carregarPerfis();
   </script>
