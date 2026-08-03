@@ -7,11 +7,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../assets/css/app.css">
 </head>
-<body data-page="financeiro" data-title="Financeiro" data-subtitle="Pagamentos, pacotes, convênios e contas a receber">
+<body data-page="financeiro" data-title="Financeiro" data-subtitle="Contas a receber, contas a pagar, comissões e pacotes">
 
   <div class="stats-grid">
     <div class="stat-card">
-      <div class="s-top"><span class="s-label">Receita do mês</span><div class="s-ico" style="background:var(--green-soft);">💰</div></div>
+      <div class="s-top"><span class="s-label">Recebido no mês</span><div class="s-ico" style="background:var(--green-soft);">💰</div></div>
       <div class="s-value" id="stReceita">—</div>
       <div class="s-delta"><span class="muted" id="stReceitaSub"></span></div>
     </div>
@@ -21,34 +21,76 @@
       <div class="s-delta"><span class="muted" id="stReceberSub"></span></div>
     </div>
     <div class="stat-card">
-      <div class="s-top"><span class="s-label">Em atraso</span><div class="s-ico" style="background:var(--red-soft);">⚠️</div></div>
-      <div class="s-value" id="stAtraso">—</div>
-      <div class="s-delta"><span class="muted" id="stAtrasoSub"></span></div>
+      <div class="s-top"><span class="s-label">A pagar</span><div class="s-ico" style="background:var(--amber-soft);">📤</div></div>
+      <div class="s-value" id="stPagar">—</div>
+      <div class="s-delta"><span class="muted" id="stPagarSub"></span></div>
     </div>
     <div class="stat-card">
-      <div class="s-top"><span class="s-label">Ticket médio</span><div class="s-ico" style="background:var(--amber-soft);">🎯</div></div>
-      <div class="s-value" id="stTicket">—</div>
-      <div class="s-delta"><span class="muted">por pagamento recebido</span></div>
+      <div class="s-top"><span class="s-label">Resultado do mês</span><div class="s-ico" style="background:var(--primary-soft);">📊</div></div>
+      <div class="s-value" id="stResultado">—</div>
+      <div class="s-delta"><span class="muted" id="stResultadoSub"></span></div>
     </div>
   </div>
 
-  <div class="page-head" style="margin-bottom:0;">
-    <div class="tabs" data-auto style="margin-bottom:20px;flex:1;">
-      <button class="tab active" data-tab="pagamentos">Pagamentos</button>
-      <button class="tab" data-tab="pacotes">Pacotes & Planos</button>
-      <button class="tab" data-tab="convenios">Convênios</button>
-    </div>
-    <button class="btn btn-primary" style="margin-bottom:20px;" onclick="abrirPagamento()">+ Registrar cobrança</button>
+  <div class="tabs" data-auto>
+    <button class="tab active" data-tab="receber">📥 Contas a receber</button>
+    <button class="tab" data-tab="pagar">📤 Contas a pagar</button>
+    <button class="tab" data-tab="comissoes">🧑‍⚕️ Comissões</button>
+    <button class="tab" data-tab="pacotes">Pacotes & Planos</button>
+    <button class="tab" data-tab="convenios">Convênios</button>
   </div>
 
-  <!-- PAGAMENTOS -->
-  <div data-tab-panel="pagamentos">
+  <!-- CONTAS A RECEBER -->
+  <div data-tab-panel="receber">
     <div class="card">
+      <div class="card-header">
+        <h3>Contas a receber <span id="recResumo" style="font-weight:500;font-size:.78rem;color:var(--text-soft);"></span></h3>
+        <button class="btn btn-primary btn-sm" onclick="abrirPagamento()">+ Nova cobrança</button>
+      </div>
       <div class="table-wrap">
         <table class="data">
           <thead><tr><th>Paciente</th><th>Descrição</th><th>Forma</th><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead>
           <tbody id="pagRows"><tr><td colspan="7" class="empty">Carregando...</td></tr></tbody>
         </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTAS A PAGAR -->
+  <div data-tab-panel="pagar" style="display:none;">
+    <div class="card">
+      <div class="card-header">
+        <h3>Contas a pagar <span id="desResumo" style="font-weight:500;font-size:.78rem;color:var(--text-soft);"></span></h3>
+        <button class="btn btn-primary btn-sm" onclick="abrirDespesa()">+ Nova despesa</button>
+      </div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Descrição</th><th>Categoria</th><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead>
+          <tbody id="desRows"><tr><td colspan="6" class="empty">Carregando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMISSÕES -->
+  <div data-tab-panel="comissoes" style="display:none;">
+    <div class="card">
+      <div class="card-header">
+        <h3>Comissões por fisioterapeuta</h3>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="month" id="cmMes" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px;font-size:.85rem;">
+          <button class="btn btn-soft btn-sm" onclick="gerarComissoes()">＋ Gerar contas a pagar</button>
+        </div>
+      </div>
+      <div class="table-wrap" style="padding-top:8px;">
+        <table class="data">
+          <thead><tr><th>Fisioterapeuta</th><th>Sessões realizadas</th><th>Base de cálculo</th><th>%</th><th>A receber no mês</th><th>Conta gerada</th></tr></thead>
+          <tbody id="cmRows"><tr><td colspan="6" class="empty">Carregando...</td></tr></tbody>
+        </table>
+      </div>
+      <div style="padding:12px 22px 18px;font-size:.76rem;color:var(--text-soft);line-height:1.6;">
+        Base de cálculo = sessões <b>realizadas</b> no mês × valor da sessão (do pacote do paciente; sem pacote, usa o valor da sessão avulsa).
+        O percentual de cada profissional é definido em <a href="equipe.html" style="color:var(--primary);font-weight:600;">Equipe</a>.
       </div>
     </div>
   </div>
@@ -74,11 +116,11 @@
     </div>
   </div>
 
-  <!-- MODAL PAGAMENTO -->
+  <!-- MODAL COBRANÇA (a receber) -->
   <div class="modal-overlay" id="mPagamento">
     <div class="modal">
       <div class="modal-head">
-        <h3>Registrar cobrança / pagamento</h3>
+        <h3>Nova cobrança / pagamento recebido</h3>
         <button class="close" onclick="App.closeModal('mPagamento')">×</button>
       </div>
       <div class="modal-body">
@@ -103,6 +145,48 @@
       <div class="modal-foot">
         <button class="btn btn-ghost" onclick="App.closeModal('mPagamento')">Cancelar</button>
         <button class="btn btn-primary" id="btnPg" onclick="salvarPagamento()">Registrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DESPESA (a pagar) -->
+  <div class="modal-overlay" id="mDespesa">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="mDespTitulo">Nova despesa</h3>
+        <button class="close" onclick="App.closeModal('mDespesa')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field full"><label>Descrição *</label><input type="text" id="dpDesc" placeholder="Ex.: Aluguel da sala · agosto"></div>
+          <div class="field"><label>Categoria</label>
+            <select id="dpCat">
+              <option value="comissao">🧑‍⚕️ Comissão / repasse</option>
+              <option value="aluguel">🏠 Aluguel</option>
+              <option value="material">📦 Material e insumos</option>
+              <option value="equipamento">🏋️ Equipamentos</option>
+              <option value="salario">💼 Salários e encargos</option>
+              <option value="imposto">🧾 Impostos</option>
+              <option value="marketing">📣 Marketing</option>
+              <option value="operacional" selected>⚙️ Operacional (luz, água, internet)</option>
+              <option value="outro">🔖 Outro</option>
+            </select>
+          </div>
+          <div class="field"><label>Profissional (se for repasse)</label><select id="dpFisio"></select></div>
+          <div class="field"><label>Valor (R$) *</label><input type="number" id="dpValor" step="0.01"></div>
+          <div class="field"><label>Vencimento</label><input type="date" id="dpVenc"></div>
+          <div class="field"><label>Situação</label>
+            <select id="dpStatus"><option value="aberto">Em aberto (a pagar)</option><option value="pago">Já pago</option></select>
+          </div>
+          <div class="field"><label>Repetir nos próximos meses</label>
+            <select id="dpRepetir"><option value="0">Não repete</option><option value="3">3 meses</option><option value="6">6 meses</option><option value="12">12 meses</option></select>
+          </div>
+          <div class="field full"><label>Observações</label><input type="text" id="dpObs"></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal('mDespesa')">Cancelar</button>
+        <button class="btn btn-primary" id="btnDp" onclick="salvarDespesa()">Salvar</button>
       </div>
     </div>
   </div>
@@ -157,52 +241,82 @@
   <script src="../assets/js/api.js"></script>
   <script src="../assets/js/sidebar.js"></script>
   <script>
-    let PAGS = [], PACS = [], PACOTES = [], CONVS = [];
-    let pacoteEditId = null;
+    let PAGS = [], PACS = [], PACOTES = [], CONVS = [], DESPESAS = [], FISIOS = [];
+    let pacoteEditId = null, despesaEditId = null;
     const hoje = PF.hojeISO();
+    const mesAtual = hoje.slice(0, 7);
     const CORES = ['#0DA189','#2D7DD2','#7C5CBF','#D9820B','#D64545','#1E9E6A'];
     const TIPO_EMOJI = { avulsa: '🎫', pacote: '📦', mensal: '🧘' };
+    const CAT = {
+      comissao: ['🧑‍⚕️', 'Comissão'], aluguel: ['🏠', 'Aluguel'], material: ['📦', 'Material'],
+      equipamento: ['🏋️', 'Equipamento'], salario: ['💼', 'Salário'], imposto: ['🧾', 'Imposto'],
+      marketing: ['📣', 'Marketing'], operacional: ['⚙️', 'Operacional'], outro: ['🔖', 'Outro'],
+    };
 
     async function boot() {
-      [PAGS, PACS, PACOTES, CONVS] = await Promise.all([
-        PF.get('pagamentos'), PF.get('pacientes'), PF.get('pacotes'), PF.get('convenios'),
+      [PAGS, PACS, PACOTES, CONVS, DESPESAS, FISIOS] = await Promise.all([
+        PF.get('pagamentos'), PF.get('pacientes'), PF.get('pacotes'),
+        PF.get('convenios'), PF.get('despesas'), PF.get('fisios'),
       ]);
       document.getElementById('pgPaciente').innerHTML = '<option value="">— Sem paciente —</option>' +
         PACS.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
       document.getElementById('pgPacote').innerHTML = '<option value="">— Livre —</option>' +
         PACOTES.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+      document.getElementById('dpFisio').innerHTML = '<option value="">— Não é repasse —</option>' +
+        FISIOS.map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
       document.getElementById('pgPacote').addEventListener('change', atualizarCreditar);
       document.getElementById('pgPaciente').addEventListener('change', atualizarCreditar);
+      document.getElementById('cmMes').value = mesAtual;
+      document.getElementById('cmMes').addEventListener('change', carregarComissoes);
       renderTudo();
+      carregarComissoes();
     }
 
     function statusReal(p) {
       if (p.status === 'aberto' && p.vencimento && p.vencimento.slice(0,10) < hoje) return 'atraso';
       return p.status;
     }
-
-    function renderTudo() { renderStats(); renderPagamentos(); renderPacotes(); renderConvenios(); }
-
-    function renderStats() {
-      const pagosMes = PAGS.filter(p => p.status === 'pago' && ((p.vencimento || p.criado_em) || '').slice(0,7) === hoje.slice(0,7));
-      const receita = pagosMes.reduce((a,p) => a + Number(p.valor), 0);
-      document.getElementById('stReceita').textContent = App.money(receita);
-      document.getElementById('stReceitaSub').textContent = pagosMes.length + ' pagamentos recebidos';
-      const abertos = PAGS.filter(p => ['aberto','agendado'].includes(p.status) && statusReal(p) !== 'atraso');
-      document.getElementById('stReceber').textContent = App.money(abertos.reduce((a,p) => a + Number(p.valor), 0));
-      document.getElementById('stReceberSub').textContent = abertos.length + ' cobranças em aberto';
-      const atraso = PAGS.filter(p => statusReal(p) === 'atraso');
-      document.getElementById('stAtraso').textContent = App.money(atraso.reduce((a,p) => a + Number(p.valor), 0));
-      document.getElementById('stAtrasoSub').textContent = atraso.length + ' cobranças vencidas';
-      const pagos = PAGS.filter(p => p.status === 'pago');
-      document.getElementById('stTicket').textContent = pagos.length ? App.money(pagos.reduce((a,p) => a + Number(p.valor), 0) / pagos.length) : '—';
+    function statusDespesa(d) {
+      if (d.status === 'aberto' && d.vencimento && d.vencimento.slice(0,10) < hoje) return 'atraso';
+      return d.status;
     }
 
+    function renderTudo() { renderStats(); renderPagamentos(); renderDespesas(); renderPacotes(); renderConvenios(); }
+
+    function renderStats() {
+      const pagosMes = PAGS.filter(p => p.status === 'pago' && ((p.vencimento || p.criado_em) || '').slice(0,7) === mesAtual);
+      const receita = pagosMes.reduce((a,p) => a + Number(p.valor), 0);
+      document.getElementById('stReceita').textContent = App.money(receita);
+      document.getElementById('stReceitaSub').textContent = pagosMes.length + ' recebimentos';
+
+      const aReceber = PAGS.filter(p => p.status !== 'pago');
+      const receberAtraso = aReceber.filter(p => statusReal(p) === 'atraso');
+      document.getElementById('stReceber').textContent = App.money(aReceber.reduce((a,p) => a + Number(p.valor), 0));
+      document.getElementById('stReceberSub').textContent = aReceber.length + ' em aberto' + (receberAtraso.length ? ` · ${receberAtraso.length} vencidas` : '');
+
+      const aPagar = DESPESAS.filter(d => d.status !== 'pago');
+      const pagarAtraso = aPagar.filter(d => statusDespesa(d) === 'atraso');
+      document.getElementById('stPagar').textContent = App.money(aPagar.reduce((a,d) => a + Number(d.valor), 0));
+      document.getElementById('stPagarSub').textContent = aPagar.length + ' em aberto' + (pagarAtraso.length ? ` · ${pagarAtraso.length} vencidas` : '');
+
+      const despPagasMes = DESPESAS.filter(d => d.status === 'pago' && ((d.vencimento || d.criado_em) || '').slice(0,7) === mesAtual);
+      const saidas = despPagasMes.reduce((a,d) => a + Number(d.valor), 0);
+      const saldo = receita - saidas;
+      const el = document.getElementById('stResultado');
+      el.textContent = App.money(saldo);
+      el.style.color = saldo >= 0 ? 'var(--green)' : 'var(--red)';
+      document.getElementById('stResultadoSub').textContent = `entradas ${App.money(receita)} − saídas ${App.money(saidas)}`;
+    }
+
+    /* ---------- Contas a receber ---------- */
     function renderPagamentos() {
       const BADGE = {
         pago: '<span class="badge green">Pago</span>', aberto: '<span class="badge blue">Em aberto</span>',
-        atraso: '<span class="badge red">Em atraso</span>', agendado: '<span class="badge gray">Agendado</span>',
+        atraso: '<span class="badge red">Vencida</span>', agendado: '<span class="badge gray">Agendada</span>',
       };
+      const abertos = PAGS.filter(p => p.status !== 'pago');
+      document.getElementById('recResumo').textContent = abertos.length
+        ? `· ${App.money(abertos.reduce((a,p) => a + Number(p.valor), 0))} em aberto` : '';
       document.getElementById('pagRows').innerHTML = PAGS.map((p, i) => {
         const pac = PACS.find(x => x.id === p.paciente_id);
         const st = statusReal(p);
@@ -218,9 +332,118 @@
             <button class="btn btn-ghost btn-sm" title="Excluir" onclick="excluirPag('${p.id}')">🗑</button>
           </td>
         </tr>`;
-      }).join('') || '<tr><td colspan="7" class="empty">Nenhuma cobrança registrada. Clique em <b>+ Registrar cobrança</b>.</td></tr>';
+      }).join('') || '<tr><td colspan="7" class="empty">Nenhuma cobrança registrada.</td></tr>';
     }
 
+    /* ---------- Contas a pagar ---------- */
+    function renderDespesas() {
+      const BADGE = {
+        pago: '<span class="badge green">Paga</span>', aberto: '<span class="badge amber">A pagar</span>',
+        atraso: '<span class="badge red">Vencida</span>',
+      };
+      const abertas = DESPESAS.filter(d => d.status !== 'pago');
+      document.getElementById('desResumo').textContent = abertas.length
+        ? `· ${App.money(abertas.reduce((a,d) => a + Number(d.valor), 0))} a pagar` : '';
+      document.getElementById('desRows').innerHTML = DESPESAS.map(d => {
+        const st = statusDespesa(d);
+        const [ico, nome] = CAT[d.categoria] || CAT.outro;
+        const f = FISIOS.find(x => x.id === d.fisio_id);
+        return `<tr>
+          <td><div class="p-name">${d.descricao}</div>${d.obs ? `<div class="p-sub">${d.obs}</div>` : ''}</td>
+          <td>${ico} ${nome}${f ? ` · ${f.nome.split(' ')[0]}` : ''}</td>
+          <td>${PF.fmtData(d.vencimento ? d.vencimento.slice(0,10) : null)}</td>
+          <td style="font-weight:700;">${App.money(Number(d.valor))}</td>
+          <td>${BADGE[st]}</td>
+          <td style="white-space:nowrap;">
+            ${st !== 'pago' ? `<button class="btn btn-soft btn-sm" onclick="marcarDespesaPaga('${d.id}')">✓ Paga</button>` : ''}
+            <button class="btn btn-ghost btn-sm" title="Excluir" onclick="excluirDespesa('${d.id}')">🗑</button>
+          </td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="6" class="empty">Nenhuma despesa lançada. Use <b>+ Nova despesa</b> ou gere as comissões do mês.</td></tr>';
+    }
+
+    function abrirDespesa() {
+      despesaEditId = null;
+      dpDesc.value = ''; dpValor.value = ''; dpObs.value = '';
+      dpCat.value = 'operacional'; dpFisio.value = ''; dpVenc.value = hoje;
+      dpStatus.value = 'aberto'; dpRepetir.value = '0';
+      App.openModal('mDespesa');
+    }
+
+    async function salvarDespesa() {
+      if (!dpDesc.value.trim() || !Number(dpValor.value)) { App.toast('Informe descrição e valor', 'error'); return; }
+      const btn = document.getElementById('btnDp'); btn.disabled = true;
+      try {
+        const repetir = Number(dpRepetir.value);
+        const base = {
+          descricao: dpDesc.value.trim(), categoria: dpCat.value, fisio_id: dpFisio.value || null,
+          valor: Number(dpValor.value), status: dpStatus.value, obs: dpObs.value.trim() || null,
+        };
+        for (let i = 0; i <= repetir; i++) {
+          let venc = dpVenc.value || null;
+          if (venc && i > 0) {
+            const d = new Date(venc + 'T12:00:00');
+            d.setMonth(d.getMonth() + i);
+            venc = d.toISOString().slice(0, 10);
+          }
+          await PF.post('despesas', {
+            ...base, vencimento: venc,
+            competencia: venc ? venc.slice(0, 7) : null,
+            status: i === 0 ? base.status : 'aberto',
+          });
+        }
+        App.closeModal('mDespesa');
+        App.toast(repetir ? `${repetir + 1} despesas lançadas!` : 'Despesa lançada!');
+        DESPESAS = await PF.get('despesas'); renderTudo();
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false;
+    }
+
+    async function marcarDespesaPaga(id) {
+      try { await PF.put('despesas', id, { status: 'pago' }); App.toast('Despesa quitada!'); DESPESAS = await PF.get('despesas'); renderTudo(); carregarComissoes(); }
+      catch (e) { App.toast(e.message, 'error'); }
+    }
+    async function excluirDespesa(id) {
+      if (!confirm('Excluir esta despesa?')) return;
+      try { await PF.del('despesas', id); DESPESAS = await PF.get('despesas'); renderTudo(); carregarComissoes(); }
+      catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    /* ---------- Comissões ---------- */
+    async function carregarComissoes() {
+      const mes = document.getElementById('cmMes').value || mesAtual;
+      try {
+        const r = await PF.api('/api/financeiro/comissoes?mes=' + mes);
+        document.getElementById('cmRows').innerHTML = r.linhas.map(l => `
+          <tr>
+            <td><div class="cell-person"><span class="avatar-sm" style="background:${l.cor};">${App.iniciais(l.nome)}</span><span class="p-name">${l.nome}</span></div></td>
+            <td>${l.sessoes}</td>
+            <td>${App.money(l.base)}</td>
+            <td>${l.comissao}%</td>
+            <td style="font-weight:700;color:var(--primary-dark);">${App.money(l.valor)}</td>
+            <td>${l.despesa_id ? '<span class="badge green">✓ lançada</span>' : (l.valor > 0 ? '<span class="badge gray">não lançada</span>' : '—')}</td>
+          </tr>`).join('') + (r.total ? `
+          <tr style="background:#F9FBFA;">
+            <td colspan="4" style="text-align:right;font-weight:700;">Total do mês</td>
+            <td style="font-weight:800;color:var(--ink);">${App.money(r.total)}</td><td></td>
+          </tr>` : '') || '<tr><td colspan="6" class="empty">Nenhum profissional ativo.</td></tr>';
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    async function gerarComissoes() {
+      const mes = document.getElementById('cmMes').value || mesAtual;
+      if (!confirm(`Gerar as contas a pagar das comissões de ${mes}? Profissionais que já têm conta lançada nesse mês são ignorados.`)) return;
+      try {
+        const venc = new Date(mes + '-01T12:00:00');
+        venc.setMonth(venc.getMonth() + 1); venc.setDate(5); // dia 5 do mês seguinte
+        const r = await PF.api('/api/financeiro/comissoes/gerar', { method: 'POST', body: { mes, vencimento: venc.toISOString().slice(0,10) } });
+        App.toast(r.criadas ? `${r.criadas} conta(s) de comissão lançadas em Contas a pagar!` : 'Nada a gerar (já lançadas ou sem sessões)', r.criadas ? 'success' : 'info');
+        DESPESAS = await PF.get('despesas');
+        renderTudo(); carregarComissoes();
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    /* ---------- Pacotes / convênios ---------- */
     function renderPacotes() {
       const BG = ['var(--primary-soft)','var(--green-soft)','var(--blue-soft)','var(--purple-soft)','var(--amber-soft)'];
       document.getElementById('pacotesGrid').innerHTML = PACOTES.map((p, i) => `
@@ -230,7 +453,7 @@
             <div class="e-title">${p.nome}</div>
             <div class="e-sub">${p.descricao || ''}</div>
             <div style="font-size:1.3rem;font-weight:800;color:var(--ink);margin-top:10px;">${App.money(Number(p.valor))}${p.tipo === 'mensal' ? '<span style="font-size:.8rem;font-weight:600;color:var(--text-soft);">/mês</span>' : ''}</div>
-            <div class="e-specs"><span>${p.sessoes} ${p.sessoes > 1 ? 'sessões' : 'sessão'}</span></div>
+            <div class="e-specs"><span>${p.sessoes} ${p.sessoes > 1 ? 'sessões' : 'sessão'}</span><span>${App.money(Number(p.valor) / Math.max(p.sessoes, 1))}/sessão</span></div>
           </div>
         </div>`).join('') +
         `<div class="ex-card" style="display:grid;place-items:center;min-height:200px;border-style:dashed;" onclick="abrirPacote(null)">
@@ -251,7 +474,7 @@
       }).join('') || '<tr><td colspan="5" class="empty">Nenhum convênio cadastrado (atendimento 100% particular).</td></tr>';
     }
 
-    /* ---- ações ---- */
+    /* ---------- Cobranças ---------- */
     function atualizarCreditar() {
       const p = PACOTES.find(x => x.id === pgPacote.value);
       if (p) { pgValor.value = Number(p.valor); pgDesc.value = p.nome; }
@@ -261,7 +484,7 @@
         wrap.style.display = '';
         const saldo = (pac.sessoes_total || 0) - (pac.sessoes_feitas || 0);
         document.getElementById('pgCreditarLabel').innerHTML =
-          `Creditar <b>${p.sessoes} sessão(ões)</b> a ${pac.nome.split(' ')[0]} <span style="color:var(--text-soft);font-weight:400;">(saldo atual: ${saldo})</span> — as sessões da agenda consomem esses créditos no check-in`;
+          `Creditar <b>${p.sessoes} sessão(ões)</b> a ${pac.nome.split(' ')[0]} <span style="color:var(--text-soft);font-weight:400;">(saldo atual: ${saldo})</span>`;
       } else wrap.style.display = 'none';
     }
 
@@ -281,22 +504,20 @@
           forma: pgForma.value, vencimento: pgVenc.value || null,
           valor: Number(pgValor.value), status: pgStatus.value,
         });
-        // credita as sessões do pacote ao paciente (agenda consome no check-in)
         const p = PACOTES.find(x => x.id === pgPacote.value);
         const pac = PACS.find(x => x.id === pgPaciente.value);
         if (p && pac && p.sessoes > 0 && pgCreditar.checked && document.getElementById('pgCreditarWrap').style.display !== 'none') {
           const novoTotal = (pac.sessoes_total || 0) + p.sessoes;
           await PF.put('pacientes', pac.id, { pacote_nome: p.nome, sessoes_total: novoTotal });
           pac.sessoes_total = novoTotal; pac.pacote_nome = p.nome;
-          App.toast(`${p.sessoes} sessão(ões) creditadas a ${pac.nome.split(' ')[0]} — saldo: ${novoTotal - (pac.sessoes_feitas || 0)} 🎫`);
-        } else {
-          App.toast('Cobrança registrada!');
-        }
+          App.toast(`${p.sessoes} sessão(ões) creditadas a ${pac.nome.split(' ')[0]} 🎫`);
+        } else App.toast('Cobrança registrada!');
         App.closeModal('mPagamento');
         PAGS = await PF.get('pagamentos'); renderTudo();
       } catch (e) { App.toast(e.message, 'error'); }
       btn.disabled = false;
     }
+
     async function marcarPago(id) {
       try { await PF.put('pagamentos', id, { status: 'pago' }); App.toast('Pagamento recebido! 💰'); PAGS = await PF.get('pagamentos'); renderTudo(); }
       catch (e) { App.toast(e.message, 'error'); }

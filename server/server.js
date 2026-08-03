@@ -131,6 +131,19 @@ CREATE TABLE IF NOT EXISTS campanhas (
   status text NOT NULL DEFAULT 'simulada',
   criado_em timestamptz NOT NULL DEFAULT now()
 );
+CREATE TABLE IF NOT EXISTS despesas (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+  descricao text NOT NULL,
+  categoria text NOT NULL DEFAULT 'operacional',
+  fisio_id uuid REFERENCES fisios(id) ON DELETE SET NULL,
+  competencia text,
+  valor numeric NOT NULL DEFAULT 0,
+  vencimento date,
+  status text NOT NULL DEFAULT 'aberto',
+  obs text,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
 CREATE TABLE IF NOT EXISTS tratamentos (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
@@ -344,6 +357,74 @@ app.delete('/api/anexos/:id', auth, async (req, res) => {
   res.json({ ok: r.rowCount > 0 });
 });
 
+/* ---------- FINANCEIRO: comissões dos fisioterapeutas ---------- */
+// base de cálculo = sessões realizadas no mês × valor da sessão (do pacote do paciente, ou avulsa)
+app.get('/api/financeiro/comissoes', auth, async (req, res) => {
+  const mes = (req.query.mes || new Date().toISOString().slice(0, 7)).slice(0, 7);
+  const r = await pool.query(`
+    SELECT f.id, f.nome, f.cor, f.comissao,
+      count(s.id)::int AS sessoes,
+      COALESCE(SUM(
+        CASE WHEN s.id IS NULL THEN 0 WHEN pac.sessoes > 0 THEN pac.valor / pac.sessoes ELSE COALESCE(av.valor, 0) END
+      ), 0)::numeric AS base,
+      (SELECT d.id FROM despesas d
+        WHERE d.clinica_id = f.clinica_id AND d.categoria = 'comissao'
+          AND d.fisio_id = f.id AND d.competencia = $2 LIMIT 1) AS despesa_id
+    FROM fisios f
+    LEFT JOIN sessoes s ON s.fisio_id = f.id AND s.clinica_id = f.clinica_id
+      AND s.status = 'realizada' AND to_char(s.data, 'YYYY-MM') = $2
+    LEFT JOIN pacientes p ON p.id = s.paciente_id
+    LEFT JOIN pacotes pac ON pac.clinica_id = f.clinica_id AND pac.nome = p.pacote_nome
+    LEFT JOIN LATERAL (
+      SELECT valor FROM pacotes WHERE clinica_id = f.clinica_id AND tipo = 'avulsa' ORDER BY criado_em LIMIT 1
+    ) av ON true
+    WHERE f.clinica_id = $1 AND f.ativo
+    GROUP BY f.id, f.nome, f.cor, f.comissao, f.clinica_id
+    ORDER BY f.nome`, [req.auth.cid, mes]);
+  const linhas = r.rows.map(x => ({
+    ...x, base: Number(x.base), comissao: Number(x.comissao),
+    valor: Number((Number(x.base) * Number(x.comissao) / 100).toFixed(2)),
+  }));
+  res.json({ mes, linhas, total: Number(linhas.reduce((a, l) => a + l.valor, 0).toFixed(2)) });
+});
+
+// gera contas a pagar (categoria comissao) para o mês, sem duplicar
+app.post('/api/financeiro/comissoes/gerar', auth, async (req, res) => {
+  const { mes, vencimento } = req.body || {};
+  if (!mes) return res.status(400).json({ erro: 'Informe a competência (YYYY-MM)' });
+  const base = await pool.query(`
+    SELECT f.id, f.nome, f.comissao,
+      COALESCE(SUM(CASE WHEN s.id IS NULL THEN 0 WHEN pac.sessoes > 0 THEN pac.valor / pac.sessoes ELSE COALESCE(av.valor, 0) END), 0)::numeric AS base,
+      count(s.id)::int AS sessoes
+    FROM fisios f
+    LEFT JOIN sessoes s ON s.fisio_id = f.id AND s.clinica_id = f.clinica_id
+      AND s.status = 'realizada' AND to_char(s.data, 'YYYY-MM') = $2
+    LEFT JOIN pacientes p ON p.id = s.paciente_id
+    LEFT JOIN pacotes pac ON pac.clinica_id = f.clinica_id AND pac.nome = p.pacote_nome
+    LEFT JOIN LATERAL (
+      SELECT valor FROM pacotes WHERE clinica_id = f.clinica_id AND tipo = 'avulsa' ORDER BY criado_em LIMIT 1
+    ) av ON true
+    WHERE f.clinica_id = $1 AND f.ativo
+    GROUP BY f.id, f.nome, f.comissao, f.clinica_id`, [req.auth.cid, mes]);
+
+  let criadas = 0;
+  for (const f of base.rows) {
+    const valor = Number(f.base) * Number(f.comissao) / 100;
+    if (valor <= 0) continue;
+    const existe = await pool.query(
+      `SELECT 1 FROM despesas WHERE clinica_id=$1 AND categoria='comissao' AND fisio_id=$2 AND competencia=$3`,
+      [req.auth.cid, f.id, mes]);
+    if (existe.rowCount) continue;
+    await pool.query(
+      `INSERT INTO despesas (clinica_id, descricao, categoria, fisio_id, competencia, valor, vencimento, status)
+       VALUES ($1,$2,'comissao',$3,$4,$5,$6,'aberto')`,
+      [req.auth.cid, `Comissão ${f.nome} · ${mes} (${f.sessoes} sessões · ${Number(f.comissao)}%)`,
+       f.id, mes, valor.toFixed(2), vencimento || null]);
+    criadas++;
+  }
+  res.json({ ok: true, criadas });
+});
+
 /* ---------- MARKETING (campanhas de e-mail) ---------- */
 const smtpConfigurado = () => !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
 
@@ -411,6 +492,7 @@ const TABLES = {
   pacotes: ['nome', 'descricao', 'valor', 'sessoes', 'tipo'],
   pagamentos: ['paciente_id', 'descricao', 'forma', 'vencimento', 'valor', 'status'],
   convenios: ['nome', 'valor_sessao', 'ativo'],
+  despesas: ['descricao', 'categoria', 'fisio_id', 'competencia', 'valor', 'vencimento', 'status', 'obs'],
 };
 const JSONB_COLS = new Set(['avaliacao', 'itens']);
 const ORDER = {
