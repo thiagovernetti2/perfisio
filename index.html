@@ -63,8 +63,66 @@
 
     .lp-footer { border-top: 1px solid var(--line); padding: 28px 6vw; display: flex; align-items: center; gap: 16px; font-size: .8rem; color: var(--text-soft); flex-wrap: wrap; }
     .lp-footer .spacer { flex: 1; }
+    /* ===== Mockups do sistema ===== */
+    .mk-frame { background: var(--ink); border-radius: 14px; padding: 10px 10px 0; box-shadow: 0 20px 50px rgba(15,42,46,.22); max-width: 940px; margin: 0 auto; }
+    .mk-bar { display: flex; align-items: center; gap: 6px; padding: 0 4px 9px; }
+    .mk-bar i { width: 9px; height: 9px; border-radius: 50%; background: #3B5A57; display: block; }
+    .mk-bar .mk-url { margin-left: 10px; background: #17383C; color: #7C918F; font-size: .62rem; padding: 3px 12px; border-radius: 20px; font-style: normal; }
+    .mk-screen { background: var(--bg); border-radius: 8px 8px 0 0; overflow: hidden; display: flex; min-height: 320px; font-size: 10px; }
+    .mk-side { width: 128px; flex-shrink: 0; background: var(--ink-2); padding: 10px 8px; display: flex; flex-direction: column; gap: 3px; }
+    .mk-logo { display: flex; align-items: center; gap: 6px; color: #fff; font-weight: 800; font-size: .72rem; padding: 2px 4px 10px; }
+    .mk-logo span { width: 18px; height: 18px; border-radius: 5px; background: linear-gradient(135deg,var(--primary),var(--primary-dark)); display: grid; place-items: center; font-size: .6rem; }
+    .mk-nav { color: #9DB3B0; padding: 5px 8px; border-radius: 6px; font-size: .66rem; }
+    .mk-nav.on { background: var(--primary); color: #fff; font-weight: 700; }
+    .mk-body { flex: 1; padding: 12px 14px; min-width: 0; }
+    .mk-h { font-weight: 800; color: var(--ink); font-size: .86rem; }
+    .mk-sub { color: var(--text-soft); font-size: .64rem; margin-top: 1px; }
+    .mk-tiles { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin: 10px 0; }
+    .mk-tile { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+    .mk-tile b { display: block; font-size: .95rem; color: var(--ink); }
+    .mk-tile i { font-style: normal; color: var(--text-soft); font-size: .58rem; }
+    .mk-card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+    .mk-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #F0F4F3; }
+    .mk-row:last-child { border-bottom: none; }
+    .mk-time { font-weight: 700; color: var(--ink); font-size: .62rem; width: 30px; }
+    .mk-bar-c { width: 3px; height: 20px; border-radius: 3px; }
+    .mk-nome { font-weight: 600; color: var(--ink); font-size: .66rem; }
+    .mk-det { color: var(--text-soft); font-size: .58rem; }
+    .mk-pill { font-size: .55rem; padding: 1px 6px; border-radius: 20px; font-weight: 700; }
+    .mk-grid7 { display: grid; grid-template-columns: 26px repeat(5,1fr); background: #fff; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    .mk-gh { background: #F9FBFA; padding: 4px 2px; text-align: center; font-size: .55rem; font-weight: 700; color: var(--text-soft); border-bottom: 1px solid var(--line); }
+    .mk-gc { border-left: 1px solid #F0F4F3; border-bottom: 1px solid #F0F4F3; min-height: 24px; padding: 2px; }
+    .mk-ev { display: block; border-radius: 3px; color: #fff; font-size: .5rem; padding: 1px 3px; font-weight: 600; white-space: nowrap; overflow: hidden; }
+    .mk-tabs { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 22px; }
+    .mk-tab { padding: 8px 16px; border-radius: 20px; border: 1.5px solid var(--line); background: #fff; font-size: .82rem; font-weight: 600; color: var(--text-soft); cursor: pointer; transition: all .15s; }
+    .mk-tab.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+    .mk-soap { border-left: 3px solid var(--primary); padding: 4px 8px; margin-top: 6px; }
+    .mk-soap b { color: var(--primary-dark); font-size: .55rem; }
+
+    /* ===== Passos ===== */
+    .passos { display: grid; grid-template-columns: repeat(4,1fr); gap: 18px; max-width: 1080px; margin: 0 auto; }
+    .passo { position: relative; padding-top: 12px; }
+    .passo .n { width: 34px; height: 34px; border-radius: 50%; background: var(--primary); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: .95rem; margin-bottom: 12px; }
+    .passo h3 { font-size: .98rem; font-weight: 800; color: var(--ink); }
+    .passo p { font-size: .85rem; color: var(--text-soft); margin-top: 6px; line-height: 1.6; }
+
+    /* ===== FAQ ===== */
+    .faq { max-width: 780px; margin: 0 auto; }
+    .faq details { border-bottom: 1px solid var(--line); padding: 16px 4px; }
+    .faq summary { font-size: .95rem; font-weight: 700; color: var(--ink); cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 14px; }
+    .faq summary::-webkit-details-marker { display: none; }
+    .faq summary::after { content: '+'; color: var(--primary); font-weight: 800; font-size: 1.2rem; line-height: 1; }
+    .faq details[open] summary::after { content: '−'; }
+    .faq p { font-size: .89rem; color: var(--text-soft); line-height: 1.7; margin-top: 10px; }
+
+    @media (max-width: 900px) { .passos { grid-template-columns: repeat(2,1fr); } }
     @media (max-width: 860px) { .preco-grid { grid-template-columns: 1fr !important; } }
-    @media (max-width: 720px) { .lp-header nav { display: none; } }
+    @media (max-width: 720px) {
+      .lp-header nav { display: none; }
+      .mk-side { display: none; }
+      .mk-tiles { grid-template-columns: repeat(2,1fr); }
+      .passos { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -74,6 +132,7 @@
     <nav>
       <a href="#profissionais">Encontrar fisioterapeuta</a>
       <a href="#clinicas">Para clínicas</a>
+      <a href="#sistema">O sistema</a>
       <a href="#precos">Preço</a>
       <a href="login.html" class="btn btn-ghost btn-sm">Entrar</a>
       <a href="login.html#registro" class="btn btn-primary btn-sm">Criar perfil grátis</a>
@@ -116,6 +175,29 @@
     </div>
   </section>
 
+  <!-- PROPOSTA DE VALOR -->
+  <section class="section" style="background:var(--ink);color:#fff;">
+    <h2 style="color:#fff;">O paciente procura no Google. E escolhe quem está perto.</h2>
+    <p class="sec-sub" style="color:#9DB3B0;max-width:600px;">Quem sente dor não pesquisa "o melhor fisioterapeuta do Brasil" — pesquisa <b style="color:#fff;">"fisioterapeuta perto de mim"</b>. Se você não aparece nessa busca, o paciente do seu bairro marca com outro.</p>
+    <div class="feat-grid" style="max-width:1080px;">
+      <div class="feat" style="background:var(--ink-2);border-color:#25474B;">
+        <div class="f-ico" style="background:#14383C;">🔎</div>
+        <h3 style="color:#fff;">Visibilidade sem gastar com anúncio</h3>
+        <p style="color:#9DB3B0;">Seu perfil no diretório do PerFisio aparece para quem busca fisioterapia na sua região — com especialidade, faixa de preço e avaliação.</p>
+      </div>
+      <div class="feat" style="background:var(--ink-2);border-color:#25474B;">
+        <div class="f-ico" style="background:#14383C;">📲</div>
+        <h3 style="color:#fff;">Contato vira paciente, não recado perdido</h3>
+        <p style="color:#9DB3B0;">A solicitação de avaliação entra direto no seu CRM. Nada de anotar no papel, no direct e no bloco de notas ao mesmo tempo.</p>
+      </div>
+      <div class="feat" style="background:var(--ink-2);border-color:#25474B;">
+        <div class="f-ico" style="background:#14383C;">🗂</div>
+        <h3 style="color:#fff;">Um sistema no lugar de cinco</h3>
+        <p style="color:#9DB3B0;">Agenda no caderno, prontuário no Word, cobrança na planilha e exercícios no WhatsApp viram um só lugar — com histórico de verdade.</p>
+      </div>
+    </div>
+  </section>
+
   <!-- PARA CLÍNICAS -->
   <section class="section" id="clinicas" style="background:var(--bg);">
     <h2>Gestão completa para sua clínica ou consultório</h2>
@@ -127,6 +209,72 @@
       <div class="feat"><div class="f-ico">💪</div><h3>Prescrição de exercícios</h3><p>Biblioteca com vídeos, envio por WhatsApp e acompanhamento da adesão do paciente em casa.</p></div>
       <div class="feat"><div class="f-ico">💳</div><h3>Financeiro e pacotes</h3><p>Pacotes de sessões, convênios, links de pagamento, cobranças automáticas e controle de repasses.</p></div>
       <div class="feat"><div class="f-ico">📈</div><h3>Relatórios e equipe</h3><p>Ocupação da agenda, produção por profissional, comissões, taxa de faltas e retenção de pacientes.</p></div>
+    </div>
+  </section>
+
+  <!-- MOCKUPS DO SISTEMA -->
+  <section class="section" id="sistema">
+    <h2>Veja o sistema por dentro</h2>
+    <p class="sec-sub">Do agendamento à evolução do paciente, tudo com a mesma cara — sem menu escondido, sem treinamento de duas semanas.</p>
+
+    <div class="mk-tabs" id="mkTabs">
+      <button class="mk-tab on" data-mk="dashboard">📊 Dashboard</button>
+      <button class="mk-tab" data-mk="agenda">📅 Agenda</button>
+      <button class="mk-tab" data-mk="prontuario">📋 Prontuário</button>
+      <button class="mk-tab" data-mk="financeiro">💳 Financeiro</button>
+    </div>
+
+    <div class="mk-frame">
+      <div class="mk-bar"><i></i><i></i><i></i><em class="mk-url">app.perfisio.com.br</em></div>
+      <div class="mk-screen">
+        <div class="mk-side">
+          <div class="mk-logo"><span>P</span> PerFisio</div>
+          <div class="mk-nav" data-nav="dashboard">📊 Dashboard</div>
+          <div class="mk-nav" data-nav="agenda">📅 Agenda</div>
+          <div class="mk-nav">👥 Pacientes</div>
+          <div class="mk-nav">🎯 CRM</div>
+          <div class="mk-nav" data-nav="prontuario">📋 Prontuários</div>
+          <div class="mk-nav">💪 Exercícios</div>
+          <div class="mk-nav" data-nav="financeiro">💳 Financeiro</div>
+          <div class="mk-nav">📣 Marketing</div>
+          <div class="mk-nav">📈 Relatórios</div>
+        </div>
+        <div class="mk-body" id="mkBody"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:22px;">
+      <span class="badge primary">Funciona no celular</span>
+      <span class="badge green">Sem instalação</span>
+      <span class="badge blue">Dados na nuvem, com backup</span>
+    </div>
+  </section>
+
+  <!-- COMO COMEÇAR -->
+  <section class="section" style="background:var(--bg);">
+    <h2>Do cadastro ao primeiro paciente</h2>
+    <p class="sec-sub">Leva menos tempo do que uma sessão. Sem implantação, sem consultor, sem cartão de crédito.</p>
+    <div class="passos">
+      <div class="passo">
+        <div class="n">1</div>
+        <h3>Crie sua conta</h3>
+        <p>Nome da clínica, seu nome e e-mail. Em 1 minuto o sistema abre já com biblioteca de exercícios e pacotes prontos.</p>
+      </div>
+      <div class="passo">
+        <div class="n">2</div>
+        <h3>Publique seu perfil</h3>
+        <p>Especialidades, bairro e faixa de preço. Seu perfil entra no diretório e passa a aparecer para pacientes da sua região.</p>
+      </div>
+      <div class="passo">
+        <div class="n">3</div>
+        <h3>Receba e agende</h3>
+        <p>As solicitações de avaliação caem no CRM. Um clique no horário livre e a sessão está agendada — com lembrete pro paciente.</p>
+      </div>
+      <div class="passo">
+        <div class="n">4</div>
+        <h3>Atenda e evolua</h3>
+        <p>Check-in consome o crédito do pacote, você registra a evolução SOAP e prescreve os exercícios. Tudo no prontuário do paciente.</p>
+      </div>
     </div>
   </section>
 
@@ -208,6 +356,50 @@
         <span class="badge green">Sem taxa por atendimento</span>
         <span class="badge blue">Sem fidelidade</span>
       </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section" id="faq" style="background:var(--bg);">
+    <h2>Perguntas frequentes</h2>
+    <p class="sec-sub">O que a gente mais ouve de fisioterapeutas antes de começar.</p>
+    <div class="faq">
+      <details open>
+        <summary>Preciso pagar para aparecer no diretório?</summary>
+        <p>Não. O perfil no diretório entra junto com a conta, e quem está começando usa tudo de graça até atender 10 consultas por mês. Depois disso, a mensalidade é meia consulta por fisioterapeuta.</p>
+      </details>
+      <details>
+        <summary>Vocês cobram porcentagem por paciente que eu conseguir?</summary>
+        <p>Não, e essa é uma decisão de princípio: não queremos ser sócios do seu negócio. O valor é fixo por profissional, independente de quantos pacientes você atende ou de quanto fatura. Se você dobrar os atendimentos, a mensalidade continua a mesma.</p>
+      </details>
+      <details>
+        <summary>Atendo sozinho, em domicílio. Serve pra mim?</summary>
+        <p>Serve — e foi pensado justamente para isso. O conceito de fisioterapeuta local é atender perto de casa, sem gastar horas no trânsito. A agenda tem tipo domiciliar, o prontuário funciona no celular e o perfil mostra a sua região de atendimento.</p>
+      </details>
+      <details>
+        <summary>Já uso agenda no papel e prontuário no Word. Dá trabalho migrar?</summary>
+        <p>Você não precisa migrar nada de uma vez. Cadastre os pacientes conforme eles forem voltando: leva menos de um minuto por paciente e, a partir da primeira sessão registrada, o histórico já começa a se formar no sistema.</p>
+      </details>
+      <details>
+        <summary>O prontuário eletrônico é seguro? E a LGPD?</summary>
+        <p>Cada clínica só enxerga os próprios dados — o isolamento é feito no banco, não só na tela. Os dados ficam em servidor na nuvem com backup, e o acesso é por login individual com perfis diferentes (gestor, fisioterapeuta, recepção). Exames e fotos ficam vinculados ao paciente e só abrem para quem está autenticado.</p>
+      </details>
+      <details>
+        <summary>Consigo imprimir ou enviar o prontuário para o convênio?</summary>
+        <p>Sim. O botão de imprimir gera um documento em A4 com cabeçalho da clínica, dados do paciente, avaliação, todas as evoluções SOAP, exercícios, sessões e linha de assinatura — dá para imprimir ou salvar em PDF.</p>
+      </details>
+      <details>
+        <summary>Como funciona o pagamento por pacote?</summary>
+        <p>Você registra o pagamento do pacote no financeiro e o sistema credita as sessões ao paciente. A cada check-in na agenda, um crédito é consumido automaticamente — e o sistema avisa quando o pacote está acabando, para você propor a renovação.</p>
+      </details>
+      <details>
+        <summary>Trabalho com outros fisioterapeutas. Dá para controlar o repasse?</summary>
+        <p>Dá. Cada profissional tem um percentual de comissão no cadastro, e o financeiro calcula o quanto ele tem a receber no mês com base nas sessões realizadas e no valor de cada sessão. Um clique transforma isso em contas a pagar.</p>
+      </details>
+      <details>
+        <summary>Tem fidelidade? Como cancelo?</summary>
+        <p>Não tem fidelidade nem multa. Você cancela quando quiser e continua podendo exportar/imprimir os prontuários dos seus pacientes — o histórico clínico é seu e do paciente.</p>
+      </details>
     </div>
   </section>
 
@@ -308,6 +500,96 @@
       } catch (e) { App.toast(e.message, 'error'); }
       btn.disabled = false;
     }
+
+    /* ---------- Mockups do sistema ---------- */
+    const MOCKS = {
+      dashboard: `
+        <div class="mk-h">Dashboard</div><div class="mk-sub">Visão geral da Clínica Movimente · hoje</div>
+        <div class="mk-tiles">
+          <div class="mk-tile"><i>Sessões hoje</i><b>8</b></div>
+          <div class="mk-tile"><i>Em tratamento</i><b>34</b></div>
+          <div class="mk-tile"><i>Recebido no mês</i><b>R$ 12.4k</b></div>
+          <div class="mk-tile"><i>Presença</i><b>93%</b></div>
+        </div>
+        <div class="mk-card">
+          <div style="font-weight:700;color:var(--ink);font-size:.7rem;margin-bottom:4px;">Agenda de hoje</div>
+          <div class="mk-row"><span class="mk-time">08:00</span><span class="mk-bar-c" style="background:#0DA189;"></span>
+            <div style="flex:1;"><div class="mk-nome">Marcos Teixeira</div><div class="mk-det">Sessão 8/10 · Lombalgia</div></div>
+            <span class="mk-pill" style="background:#E1F4F0;color:#0A8270;">🎫 3 créditos</span></div>
+          <div class="mk-row"><span class="mk-time">09:00</span><span class="mk-bar-c" style="background:#2D7DD2;"></span>
+            <div style="flex:1;"><div class="mk-nome">Larissa Fontes</div><div class="mk-det">Pós-op. LCA · joelho D</div></div>
+            <span class="mk-pill" style="background:#E3F5ED;color:#1E9E6A;">✓ realizada</span></div>
+          <div class="mk-row"><span class="mk-time">10:00</span><span class="mk-bar-c" style="background:#7C5CBF;"></span>
+            <div style="flex:1;"><div class="mk-nome">Helena Garcia</div><div class="mk-det">Osteoartrose de quadril</div></div>
+            <span class="mk-pill" style="background:#E7F0FA;color:#2D7DD2;">agendada</span></div>
+        </div>`,
+      agenda: `
+        <div class="mk-h">Agenda</div><div class="mk-sub">Vista semanal · 3 profissionais</div>
+        <div style="display:flex;gap:4px;margin:8px 0;">
+          <span class="mk-pill" style="background:var(--ink);color:#fff;">Semana</span>
+          <span class="mk-pill" style="background:#fff;border:1px solid var(--line);color:var(--text-soft);">Mês</span>
+          <span class="mk-pill" style="background:#fff;border:1px solid var(--line);color:var(--text-soft);">Dia</span>
+        </div>
+        <div class="mk-grid7">
+          <div class="mk-gh"></div><div class="mk-gh">Seg</div><div class="mk-gh">Ter</div><div class="mk-gh">Qua</div><div class="mk-gh">Qui</div><div class="mk-gh">Sex</div>
+          ${['08h','09h','10h','11h'].map((h, i) => `
+            <div class="mk-gh" style="border-bottom:1px solid #F0F4F3;background:#fff;">${h}</div>
+            ${[0,1,2,3,4].map(d => {
+              const evs = { '0-0': ['Marcos','#0DA189'], '0-2': ['Marcos','#0DA189'], '1-1': ['Larissa','#2D7DD2'],
+                '1-3': ['Larissa','#2D7DD2'], '2-0': ['Helena','#7C5CBF'], '2-4': ['Pilates','#D9820B'], '3-2': ['Avaliação','#1E9E6A'] };
+              const e = evs[`${i}-${d}`];
+              return `<div class="mk-gc">${e ? `<span class="mk-ev" style="background:${e[1]};">${e[0]}</span>` : ''}</div>`;
+            }).join('')}`).join('')}
+        </div>`,
+      prontuario: `
+        <div class="mk-h">Prontuário · Marcos Teixeira</div><div class="mk-sub">42 anos · Unimed · Dra. Camila Rocha</div>
+        <div style="display:flex;gap:5px;margin:9px 0;flex-wrap:wrap;">
+          <span class="mk-pill" style="background:var(--primary-soft);color:var(--primary-dark);border:1px solid var(--primary);">🦴 Lombalgia mecânica</span>
+          <span class="mk-pill" style="background:#fff;border:1px solid var(--line);color:var(--text-soft);">🦵 Joelho D · alta</span>
+          <span class="mk-pill" style="background:#fff;border:1px dashed var(--line);color:var(--text-soft);">＋ ocorrência</span>
+        </div>
+        <div class="mk-card">
+          <div style="font-weight:700;color:var(--ink);font-size:.7rem;">Evoluções</div>
+          <div class="mk-soap">
+            <div style="font-size:.6rem;font-weight:700;color:var(--ink);">14/07 · Camila Rocha · <span class="mk-pill" style="background:#E3F5ED;color:#1E9E6A;">EVA 4</span></div>
+            <div style="font-size:.58rem;color:var(--text);margin-top:2px;"><b>S</b> Refere melhora da dor ao sentar.</div>
+            <div style="font-size:.58rem;color:var(--text);"><b>O</b> Flexão de tronco 70° sem dor.</div>
+            <div style="font-size:.58rem;color:var(--text);"><b>P</b> Progredir core, manter 2x/semana.</div>
+          </div>
+          <div class="mk-soap" style="border-color:#B9C8C4;">
+            <div style="font-size:.6rem;font-weight:700;color:var(--ink);">09/07 · Camila Rocha · <span class="mk-pill" style="background:#FCF1DE;color:#D9820B;">EVA 5</span></div>
+            <div style="font-size:.58rem;color:var(--text);margin-top:2px;"><b>S</b> Desconforto após viagem longa.</div>
+          </div>
+        </div>`,
+      financeiro: `
+        <div class="mk-h">Financeiro</div><div class="mk-sub">Contas a receber, a pagar e comissões</div>
+        <div class="mk-tiles">
+          <div class="mk-tile"><i>Recebido</i><b>R$ 12.4k</b></div>
+          <div class="mk-tile"><i>A receber</i><b>R$ 3.2k</b></div>
+          <div class="mk-tile"><i>A pagar</i><b>R$ 5.6k</b></div>
+          <div class="mk-tile"><i>Resultado</i><b style="color:#1E9E6A;">R$ 6.8k</b></div>
+        </div>
+        <div class="mk-card">
+          <div style="font-weight:700;color:var(--ink);font-size:.7rem;margin-bottom:3px;">Comissões · julho</div>
+          <div class="mk-row"><span class="mk-bar-c" style="background:#0DA189;"></span>
+            <div style="flex:1;"><div class="mk-nome">Camila Rocha</div><div class="mk-det">68 sessões · base R$ 9.520 · 40%</div></div>
+            <b style="font-size:.68rem;color:var(--primary-dark);">R$ 3.808</b></div>
+          <div class="mk-row"><span class="mk-bar-c" style="background:#2D7DD2;"></span>
+            <div style="flex:1;"><div class="mk-nome">Rafael Nunes</div><div class="mk-det">44 sessões · base R$ 6.160 · 40%</div></div>
+            <b style="font-size:.68rem;color:var(--primary-dark);">R$ 2.464</b></div>
+          <div class="mk-row"><span class="mk-bar-c" style="background:#D9820B;"></span>
+            <div style="flex:1;"><div class="mk-nome">Aluguel da sala</div><div class="mk-det">🏠 vence 10/08</div></div>
+            <b style="font-size:.68rem;color:var(--text);">R$ 2.200</b></div>
+        </div>`,
+    };
+
+    function mostrarMock(k) {
+      document.getElementById('mkBody').innerHTML = MOCKS[k];
+      document.querySelectorAll('#mkTabs .mk-tab').forEach(t => t.classList.toggle('on', t.dataset.mk === k));
+      document.querySelectorAll('.mk-nav').forEach(n => n.classList.toggle('on', n.dataset.nav === k));
+    }
+    document.querySelectorAll('#mkTabs .mk-tab').forEach(t => t.addEventListener('click', () => mostrarMock(t.dataset.mk)));
+    mostrarMock('dashboard');
 
     /* ---------- Calculadora "meia consulta" ---------- */
     let pcQtd = 1;
