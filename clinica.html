@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clínica — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/app.css">
+  <style>
+    body { background: var(--bg); }
+    .lp-header {
+      display: flex; align-items: center; gap: 12px; padding: 16px 6vw;
+      border-bottom: 1px solid var(--line); position: sticky; top: 0; background: rgba(255,255,255,.94);
+      backdrop-filter: blur(8px); z-index: 50;
+    }
+    .lp-header .logo { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 1.1rem; color: var(--ink); }
+    .lp-header .logo .mark { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff; display: grid; place-items: center; font-size: .95rem; }
+    .lp-header nav { margin-left: auto; display: flex; align-items: center; gap: 16px; font-size: .88rem; font-weight: 600; color: var(--text-soft); }
+
+    .pf-wrap { max-width: 980px; margin: 0 auto; padding: 26px 5vw 70px; }
+    .pf-banner { height: 150px; border-radius: 18px 18px 0 0; background: linear-gradient(135deg, var(--primary), var(--ink)); }
+    .pf-card { background: #fff; border: 1px solid var(--line); border-radius: 0 0 18px 18px; padding: 0 30px 26px; box-shadow: var(--shadow); }
+    .pf-avatar {
+      width: 96px; height: 96px; border-radius: 22px; border: 4px solid #fff; margin-top: -48px;
+      display: grid; place-items: center; font-weight: 900; font-size: 1.7rem; color: #fff;
+      background: var(--ink); box-shadow: var(--shadow);
+    }
+    .pf-nome { font-size: 1.6rem; font-weight: 900; color: var(--ink); letter-spacing: -.5px; margin-top: 12px; }
+    .pf-sub { font-size: .92rem; color: var(--text-soft); margin-top: 3px; }
+    .pf-meta { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; font-size: .84rem; color: var(--text-soft); }
+    .pf-cta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 20px; padding-top: 18px; border-top: 1px solid #EDF1F0; }
+    .pf-preco { font-size: 1rem; font-weight: 800; color: var(--ink); margin-right: auto; }
+
+    .pf-sec { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px; box-shadow: var(--shadow); margin-top: 20px; }
+    .pf-sec h2 { font-size: 1rem; font-weight: 800; color: var(--ink); margin-bottom: 12px; }
+    .pf-sec p { font-size: .9rem; color: var(--text); line-height: 1.7; }
+    #mapaClinica { height: 300px; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); margin-top: 6px; display: none; }
+
+    .equipe { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+    .eq-card { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #fff; transition: all .15s; display: block; }
+    .eq-card:hover { transform: translateY(-3px); box-shadow: 0 10px 26px rgba(15,42,46,.13); border-color: var(--primary); }
+    .eq-top { height: 64px; position: relative; }
+    .eq-av { width: 52px; height: 52px; border-radius: 50%; border: 3px solid #fff; position: absolute; bottom: -22px; left: 16px; display: grid; place-items: center; font-weight: 800; color: #fff; }
+    .eq-body { padding: 28px 16px 16px; }
+    .eq-nome { font-weight: 800; color: var(--ink); font-size: .94rem; }
+    .eq-esp { font-size: .74rem; color: var(--text-soft); margin-top: 2px; }
+  </style>
+</head>
+<body>
+
+  <header class="lp-header">
+    <a class="logo" href="index.html"><span class="mark">P</span> PerFisio</a>
+    <nav>
+      <a href="index.html#profissionais">← Voltar ao diretório</a>
+      <a href="login.html" class="btn btn-ghost btn-sm">Entrar</a>
+    </nav>
+  </header>
+
+  <div class="pf-wrap" id="conteudo">
+    <div style="text-align:center;color:var(--text-soft);padding:60px 0;">Carregando clínica...</div>
+  </div>
+
+  <!-- MODAL SOLICITAR AVALIAÇÃO -->
+  <div class="modal-overlay" id="mAvaliacao">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="avTitulo">Solicitar avaliação</h3>
+        <button class="close" onclick="App.closeModal('mAvaliacao')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field"><label>Seu nome *</label><input type="text" id="avNome"></div>
+          <div class="field"><label>Telefone / WhatsApp</label><input type="text" id="avTel"></div>
+          <div class="field full"><label>O que você está sentindo?</label><textarea id="avObs" placeholder="Ex.: dor no joelho ao subir escadas há 2 meses"></textarea></div>
+        </div>
+        <div style="margin-top:10px;font-size:.78rem;color:var(--text-soft);">A clínica recebe seu contato e retorna para agendar a avaliação.</div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal('mAvaliacao')">Cancelar</button>
+        <button class="btn btn-primary" id="btnAv" onclick="enviarSolicitacao()">Enviar solicitação</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/app.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script>
+    const LABEL = {
+      esportiva: '🏃 Esportiva', ortopedia: '🦴 Ortopedia', pilates: '🧘 Pilates', neuro: '🧠 Neuro',
+      rpg: '🧍 RPG', respiratoria: '🫁 Respiratória', pelvica: '🌸 Pélvica', geriatrica: '👵 Geriátrica',
+    };
+    const clinicaId = new URLSearchParams(location.search).get('id');
+    let CLI = null;
+
+    async function boot() {
+      if (!clinicaId) { location.href = 'index.html'; return; }
+      try { CLI = await PF.api('/api/public/clinicas/' + clinicaId); }
+      catch (e) {
+        document.getElementById('conteudo').innerHTML =
+          `<div style="text-align:center;padding:60px 0;color:var(--text-soft);">Clínica não encontrada.<br><br><a class="btn btn-primary" href="index.html#profissionais">← Voltar ao diretório</a></div>`;
+        return;
+      }
+      const c = CLI;
+      const perfil = c.perfil || {};
+      document.title = `${c.nome} — PerFisio`;
+      const ini = c.nome.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase();
+      const todasEsp = [...new Set(c.equipe.flatMap(f => f.especialidades))];
+      document.getElementById('conteudo').innerHTML = `
+        <div class="pf-banner"></div>
+        <div class="pf-card">
+          <div class="pf-avatar">${ini}</div>
+          <div class="pf-nome">${perfil.titulo || c.nome}</div>
+          <div class="pf-sub">${c.equipe.length} fisioterapeuta(s) no PerFisio</div>
+          <div class="pf-meta">
+            ${c.endereco ? `<span>📍 ${c.endereco}</span>` : ''}
+            ${c.horario ? `<span>🕐 ${c.horario}</span>` : ''}
+            ${c.telefone ? `<span>📞 ${c.telefone}</span>` : ''}
+          </div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:14px;">
+            ${todasEsp.map(e => `<span class="badge primary">${LABEL[e] || e}</span>`).join('')}
+            ${c.equipe.some(f => f.domiciliar) ? '<span class="badge amber">🏠 Domiciliar</span>' : ''}
+          </div>
+          <div class="pf-cta">
+            <span class="pf-preco">${perfil.faixa_preco || ''}</span>
+            <button class="btn btn-primary" style="padding:12px 26px;" onclick="App.openModal('mAvaliacao')">Agendar avaliação</button>
+          </div>
+        </div>
+
+        ${perfil.bio ? `<div class="pf-sec"><h2>Sobre a clínica</h2><p>${perfil.bio.replace(/\n/g, '<br>')}</p></div>` : ''}
+
+        <div class="pf-sec">
+          <h2>Equipe</h2>
+          <div class="equipe">
+            ${c.equipe.map(f => {
+              const fi = f.nome.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase();
+              return `<a class="eq-card" href="fisio.html?id=${f.id}">
+                <div class="eq-top" style="background:linear-gradient(135deg,${f.cor},${f.cor}CC);"><span class="eq-av" style="background:${f.cor};">${fi}</span></div>
+                <div class="eq-body">
+                  <div class="eq-nome">${f.nome}</div>
+                  <div class="eq-esp">${f.esp || 'Fisioterapeuta'}${f.bairro ? ' · ' + f.bairro : ''}</div>
+                  <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;">
+                    ${f.especialidades.slice(0, 3).map(e => `<span class="badge primary" style="font-size:.64rem;">${LABEL[e] || e}</span>`).join('')}
+                    ${f.domiciliar ? '<span class="badge amber" style="font-size:.64rem;">🏠</span>' : ''}
+                  </div>
+                  ${f.preco ? `<div style="font-size:.78rem;font-weight:700;color:var(--ink);margin-top:8px;">${f.preco}</div>` : ''}
+                </div>
+              </a>`;
+            }).join('') || '<p style="color:var(--text-soft);">Nenhum profissional público ainda.</p>'}
+          </div>
+        </div>
+
+        <div class="pf-sec" id="secMapa" style="display:none;">
+          <h2>Onde estamos</h2>
+          <div id="mapaClinica"></div>
+        </div>`;
+      document.getElementById('avTitulo').textContent = 'Solicitar avaliação — ' + c.nome;
+      iniciarMapa();
+    }
+
+    async function iniciarMapa() {
+      const pontos = CLI.equipe.filter(f => f.lat != null);
+      if (!pontos.length) return;
+      let token = null;
+      try { token = (await PF.api('/api/public/config')).mapbox; } catch (e) {}
+      if (!token) return;
+      await new Promise(res => {
+        const css = document.createElement('link');
+        css.rel = 'stylesheet'; css.href = 'https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css';
+        document.head.appendChild(css);
+        const s = document.createElement('script');
+        s.src = 'https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js';
+        s.onload = res; s.onerror = res;
+        document.head.appendChild(s);
+      });
+      if (!window.mapboxgl) return;
+      document.getElementById('secMapa').style.display = '';
+      const el = document.getElementById('mapaClinica');
+      el.style.display = 'block';
+      mapboxgl.accessToken = token;
+      const m = new mapboxgl.Map({ container: el, style: 'mapbox://styles/mapbox/light-v11', center: [pontos[0].lng, pontos[0].lat], zoom: 12 });
+      const b = new mapboxgl.LngLatBounds();
+      pontos.forEach(p => {
+        b.extend([p.lng, p.lat]);
+        new mapboxgl.Marker({ color: '#0DA189' }).setLngLat([p.lng, p.lat])
+          .setPopup(new mapboxgl.Popup({ offset: 16 }).setHTML(`<b style="font-family:Inter,sans-serif;font-size:.82rem;">${p.nome}</b>`)).addTo(m);
+      });
+      m.on('load', () => { try { m.fitBounds(b, { padding: 60, maxZoom: 14 }); } catch (e) {} });
+    }
+
+    async function enviarSolicitacao() {
+      if (!avNome.value.trim()) { App.toast('Informe seu nome', 'error'); return; }
+      const btn = document.getElementById('btnAv'); btn.disabled = true;
+      try {
+        await PF.api('/api/public/leads', { method: 'POST', body: {
+          clinica_id: clinicaId, nome: avNome.value.trim(), telefone: avTel.value.trim() || null,
+          interesse: 'Avaliação fisioterapêutica', obs: avObs.value.trim() || null,
+        }});
+        App.closeModal('mAvaliacao');
+        App.toast('Solicitação enviada! A clínica entrará em contato. ✅');
+        avNome.value = ''; avTel.value = ''; avObs.value = '';
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false;
+    }
+
+    boot();
+  </script>
+</body>
+</html>

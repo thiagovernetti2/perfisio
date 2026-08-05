@@ -747,6 +747,46 @@ app.get('/api/public/profissionais', async (req, res) => {
   })));
 });
 
+// página interna do profissional
+app.get('/api/public/profissionais/:id', async (req, res) => {
+  const r = await pool.query(`
+    SELECT f.id, f.nome, f.crefito, f.esp, f.cor, f.especialidades, f.domiciliar,
+           f.bairro, f.cidade, f.preco, f.bio, f.lat, f.lng,
+           c.id AS clinica_id, c.nome AS clinica_nome, c.endereco AS clinica_endereco,
+           c.telefone AS clinica_telefone, c.horario AS clinica_horario
+    FROM fisios f JOIN clinicas c ON c.id = f.clinica_id
+    WHERE f.id = $1 AND f.publico AND f.ativo AND c.ativa`, [req.params.id]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Profissional não encontrado' });
+  const p = r.rows[0];
+  const colegas = await pool.query(`
+    SELECT id, nome, esp, cor, especialidades, bairro, preco, domiciliar
+    FROM fisios WHERE clinica_id = $1 AND id <> $2 AND publico AND ativo ORDER BY nome LIMIT 6`,
+    [p.clinica_id, p.id]);
+  res.json({
+    ...p,
+    lat: p.lat === null ? null : Number(p.lat), lng: p.lng === null ? null : Number(p.lng),
+    especialidades: (p.especialidades || '').split(',').map(s => s.trim()).filter(Boolean),
+    colegas: colegas.rows.map(c => ({ ...c, especialidades: (c.especialidades || '').split(',').map(s => s.trim()).filter(Boolean) })),
+  });
+});
+
+// página interna da clínica
+app.get('/api/public/clinicas/:id', async (req, res) => {
+  const c = await pool.query(
+    'SELECT id, nome, endereco, telefone, horario, perfil FROM clinicas WHERE id = $1 AND ativa', [req.params.id]);
+  if (!c.rowCount) return res.status(404).json({ erro: 'Clínica não encontrada' });
+  const equipe = await pool.query(`
+    SELECT id, nome, crefito, esp, cor, especialidades, domiciliar, bairro, cidade, preco, bio, lat, lng
+    FROM fisios WHERE clinica_id = $1 AND publico AND ativo ORDER BY nome`, [req.params.id]);
+  res.json({
+    ...c.rows[0],
+    equipe: equipe.rows.map(f => ({
+      ...f, lat: f.lat === null ? null : Number(f.lat), lng: f.lng === null ? null : Number(f.lng),
+      especialidades: (f.especialidades || '').split(',').map(s => s.trim()).filter(Boolean),
+    })),
+  });
+});
+
 // lead direto para um profissional
 app.post('/api/public/leads-profissional', async (req, res) => {
   const { fisio_id, nome, telefone, obs } = req.body || {};
