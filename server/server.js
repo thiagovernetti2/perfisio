@@ -131,6 +131,19 @@ CREATE TABLE IF NOT EXISTS campanhas (
   status text NOT NULL DEFAULT 'simulada',
   criado_em timestamptz NOT NULL DEFAULT now()
 );
+CREATE TABLE IF NOT EXISTS posts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug text NOT NULL UNIQUE,
+  titulo text NOT NULL,
+  resumo text,
+  conteudo text NOT NULL,
+  categoria text NOT NULL DEFAULT 'Gestão',
+  emoji text DEFAULT '📄',
+  autor text DEFAULT 'Equipe PerFisio',
+  publicado boolean NOT NULL DEFAULT true,
+  publicado_em date NOT NULL DEFAULT CURRENT_DATE,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
 CREATE TABLE IF NOT EXISTS despesas (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
@@ -167,6 +180,16 @@ ALTER TABLE sessoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES trata
 ALTER TABLE tratamentos ADD COLUMN IF NOT EXISTS descricao text;
 ALTER TABLE anexos ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
 ALTER TABLE evolucoes ADD COLUMN IF NOT EXISTS sessao_id uuid REFERENCES sessoes(id) ON DELETE SET NULL;
+-- perfil público do profissional (diretório)
+ALTER TABLE fisios ADD COLUMN IF NOT EXISTS publico boolean NOT NULL DEFAULT false;
+ALTER TABLE fisios ADD COLUMN IF NOT EXISTS especialidades text;
+ALTER TABLE fisios ADD COLUMN IF NOT EXISTS domiciliar boolean NOT NULL DEFAULT false;
+ALTER TABLE fisios ADD COLUMN IF NOT EXISTS bairro text;
+ALTER TABLE fisios ADD COLUMN IF NOT EXISTS cidade text;
+ALTER TABLE fisios ADD COLUMN IF NOT EXISTS lat numeric;
+ALTER TABLE fisios ADD COLUMN IF NOT EXISTS lng numeric;
+ALTER TABLE fisios ADD COLUMN IF NOT EXISTS preco text;
+ALTER TABLE fisios ADD COLUMN IF NOT EXISTS bio text;
 `;
 
 /* migração de dados: pacientes com histórico ganham um tratamento inicial */
@@ -481,7 +504,8 @@ app.post('/api/campanhas/enviar', auth, async (req, res) => {
 
 /* ---------- CRUD GENÉRICO (escopado por clínica) ---------- */
 const TABLES = {
-  fisios: ['nome', 'crefito', 'esp', 'cor', 'comissao', 'ativo'],
+  fisios: ['nome', 'crefito', 'esp', 'cor', 'comissao', 'ativo',
+    'publico', 'especialidades', 'domiciliar', 'bairro', 'cidade', 'lat', 'lng', 'preco', 'bio'],
   pacientes: ['nome', 'nascimento', 'cpf', 'telefone', 'email', 'convenio', 'queixa', 'obs', 'fisio_id', 'status', 'pacote_nome', 'sessoes_total', 'sessoes_feitas', 'avaliacao'],
   leads: ['nome', 'telefone', 'origem', 'interesse', 'obs', 'valor', 'fisio_id', 'col'],
   sessoes: ['paciente_id', 'tratamento_id', 'fisio_id', 'titulo', 'tipo', 'data', 'hora', 'duracao', 'obs', 'status'],
@@ -635,7 +659,107 @@ app.patch('/api/admin/clinicas/:id', superauth, async (req, res) => {
   res.json(r.rows[0]);
 });
 
+/* ---------- BLOG ---------- */
+const slugify = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
+
+app.get('/api/public/posts', async (req, res) => {
+  const lim = Math.min(Number(req.query.limit) || 20, 50);
+  const r = await pool.query(
+    `SELECT slug, titulo, resumo, categoria, emoji, autor, publicado_em FROM posts
+     WHERE publicado ORDER BY publicado_em DESC, criado_em DESC LIMIT $1`, [lim]);
+  res.json(r.rows);
+});
+
+app.get('/api/public/posts/:slug', async (req, res) => {
+  const r = await pool.query('SELECT * FROM posts WHERE slug=$1 AND publicado', [req.params.slug]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Artigo não encontrado' });
+  const outros = await pool.query(
+    `SELECT slug, titulo, categoria, emoji FROM posts WHERE publicado AND slug <> $1
+     ORDER BY publicado_em DESC LIMIT 3`, [req.params.slug]);
+  res.json({ ...r.rows[0], outros: outros.rows });
+});
+
+// gestão do blog: só superadmin
+app.get('/api/admin/posts', superauth, async (req, res) => {
+  const r = await pool.query('SELECT * FROM posts ORDER BY publicado_em DESC, criado_em DESC');
+  res.json(r.rows);
+});
+app.post('/api/admin/posts', superauth, async (req, res) => {
+  const { titulo, resumo, conteudo, categoria, emoji, autor, publicado, publicado_em } = req.body || {};
+  if (!titulo || !conteudo) return res.status(400).json({ erro: 'Informe título e conteúdo' });
+  let slug = slugify(titulo);
+  const dup = await pool.query('SELECT 1 FROM posts WHERE slug=$1', [slug]);
+  if (dup.rowCount) slug += '-' + Date.now().toString(36).slice(-4);
+  const r = await pool.query(
+    `INSERT INTO posts (slug,titulo,resumo,conteudo,categoria,emoji,autor,publicado,publicado_em)
+     VALUES ($1,$2,$3,$4,COALESCE($5,'Gestão'),COALESCE($6,'📄'),COALESCE($7,'Equipe PerFisio'),COALESCE($8,true),COALESCE($9,CURRENT_DATE)) RETURNING *`,
+    [slug, titulo, resumo || null, conteudo, categoria, emoji, autor, publicado, publicado_em || null]);
+  res.json(r.rows[0]);
+});
+app.put('/api/admin/posts/:id', superauth, async (req, res) => {
+  const cols = ['titulo', 'resumo', 'conteudo', 'categoria', 'emoji', 'autor', 'publicado', 'publicado_em']
+    .filter(c => req.body[c] !== undefined);
+  if (!cols.length) return res.status(400).json({ erro: 'Nada a atualizar' });
+  const sets = cols.map((c, i) => `${c}=$${i + 2}`).join(',');
+  const r = await pool.query(`UPDATE posts SET ${sets} WHERE id=$1 RETURNING *`,
+    [req.params.id, ...cols.map(c => req.body[c])]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Artigo não encontrado' });
+  res.json(r.rows[0]);
+});
+app.delete('/api/admin/posts/:id', superauth, async (req, res) => {
+  const r = await pool.query('DELETE FROM posts WHERE id=$1', [req.params.id]);
+  res.json({ ok: r.rowCount > 0 });
+});
+
 /* ---------- ROTAS PÚBLICAS (diretório) ---------- */
+// config pública (token do mapa)
+app.get('/api/public/config', (req, res) => {
+  res.json({ mapbox: process.env.MAPBOX_TOKEN || null });
+});
+
+// diretório de PROFISSIONAIS (vinculados ou não a uma clínica)
+app.get('/api/public/profissionais', async (req, res) => {
+  const lat = req.query.lat ? Number(req.query.lat) : null;
+  const lng = req.query.lng ? Number(req.query.lng) : null;
+  const temGeo = Number.isFinite(lat) && Number.isFinite(lng);
+  const r = await pool.query(`
+    SELECT f.id, f.nome, f.crefito, f.esp, f.cor, f.especialidades, f.domiciliar,
+           f.bairro, f.cidade, f.preco, f.bio, f.lat, f.lng,
+           c.id AS clinica_id, c.nome AS clinica_nome, c.endereco AS clinica_endereco,
+           (c.perfil->>'agenda_online') AS agenda_online,
+           CASE WHEN $1::boolean AND f.lat IS NOT NULL AND f.lng IS NOT NULL THEN
+             6371000 * acos(LEAST(1, GREATEST(-1,
+               cos(radians($2::numeric)) * cos(radians(f.lat)) * cos(radians(f.lng) - radians($3::numeric))
+               + sin(radians($2::numeric)) * sin(radians(f.lat)))))
+           END AS distancia
+    FROM fisios f
+    JOIN clinicas c ON c.id = f.clinica_id
+    WHERE f.publico AND f.ativo AND c.ativa
+    ORDER BY distancia NULLS LAST, f.nome
+    LIMIT 60`, [temGeo, temGeo ? lat : 0, temGeo ? lng : 0]);
+  res.json(r.rows.map(p => ({
+    ...p,
+    lat: p.lat === null ? null : Number(p.lat),
+    lng: p.lng === null ? null : Number(p.lng),
+    distancia: p.distancia === null ? null : Math.round(Number(p.distancia)),
+    especialidades: (p.especialidades || '').split(',').map(s => s.trim()).filter(Boolean),
+  })));
+});
+
+// lead direto para um profissional
+app.post('/api/public/leads-profissional', async (req, res) => {
+  const { fisio_id, nome, telefone, obs } = req.body || {};
+  if (!fisio_id || !nome) return res.status(400).json({ erro: 'Informe seu nome' });
+  const f = await pool.query('SELECT clinica_id, nome FROM fisios WHERE id=$1 AND publico', [fisio_id]);
+  if (!f.rowCount) return res.status(404).json({ erro: 'Profissional não encontrado' });
+  await pool.query(
+    `INSERT INTO leads (clinica_id, nome, telefone, origem, interesse, obs, fisio_id)
+     VALUES ($1,$2,$3,'Site PerFisio',$4,$5,$6)`,
+    [f.rows[0].clinica_id, nome, telefone || null, 'Avaliação fisioterapêutica', obs || null, fisio_id]);
+  res.json({ ok: true });
+});
+
 app.get('/api/public/perfis', async (req, res) => {
   const r = await pool.query(
     `SELECT id, nome, endereco, perfil FROM clinicas WHERE (perfil->>'visivel')::boolean IS TRUE AND ativa ORDER BY criado_em DESC LIMIT 24`);

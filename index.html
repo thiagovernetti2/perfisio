@@ -29,6 +29,16 @@
     .search-bar select, .search-bar input { border: none; outline: none; padding: 12px 14px; font-size: .95rem; flex: 1; min-width: 150px; background: none; }
     .search-bar .divider { width: 1px; background: var(--line); margin: 6px 0; }
     .hero .tags { margin-top: 18px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+    .hero .kicker { font-size: .8rem; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; color: var(--primary-dark); margin-bottom: 14px; }
+    .filtros { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 28px; }
+    .filtros .f-chip { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 999px; border: 1.5px solid var(--line); background: #fff; font-size: .88rem; font-weight: 600; color: var(--text-soft); cursor: pointer; transition: all .15s; }
+    .filtros .f-chip:hover { border-color: var(--primary); color: var(--primary-dark); }
+    .filtros .f-chip.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .geo-bar { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; margin-top: 20px; }
+    .dir-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; max-width: 1180px; margin: 0 auto; align-items: start; }
+    #mapa { height: 520px; border-radius: 16px; border: 1px solid var(--line); box-shadow: var(--shadow); overflow: hidden; position: sticky; top: 90px; }
+    .perfil-card .pc-dist { display: inline-flex; align-items: center; gap: 4px; background: var(--primary-soft); color: var(--primary-dark); font-weight: 700; font-size: .72rem; padding: 3px 9px; border-radius: 999px; }
+    @media (max-width: 980px) { .dir-layout { grid-template-columns: 1fr; } #mapa { height: 320px; position: static; } }
 
     .section { padding: 56px 6vw; scroll-margin-top: 78px; }
     .section h2 { font-size: 1.6rem; font-weight: 800; color: var(--ink); letter-spacing: -.4px; text-align: center; }
@@ -141,37 +151,37 @@
 
   <!-- HERO -->
   <section class="hero">
+    <div class="kicker">Seu bem estar em movimento</div>
     <h1>Encontre o <em>fisioterapeuta certo</em><br>perto de você</h1>
-    <p>Perfis verificados de fisioterapeutas e clínicas, com especialidades, avaliações de pacientes e agendamento de avaliação online.</p>
-    <div class="search-bar">
-      <select>
-        <option>Todas as especialidades</option>
-        <option>Ortopedia e Traumato</option>
-        <option>Fisioterapia Esportiva</option>
-        <option>Neurofuncional</option>
-        <option>Pilates Clínico / RPG</option>
-        <option>Respiratória</option>
-        <option>Pélvica</option>
+    <p>Profissionais verificados, autônomos ou de clínica, com especialidade, preço e a distância de onde você está.</p>
+
+    <div class="filtros" id="filtroEsp"></div>
+
+    <div class="geo-bar">
+      <button class="btn btn-primary" id="btnGeo" onclick="usarLocalizacao()">📍 Usar minha localização</button>
+      <select id="raioSel" onchange="renderProfissionais()" style="padding:10px 12px;border:1px solid var(--line);border-radius:9px;font-size:.88rem;background:#fff;">
+        <option value="0">Qualquer distância</option>
+        <option value="1000">Até 1 km</option>
+        <option value="3000" selected>Até 3 km</option>
+        <option value="10000">Até 10 km</option>
+        <option value="30000">Até 30 km</option>
       </select>
-      <div class="divider"></div>
-      <input type="text" placeholder="Cidade ou bairro" value="Vila Mariana, São Paulo">
-      <button class="btn btn-primary" onclick="document.getElementById('profissionais').scrollIntoView({behavior:'smooth'})">🔍 Buscar</button>
-    </div>
-    <div class="tags">
-      <span class="badge primary">🏃 Esportiva</span>
-      <span class="badge blue">🦴 Ortopedia</span>
-      <span class="badge purple">🧘 Pilates</span>
-      <span class="badge green">🧠 Neuro</span>
-      <span class="badge amber">🏠 Domiciliar</span>
+      <span id="geoStatus" style="font-size:.82rem;color:var(--text-soft);"></span>
     </div>
   </section>
 
-  <!-- PERFIS EM DESTAQUE -->
+  <!-- DIRETÓRIO DE PROFISSIONAIS -->
   <section class="section" id="profissionais">
-    <h2>Profissionais e clínicas em destaque</h2>
-    <p class="sec-sub">Perfis verificados com CREFITO ativo e avaliações reais de pacientes.</p>
-    <div class="perfil-grid" id="perfilGrid">
-      <div class="empty" style="grid-column:1/-1;text-align:center;color:var(--text-soft);padding:30px;">Carregando perfis...</div>
+    <h2>Fisioterapeutas perto de você</h2>
+    <p class="sec-sub" id="dirSub">Profissionais verificados — autônomos ou vinculados a clínicas.</p>
+
+    <div class="dir-layout">
+      <div id="mapaWrap" style="display:none;">
+        <div id="mapa"></div>
+      </div>
+      <div class="perfil-grid" id="perfilGrid">
+        <div style="grid-column:1/-1;text-align:center;color:var(--text-soft);padding:30px;">Carregando profissionais...</div>
+      </div>
     </div>
   </section>
 
@@ -444,44 +454,164 @@
   <script src="assets/js/app.js"></script>
   <script src="assets/js/api.js"></script>
   <script>
-    let clinicaSel = null;
-    const GRADS = [['#0DA189','#0A8270'],['#2D7DD2','#1F5FA8'],['#7C5CBF','#5D3FA0'],['#D9820B','#B26505']];
+    /* ---------- Diretório de profissionais ---------- */
+    const ESPS = [
+      ['esportiva', '🏃 Esportiva'], ['ortopedia', '🦴 Ortopedia'], ['pilates', '🧘 Pilates'],
+      ['neuro', '🧠 Neuro'], ['domiciliar', '🏠 Domiciliar'],
+    ];
+    let PROS = [], filtroEsp = null, minhaPos = null, mapa = null, marcadores = [], MAPBOX = null, fisioSel = null;
 
-    async function carregarPerfis() {
+    const fmtDist = m => m == null ? '' : (m < 1000 ? `${m} m` : `${(m / 1000).toFixed(1).replace('.', ',')} km`);
+
+    function renderFiltros() {
+      document.getElementById('filtroEsp').innerHTML = ESPS.map(([k, l]) =>
+        `<button class="f-chip${filtroEsp === k ? ' on' : ''}" onclick="setFiltro('${k}')">${l}</button>`).join('') +
+        `<button class="f-chip${filtroEsp === null ? ' on' : ''}" onclick="setFiltro(null)">Todas</button>`;
+    }
+    function setFiltro(k) { filtroEsp = filtroEsp === k ? null : k; renderFiltros(); renderProfissionais(); }
+
+    async function carregarProfissionais() {
+      const q = minhaPos ? `?lat=${minhaPos.lat}&lng=${minhaPos.lng}` : '';
+      try { PROS = await PF.api('/api/public/profissionais' + q); } catch (e) { PROS = []; }
+      renderProfissionais();
+    }
+
+    function filtrados() {
+      const raio = Number(document.getElementById('raioSel').value);
+      return PROS.filter(p => {
+        if (filtroEsp === 'domiciliar' && !p.domiciliar) return false;
+        if (filtroEsp && filtroEsp !== 'domiciliar' && !p.especialidades.includes(filtroEsp)) return false;
+        if (minhaPos && raio && p.distancia != null && p.distancia > raio) return false;
+        return true;
+      });
+    }
+
+    function renderProfissionais() {
       const grid = document.getElementById('perfilGrid');
-      let perfis = [];
-      try { perfis = await PF.api('/api/public/perfis'); } catch (e) { /* API offline */ }
-      if (!perfis.length) {
+      const lista = filtrados();
+      const sub = document.getElementById('dirSub');
+      sub.innerHTML = minhaPos
+        ? `${lista.length} profissional(is) ${Number(document.getElementById('raioSel').value) ? 'no raio selecionado' : 'encontrados'} · ordenados por distância de você`
+        : 'Profissionais verificados — autônomos ou vinculados a clínicas.';
+
+      if (!lista.length) {
         grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--text-soft);padding:36px 20px;border:1.5px dashed var(--line);border-radius:14px;">
-          <div style="font-size:2rem;">🩺</div>
-          <div style="font-weight:700;color:var(--ink);margin-top:8px;">Seja a primeira clínica do diretório</div>
-          <div style="font-size:.86rem;margin-top:5px;">Crie sua conta, ative o perfil público em Configurações e apareça aqui para receber pacientes.</div>
-          <a href="login.html#registro" class="btn btn-primary btn-sm" style="margin-top:14px;">Criar perfil grátis</a>
+          <div style="font-size:2rem;">🔍</div>
+          <div style="font-weight:700;color:var(--ink);margin-top:8px;">${PROS.length ? 'Nenhum profissional neste filtro' : 'Seja o primeiro do seu bairro'}</div>
+          <div style="font-size:.86rem;margin-top:5px;">${PROS.length ? 'Tente outra especialidade ou aumente a distância.' : 'Crie sua conta, ative o perfil público e apareça para os pacientes da sua região.'}</div>
+          ${PROS.length ? '' : '<a href="login.html#registro" class="btn btn-primary btn-sm" style="margin-top:14px;">Criar perfil grátis</a>'}
         </div>`;
+        atualizarMapa(lista);
         return;
       }
-      grid.innerHTML = perfis.map((c, i) => {
+
+      const GRADS = [['#0DA189','#0A8270'],['#2D7DD2','#1F5FA8'],['#7C5CBF','#5D3FA0'],['#D9820B','#B26505']];
+      const LABEL = Object.fromEntries(ESPS);
+      grid.innerHTML = lista.map((p, i) => {
         const [g1, g2] = GRADS[i % 4];
-        const p = c.perfil || {};
-        const ini = c.nome.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase();
-        return `<div class="perfil-card">
+        const ini = p.nome.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase();
+        const tags = p.especialidades.map(e => LABEL[e] || e).slice(0, 3);
+        if (p.domiciliar) tags.push('🏠 Domiciliar');
+        return `<div class="perfil-card" onmouseenter="focarMapa(${i})">
           <div class="pc-top" style="background:linear-gradient(135deg,${g1},${g2});"><span class="pc-avatar" style="background:${g2};">${ini}</span></div>
           <div class="pc-body">
-            <div class="pc-nome">${p.titulo || c.nome}</div>
-            <div class="pc-esp">${p.especialidades || 'Fisioterapia'}</div>
-            <div class="pc-meta">${c.endereco ? `<span>📍 ${c.endereco}</span>` : ''}<span>✅ Perfil verificado</span></div>
-            ${p.bio ? `<div style="font-size:.78rem;color:var(--text-soft);margin-top:8px;line-height:1.5;">${p.bio.slice(0, 120)}${p.bio.length > 120 ? '…' : ''}</div>` : ''}
+            <div class="pc-nome">${p.nome}</div>
+            <div class="pc-esp">${p.esp || 'Fisioterapeuta'}${p.clinica_nome ? ' · ' + p.clinica_nome : ' · autônomo(a)'}</div>
+            <div class="pc-meta">
+              ${p.distancia != null ? `<span class="pc-dist">📍 a ${fmtDist(p.distancia)} de você</span>` : (p.bairro ? `<span>📍 ${p.bairro}${p.cidade ? ', ' + p.cidade : ''}</span>` : '')}
+              ${p.crefito ? '<span>✅ CREFITO verificado</span>' : ''}
+            </div>
+            ${tags.length ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;">${tags.map(t => `<span class="badge primary" style="font-size:.68rem;">${t}</span>`).join('')}</div>` : ''}
+            ${p.bio ? `<div style="font-size:.78rem;color:var(--text-soft);margin-top:8px;line-height:1.5;">${p.bio.slice(0, 110)}${p.bio.length > 110 ? '…' : ''}</div>` : ''}
             <div class="pc-foot">
-              <span class="pc-preco">${p.faixa_preco || ''}</span>
-              ${p.agenda_online !== false ? `<button class="btn btn-soft btn-sm" onclick="abrirSolicitacao('${c.id}', '${c.nome.replace(/'/g, '')}')">Agendar avaliação</button>` : ''}
+              <span class="pc-preco">${p.preco || ''}</span>
+              <button class="btn btn-soft btn-sm" onclick="event.stopPropagation();abrirSolicitacao('${p.id}','${p.nome.replace(/'/g, '')}')">Agendar avaliação</button>
             </div>
           </div>
         </div>`;
       }).join('');
+      atualizarMapa(lista);
+    }
+
+    /* ---------- Geolocalização ---------- */
+    function usarLocalizacao() {
+      const btn = document.getElementById('btnGeo'), st = document.getElementById('geoStatus');
+      if (!navigator.geolocation) { st.textContent = 'Seu navegador não suporta localização.'; return; }
+      btn.disabled = true; btn.textContent = '📍 Localizando...';
+      navigator.geolocation.getCurrentPosition(async pos => {
+        minhaPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        st.innerHTML = '✅ Usando sua localização atual';
+        btn.textContent = '📍 Atualizar localização'; btn.disabled = false;
+        await carregarProfissionais();
+        iniciarMapa();
+      }, () => {
+        st.textContent = 'Não conseguimos acessar sua localização — permita no navegador.';
+        btn.textContent = '📍 Usar minha localização'; btn.disabled = false;
+      }, { enableHighAccuracy: true, timeout: 10000 });
+    }
+
+    /* ---------- Mapbox ---------- */
+    async function iniciarMapa() {
+      if (!MAPBOX) {
+        try { MAPBOX = (await PF.api('/api/public/config')).mapbox; } catch (e) { MAPBOX = null; }
+      }
+      if (!MAPBOX || mapa) { if (!MAPBOX) return; }
+      document.getElementById('mapaWrap').style.display = '';
+      if (!window.mapboxgl) {
+        await new Promise(res => {
+          const css = document.createElement('link');
+          css.rel = 'stylesheet'; css.href = 'https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css';
+          document.head.appendChild(css);
+          const s = document.createElement('script');
+          s.src = 'https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js';
+          s.onload = res; s.onerror = res;
+          document.head.appendChild(s);
+        });
+      }
+      if (!window.mapboxgl) { document.getElementById('mapaWrap').style.display = 'none'; return; }
+      if (!mapa) {
+        mapboxgl.accessToken = MAPBOX;
+        mapa = new mapboxgl.Map({
+          container: 'mapa', style: 'mapbox://styles/mapbox/light-v11',
+          center: [minhaPos ? minhaPos.lng : -46.63, minhaPos ? minhaPos.lat : -23.55], zoom: 12,
+        });
+        mapa.addControl(new mapboxgl.NavigationControl(), 'top-right');
+      }
+      if (minhaPos) {
+        new mapboxgl.Marker({ color: '#0F2A2E' }).setLngLat([minhaPos.lng, minhaPos.lat])
+          .setPopup(new mapboxgl.Popup().setHTML('<b>Você está aqui</b>')).addTo(mapa);
+        mapa.setCenter([minhaPos.lng, minhaPos.lat]);
+      }
+      atualizarMapa(filtrados());
+    }
+
+    function atualizarMapa(lista) {
+      if (!mapa || !window.mapboxgl) return;
+      marcadores.forEach(m => m.remove());
+      marcadores = lista.filter(p => p.lat != null).map(p => {
+        const m = new mapboxgl.Marker({ color: '#0DA189' }).setLngLat([p.lng, p.lat])
+          .setPopup(new mapboxgl.Popup({ offset: 18 }).setHTML(
+            `<div style="font-family:Inter,sans-serif;font-size:.82rem;"><b>${p.nome}</b><br>
+             <span style="color:#64737A;">${p.esp || ''}${p.clinica_nome ? ' · ' + p.clinica_nome : ''}</span>
+             ${p.distancia != null ? `<br><b style="color:#0A8270;">a ${fmtDist(p.distancia)} de você</b>` : ''}</div>`))
+          .addTo(mapa);
+        return m;
+      });
+      if (marcadores.length && window.mapboxgl) {
+        const b = new mapboxgl.LngLatBounds();
+        lista.filter(p => p.lat != null).forEach(p => b.extend([p.lng, p.lat]));
+        if (minhaPos) b.extend([minhaPos.lng, minhaPos.lat]);
+        try { mapa.fitBounds(b, { padding: 60, maxZoom: 14, duration: 600 }); } catch (e) {}
+      }
+    }
+
+    function focarMapa(i) {
+      const p = filtrados()[i];
+      if (mapa && p && p.lat != null) mapa.easeTo({ center: [p.lng, p.lat], duration: 400 });
     }
 
     function abrirSolicitacao(id, nome) {
-      clinicaSel = id;
+      fisioSel = id;
       document.getElementById('avTitulo').textContent = 'Solicitar avaliação — ' + nome;
       App.openModal('mAvaliacao');
     }
@@ -490,16 +620,20 @@
       if (!avNome.value.trim()) { App.toast('Informe seu nome', 'error'); return; }
       const btn = document.getElementById('btnAv'); btn.disabled = true;
       try {
-        await PF.api('/api/public/leads', { method: 'POST', body: {
-          clinica_id: clinicaSel, nome: avNome.value.trim(), telefone: avTel.value.trim() || null,
-          interesse: 'Avaliação fisioterapêutica', obs: avObs.value.trim() || null,
+        await PF.api('/api/public/leads-profissional', { method: 'POST', body: {
+          fisio_id: fisioSel, nome: avNome.value.trim(), telefone: avTel.value.trim() || null,
+          obs: avObs.value.trim() || null,
         }});
         App.closeModal('mAvaliacao');
         avNome.value = ''; avTel.value = ''; avObs.value = '';
-        App.toast('Solicitação enviada! A clínica entrará em contato. ✅');
+        App.toast('Solicitação enviada! O profissional entrará em contato. ✅');
       } catch (e) { App.toast(e.message, 'error'); }
       btn.disabled = false;
     }
+
+    renderFiltros();
+    carregarProfissionais();
+    iniciarMapa();
 
     /* ---------- Mockups do sistema ---------- */
     const MOCKS = {
@@ -613,7 +747,6 @@
     document.getElementById('pcValor').addEventListener('input', calcPreco);
     calcPreco();
 
-    carregarPerfis();
   </script>
 </body>
 </html>

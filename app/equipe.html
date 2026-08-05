@@ -47,6 +47,27 @@
             <select id="prAtivo"><option value="true">Sim</option><option value="false">Não (desligado)</option></select>
           </div>
         </div>
+        <div style="margin-top:18px;padding:16px;background:var(--primary-soft);border-radius:12px;">
+          <div style="font-size:.85rem;font-weight:800;color:var(--primary-dark);margin-bottom:4px;">🌐 Perfil público no diretório PerFisio</div>
+          <div style="font-size:.75rem;color:var(--text-soft);margin-bottom:12px;">Pacientes encontram este profissional na busca por especialidade e por proximidade.</div>
+          <div class="check-row" style="padding-top:0;"><input type="checkbox" id="prPublico"><label for="prPublico" style="margin:0;font-weight:600;">Exibir este profissional no diretório público</label></div>
+          <div class="form-grid" style="margin-top:10px;">
+            <div class="field full"><label>Especialidades exibidas</label>
+              <div style="display:flex;gap:7px;flex-wrap:wrap;" id="prEspChips"></div>
+            </div>
+            <div class="field"><label>Bairro</label><input type="text" id="prBairro" placeholder="Ex.: Vila Mariana"></div>
+            <div class="field"><label>Cidade / UF</label><input type="text" id="prCidade" placeholder="Ex.: São Paulo/SP"></div>
+            <div class="field"><label>Preço exibido</label><input type="text" id="prPreco" placeholder="Ex.: R$ 160 por sessão"></div>
+            <div class="field"><label>Localização no mapa</label>
+              <div style="display:flex;gap:6px;">
+                <input type="text" id="prCoord" placeholder="lat, lng" style="flex:1;">
+                <button class="btn btn-soft btn-sm" onclick="buscarCoord()" title="Buscar coordenadas pelo endereço">📍</button>
+              </div>
+            </div>
+            <div class="field full"><label>Apresentação (bio)</label><textarea id="prBio" placeholder="Ex.: Especialista em corredores, atendo no consultório e em domicílio na zona sul."></textarea></div>
+            <div class="check-row full" style="padding-bottom:0;"><input type="checkbox" id="prDomiciliar"><label for="prDomiciliar" style="margin:0;font-weight:500;">🏠 Atende em domicílio</label></div>
+          </div>
+        </div>
         <div style="margin-top:14px;padding:12px 14px;background:var(--bg);border-radius:9px;font-size:.8rem;color:var(--text-soft);">
           💡 Para dar <b>acesso ao sistema</b> a este profissional, crie um usuário em <a href="configuracoes.html" style="color:var(--primary);font-weight:600;">Configurações → Usuários</a>.
         </div>
@@ -135,12 +156,54 @@
       }).join('') || '<tr><td colspan="6" class="empty">Sem profissionais ativos.</td></tr>';
     }
 
+    /* ---------- Perfil público ---------- */
+    const ESPECIALIDADES = [
+      ['esportiva', '🏃 Esportiva'], ['ortopedia', '🦴 Ortopedia'], ['pilates', '🧘 Pilates'],
+      ['neuro', '🧠 Neuro'], ['rpg', '🧍 RPG'], ['respiratoria', '🫁 Respiratória'],
+      ['pelvica', '🌸 Pélvica'], ['geriatrica', '👵 Geriátrica'],
+    ];
+    let espSel = new Set();
+
+    function renderEspChips() {
+      document.getElementById('prEspChips').innerHTML = ESPECIALIDADES.map(([k, l]) =>
+        `<button type="button" class="chip${espSel.has(k) ? ' active' : ''}" style="font-size:.76rem;" onclick="toggleEsp('${k}')">${l}</button>`).join('');
+    }
+    function toggleEsp(k) { espSel.has(k) ? espSel.delete(k) : espSel.add(k); renderEspChips(); }
+
+    async function buscarCoord() {
+      const q = [prBairro.value.trim(), prCidade.value.trim()].filter(Boolean).join(', ');
+      if (!q) { App.toast('Preencha bairro e cidade primeiro', 'error'); return; }
+      try {
+        const cfg = await PF.api('/api/public/config');
+        if (!cfg.mapbox) { App.toast('Mapa não configurado — informe lat, lng manualmente', 'info'); return; }
+        const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q + ', Brasil')}.json?limit=1&country=BR&access_token=${cfg.mapbox}`).then(x => x.json());
+        const c = r.features && r.features[0];
+        if (!c) { App.toast('Endereço não encontrado', 'error'); return; }
+        prCoord.value = `${c.center[1].toFixed(6)}, ${c.center[0].toFixed(6)}`;
+        App.toast('📍 Localizado: ' + c.place_name.slice(0, 60));
+      } catch (e) { App.toast('Falha ao buscar coordenadas', 'error'); }
+    }
+
+    function preencherPublico(f) {
+      const vazio = !f;
+      prPublico.checked = vazio ? false : !!f.publico;
+      espSel = new Set(vazio ? [] : (f.especialidades || '').split(',').map(s => s.trim()).filter(Boolean));
+      renderEspChips();
+      prBairro.value = vazio ? '' : (f.bairro || '');
+      prCidade.value = vazio ? '' : (f.cidade || '');
+      prPreco.value = vazio ? '' : (f.preco || '');
+      prBio.value = vazio ? '' : (f.bio || '');
+      prDomiciliar.checked = vazio ? false : !!f.domiciliar;
+      prCoord.value = (!vazio && f.lat != null && f.lng != null) ? `${Number(f.lat).toFixed(6)}, ${Number(f.lng).toFixed(6)}` : '';
+    }
+
     function abrirNovo() {
       editId = null;
       document.getElementById('mProTitulo').textContent = 'Novo profissional';
       document.getElementById('btnProExcluir').style.display = 'none';
       prNome.value = ''; prCrefito.value = ''; prEsp.value = 'Ortopedia e Traumato';
       prComissao.value = 40; prCor.value = '#2D7DD2'; prAtivo.value = 'true';
+      preencherPublico(null);
       App.openModal('mPro');
     }
 
@@ -152,14 +215,22 @@
       document.getElementById('btnProExcluir').style.display = '';
       prNome.value = f.nome; prCrefito.value = f.crefito || ''; prEsp.value = f.esp || 'Ortopedia e Traumato';
       prComissao.value = Number(f.comissao); prCor.value = f.cor; prAtivo.value = String(f.ativo);
+      preencherPublico(f);
       App.openModal('mPro');
     }
 
     async function salvarPro() {
       if (!prNome.value.trim()) { App.toast('Informe o nome', 'error'); return; }
+      const coord = prCoord.value.split(',').map(s => Number(s.trim()));
+      const temCoord = coord.length === 2 && Number.isFinite(coord[0]) && Number.isFinite(coord[1]);
       const body = {
         nome: prNome.value.trim(), crefito: prCrefito.value.trim() || null, esp: prEsp.value,
         comissao: Number(prComissao.value) || 0, cor: prCor.value, ativo: prAtivo.value === 'true',
+        publico: prPublico.checked, especialidades: [...espSel].join(','),
+        domiciliar: prDomiciliar.checked, bairro: prBairro.value.trim() || null,
+        cidade: prCidade.value.trim() || null, preco: prPreco.value.trim() || null,
+        bio: prBio.value.trim() || null,
+        lat: temCoord ? coord[0] : null, lng: temCoord ? coord[1] : null,
       };
       const btn = document.getElementById('btnPro'); btn.disabled = true;
       try {
