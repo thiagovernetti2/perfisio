@@ -195,6 +195,15 @@ ALTER TABLE fisios ADD COLUMN IF NOT EXISTS tratamentos text;
 ALTER TABLE fisios ADD COLUMN IF NOT EXISTS regioes text;
 ALTER TABLE fisios ADD COLUMN IF NOT EXISTS instagram text;
 ALTER TABLE sessoes ADD COLUMN IF NOT EXISTS reserva text;
+ALTER TABLE fisios ADD COLUMN IF NOT EXISTS foto bytea;
+ALTER TABLE fisios ADD COLUMN IF NOT EXISTS foto_mime text;
+CREATE TABLE IF NOT EXISTS fisio_fotos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+  fisio_id uuid NOT NULL REFERENCES fisios(id) ON DELETE CASCADE,
+  nome text, mime text NOT NULL, dados bytea NOT NULL,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
 `;
 
 /* migração de dados: pacientes com histórico ganham um tratamento inicial */
@@ -385,6 +394,78 @@ app.delete('/api/anexos/:id', auth, async (req, res) => {
   res.json({ ok: r.rowCount > 0 });
 });
 
+/* ---------- FOTOS DO PROFISSIONAL ---------- */
+const MIMES_IMG = ['image/jpeg', 'image/png', 'image/webp'];
+
+app.post('/api/fisios/:id/foto', auth, async (req, res) => {
+  const { dados, mime } = req.body || {};
+  if (!dados || !MIMES_IMG.includes(mime)) return res.status(400).json({ erro: 'Envie uma imagem JPG, PNG ou WebP' });
+  const buf = Buffer.from(dados, 'base64');
+  if (!buf.length || buf.length > 4 * 1024 * 1024) return res.status(400).json({ erro: 'Imagem vazia ou maior que 4 MB' });
+  const r = await pool.query('UPDATE fisios SET foto=$3, foto_mime=$4 WHERE id=$1 AND clinica_id=$2 RETURNING id',
+    [req.params.id, req.auth.cid, buf, mime]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Profissional não encontrado' });
+  res.json({ ok: true });
+});
+
+app.delete('/api/fisios/:id/foto', auth, async (req, res) => {
+  await pool.query('UPDATE fisios SET foto=NULL, foto_mime=NULL WHERE id=$1 AND clinica_id=$2', [req.params.id, req.auth.cid]);
+  res.json({ ok: true });
+});
+
+app.get('/api/fisios/:id/galeria', auth, async (req, res) => {
+  const r = await pool.query(
+    'SELECT id, nome, criado_em FROM fisio_fotos WHERE fisio_id=$1 AND clinica_id=$2 ORDER BY criado_em',
+    [req.params.id, req.auth.cid]);
+  res.json(r.rows);
+});
+
+app.post('/api/fisios/:id/galeria', auth, async (req, res) => {
+  const { nome, mime, dados } = req.body || {};
+  if (!dados || !MIMES_IMG.includes(mime)) return res.status(400).json({ erro: 'Envie uma imagem JPG, PNG ou WebP' });
+  const buf = Buffer.from(dados, 'base64');
+  if (!buf.length || buf.length > 4 * 1024 * 1024) return res.status(400).json({ erro: 'Imagem vazia ou maior que 4 MB' });
+  const total = await pool.query('SELECT count(*)::int AS n FROM fisio_fotos WHERE fisio_id=$1', [req.params.id]);
+  if (total.rows[0].n >= 12) return res.status(400).json({ erro: 'Limite de 12 fotos na galeria' });
+  const dono = await pool.query('SELECT 1 FROM fisios WHERE id=$1 AND clinica_id=$2', [req.params.id, req.auth.cid]);
+  if (!dono.rowCount) return res.status(404).json({ erro: 'Profissional não encontrado' });
+  const r = await pool.query(
+    'INSERT INTO fisio_fotos (clinica_id, fisio_id, nome, mime, dados) VALUES ($1,$2,$3,$4,$5) RETURNING id, nome',
+    [req.auth.cid, req.params.id, nome || null, mime, buf]);
+  res.json(r.rows[0]);
+});
+
+app.delete('/api/fisio-galeria/:id', auth, async (req, res) => {
+  const r = await pool.query('DELETE FROM fisio_fotos WHERE id=$1 AND clinica_id=$2', [req.params.id, req.auth.cid]);
+  res.json({ ok: r.rowCount > 0 });
+});
+
+// públicas: foto de perfil e galeria (somente de perfis públicos)
+app.get('/api/public/fisio-foto/:id', async (req, res) => {
+  const r = await pool.query('SELECT foto, foto_mime FROM fisios WHERE id=$1 AND publico AND foto IS NOT NULL', [req.params.id]);
+  if (!r.rowCount) return res.status(404).end();
+  res.set('Content-Type', r.rows[0].foto_mime);
+  res.set('Cache-Control', 'public, max-age=3600');
+  res.send(r.rows[0].foto);
+});
+
+app.get('/api/public/galeria/:fisioId', async (req, res) => {
+  const r = await pool.query(`
+    SELECT g.id, g.nome FROM fisio_fotos g JOIN fisios f ON f.id = g.fisio_id
+    WHERE g.fisio_id=$1 AND f.publico ORDER BY g.criado_em`, [req.params.fisioId]);
+  res.json(r.rows);
+});
+
+app.get('/api/public/galeria-foto/:id', async (req, res) => {
+  const r = await pool.query(`
+    SELECT g.dados, g.mime FROM fisio_fotos g JOIN fisios f ON f.id = g.fisio_id
+    WHERE g.id=$1 AND f.publico`, [req.params.id]);
+  if (!r.rowCount) return res.status(404).end();
+  res.set('Content-Type', r.rows[0].mime);
+  res.set('Cache-Control', 'public, max-age=3600');
+  res.send(r.rows[0].dados);
+});
+
 /* ---------- FINANCEIRO: comissões dos fisioterapeutas ---------- */
 // base de cálculo = sessões realizadas no mês × valor da sessão (do pacote do paciente, ou avulsa)
 app.get('/api/financeiro/comissoes', auth, async (req, res) => {
@@ -530,6 +611,12 @@ const ORDER = {
   leads: 'criado_em DESC', prescricoes: 'criado_em DESC',
 };
 
+const SELECT_COLS = {
+  fisios: `id, clinica_id, nome, crefito, esp, cor, comissao, ativo, publico, especialidades,
+    domiciliar, bairro, cidade, lat, lng, preco, bio, whatsapp, tratamentos, regioes, instagram,
+    (foto IS NOT NULL) AS tem_foto, foto_mime, criado_em`,
+};
+
 function tableGuard(req, res, next) {
   if (!TABLES[req.params.table]) return res.status(404).json({ erro: 'Recurso inexistente' });
   next();
@@ -546,7 +633,7 @@ app.get('/api/:table', auth, tableGuard, async (req, res) => {
     if (req.query.from) { vals.push(req.query.from); where.push(`data >= $${vals.length}`); }
     if (req.query.to) { vals.push(req.query.to); where.push(`data <= $${vals.length}`); }
   }
-  const r = await pool.query(`SELECT * FROM ${t} WHERE ${where.join(' AND ')} ORDER BY ${ORDER[t] || 'criado_em'}`, vals);
+  const r = await pool.query(`SELECT ${SELECT_COLS[t] || '*'} FROM ${t} WHERE ${where.join(' AND ')} ORDER BY ${ORDER[t] || 'criado_em'}`, vals);
   res.json(r.rows);
 });
 
@@ -557,7 +644,7 @@ app.post('/api/:table', auth, tableGuard, async (req, res) => {
   const vals = cols.map(c => JSONB_COLS.has(c) ? JSON.stringify(req.body[c]) : (req.body[c] === '' ? null : req.body[c]));
   try {
     const r = await pool.query(
-      `INSERT INTO ${t} (clinica_id, ${cols.join(',')}) VALUES ($1, ${cols.map((_, i) => `$${i + 2}`).join(',')}) RETURNING *`,
+      `INSERT INTO ${t} (clinica_id, ${cols.join(',')}) VALUES ($1, ${cols.map((_, i) => `$${i + 2}`).join(',')}) RETURNING ${SELECT_COLS[t] || '*'}`,
       [req.auth.cid, ...vals]);
     res.json(r.rows[0]);
   } catch (e) { console.error(e); res.status(400).json({ erro: 'Dados inválidos' }); }
@@ -571,7 +658,7 @@ app.put('/api/:table/:id', auth, tableGuard, async (req, res) => {
   const sets = cols.map((c, i) => `${c}=$${i + 3}`).join(',');
   const extra = t === 'leads' ? ', atualizado_em=now()' : '';
   try {
-    const r = await pool.query(`UPDATE ${t} SET ${sets}${extra} WHERE id=$1 AND clinica_id=$2 RETURNING *`, [req.params.id, req.auth.cid, ...vals]);
+    const r = await pool.query(`UPDATE ${t} SET ${sets}${extra} WHERE id=$1 AND clinica_id=$2 RETURNING ${SELECT_COLS[t] || '*'}`, [req.params.id, req.auth.cid, ...vals]);
     if (!r.rowCount) return res.status(404).json({ erro: 'Não encontrado' });
     res.json(r.rows[0]);
   } catch (e) { console.error(e); res.status(400).json({ erro: 'Dados inválidos' }); }
@@ -732,6 +819,7 @@ app.get('/api/public/profissionais', async (req, res) => {
   const r = await pool.query(`
     SELECT f.id, f.nome, f.crefito, f.esp, f.cor, f.especialidades, f.domiciliar,
            f.bairro, f.cidade, f.preco, f.bio, f.lat, f.lng,
+           (f.foto IS NOT NULL) AS tem_foto,
            c.id AS clinica_id, c.nome AS clinica_nome, c.endereco AS clinica_endereco,
            (c.perfil->>'agenda_online') AS agenda_online,
            CASE WHEN $1::boolean AND f.lat IS NOT NULL AND f.lng IS NOT NULL THEN
@@ -759,6 +847,7 @@ app.get('/api/public/profissionais/:id', async (req, res) => {
     SELECT f.id, f.nome, f.crefito, f.esp, f.cor, f.especialidades, f.domiciliar,
            f.bairro, f.cidade, f.preco, f.bio, f.lat, f.lng,
            f.whatsapp, f.tratamentos, f.regioes, f.instagram,
+           (f.foto IS NOT NULL) AS tem_foto,
            c.id AS clinica_id, c.nome AS clinica_nome, c.endereco AS clinica_endereco,
            c.telefone AS clinica_telefone, c.horario AS clinica_horario
     FROM fisios f JOIN clinicas c ON c.id = f.clinica_id
@@ -766,12 +855,14 @@ app.get('/api/public/profissionais/:id', async (req, res) => {
   if (!r.rowCount) return res.status(404).json({ erro: 'Profissional não encontrado' });
   const p = r.rows[0];
   const colegas = await pool.query(`
-    SELECT id, nome, esp, cor, especialidades, bairro, preco, domiciliar
+    SELECT id, nome, esp, cor, especialidades, bairro, preco, domiciliar, (foto IS NOT NULL) AS tem_foto
     FROM fisios WHERE clinica_id = $1 AND id <> $2 AND publico AND ativo ORDER BY nome LIMIT 6`,
     [p.clinica_id, p.id]);
   const pacotes = await pool.query(
     'SELECT nome, descricao, valor, sessoes, tipo FROM pacotes WHERE clinica_id = $1 ORDER BY valor LIMIT 4',
     [p.clinica_id]);
+  const galeria = await pool.query(
+    'SELECT id, nome FROM fisio_fotos WHERE fisio_id = $1 ORDER BY criado_em', [p.id]);
   res.json({
     ...p,
     lat: p.lat === null ? null : Number(p.lat), lng: p.lng === null ? null : Number(p.lng),
@@ -779,6 +870,7 @@ app.get('/api/public/profissionais/:id', async (req, res) => {
     tratamentos: (p.tratamentos || '').split(',').map(s => s.trim()).filter(Boolean),
     colegas: colegas.rows.map(c => ({ ...c, especialidades: (c.especialidades || '').split(',').map(s => s.trim()).filter(Boolean) })),
     pacotes: pacotes.rows.map(x => ({ ...x, valor: Number(x.valor) })),
+    galeria: galeria.rows,
   });
 });
 
@@ -788,7 +880,7 @@ app.get('/api/public/clinicas/:id', async (req, res) => {
     'SELECT id, nome, endereco, telefone, horario, perfil FROM clinicas WHERE id = $1 AND ativa', [req.params.id]);
   if (!c.rowCount) return res.status(404).json({ erro: 'Clínica não encontrada' });
   const equipe = await pool.query(`
-    SELECT id, nome, crefito, esp, cor, especialidades, domiciliar, bairro, cidade, preco, bio, lat, lng
+    SELECT id, nome, crefito, esp, cor, especialidades, domiciliar, bairro, cidade, preco, bio, lat, lng, (foto IS NOT NULL) AS tem_foto
     FROM fisios WHERE clinica_id = $1 AND publico AND ativo ORDER BY nome`, [req.params.id]);
   res.json({
     ...c.rows[0],

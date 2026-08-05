@@ -23,7 +23,15 @@
     .pf-avatar {
       width: 96px; height: 96px; border-radius: 50%; border: 4px solid #fff; margin-top: -48px;
       display: grid; place-items: center; font-weight: 900; font-size: 1.7rem; color: #fff; box-shadow: var(--shadow);
+      position: relative; overflow: hidden;
     }
+    .pf-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .galeria { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+    .galeria img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); cursor: pointer; transition: transform .12s; }
+    .galeria img:hover { transform: scale(1.02); }
+    .lightbox { position: fixed; inset: 0; background: rgba(10,20,22,.88); z-index: 100; display: none; align-items: center; justify-content: center; padding: 4vh 4vw; cursor: zoom-out; }
+    .lightbox.aberta { display: flex; }
+    .lightbox img { max-width: 100%; max-height: 100%; border-radius: 12px; }
     .pf-nome { font-size: 1.55rem; font-weight: 900; color: var(--ink); letter-spacing: -.5px; margin-top: 12px; }
     .pf-sub { font-size: .95rem; color: var(--text-soft); margin-top: 3px; }
     .pf-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
@@ -72,7 +80,8 @@
     .colegas { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
     .colega { border: 1px solid var(--line); border-radius: 12px; padding: 13px 15px; background: #fff; display: flex; gap: 11px; align-items: center; transition: all .15s; }
     .colega:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow); }
-    .colega .av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 800; flex-shrink: 0; }
+    .colega .av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 800; flex-shrink: 0; position: relative; overflow: hidden; }
+    .colega .av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
     .colega .n { font-size: .86rem; font-weight: 700; color: var(--ink); }
     .colega .s { font-size: .7rem; color: var(--text-soft); }
 
@@ -130,6 +139,8 @@
   </div>
 
   <div class="cta-fixa" id="ctaFixa"></div>
+
+  <div class="lightbox" id="lightbox" onclick="this.classList.remove('aberta')"><img id="lightboxImg" alt=""></div>
 
   <!-- MODAL SOLICITAR AVALIAÇÃO -->
   <div class="modal-overlay" id="mAvaliacao">
@@ -196,7 +207,7 @@
         <!-- HERO -->
         <div class="pf-banner" style="background:linear-gradient(135deg,${p.cor},${cor2});"></div>
         <div class="pf-card">
-          <div class="pf-avatar" style="background:${cor2};">${ini}</div>
+          <div class="pf-avatar" style="background:${cor2};">${ini}${p.tem_foto ? `<img src="/api/public/fisio-foto/${p.id}" alt="${p.nome}" onerror="this.remove()">` : ''}</div>
           <div class="pf-nome">${p.nome}</div>
           <div class="pf-sub">${subtitulo}</div>
           <div class="pf-badges">
@@ -269,6 +280,14 @@
           </div>
         </div>
 
+        <!-- FOTOS -->
+        ${p.galeria.length ? `<div class="pf-sec">
+          <h2>Fotos</h2>
+          <div class="galeria">
+            ${p.galeria.map(g => `<img src="/api/public/galeria-foto/${g.id}" alt="${g.nome || 'Foto'}" loading="lazy" onclick="abrirFoto('/api/public/galeria-foto/${g.id}')">`).join('')}
+          </div>
+        </div>` : ''}
+
         <!-- ATENDIMENTO -->
         <div class="pf-sec">
           <h2>Atendimento</h2>
@@ -317,7 +336,7 @@
           <div class="colegas">
             ${p.colegas.map(c => `
               <a class="colega" href="fisio.html?id=${c.id}">
-                <span class="av" style="background:${c.cor};">${c.nome.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase()}</span>
+                <span class="av" style="background:${c.cor};">${c.nome.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase()}${c.tem_foto ? `<img src="/api/public/fisio-foto/${c.id}" alt="" loading="lazy" onerror="this.remove()">` : ''}</span>
                 <span><span class="n">${c.nome}</span><br><span class="s">${c.esp || ''}</span></span>
               </a>`).join('')}
           </div>
@@ -329,6 +348,11 @@
         <button class="btn btn-primary" onclick="irAgenda()">Agendar horário</button>`;
       iniciarMapa();
       bkInit();
+    }
+
+    function abrirFoto(src) {
+      document.getElementById('lightboxImg').src = src;
+      document.getElementById('lightbox').classList.add('aberta');
     }
 
     function irAgenda() {

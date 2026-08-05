@@ -51,6 +51,25 @@
           <div style="font-size:.85rem;font-weight:800;color:var(--primary-dark);margin-bottom:4px;">🌐 Perfil público no diretório PerFisio</div>
           <div style="font-size:.75rem;color:var(--text-soft);margin-bottom:12px;">Pacientes encontram este profissional na busca por especialidade e por proximidade.</div>
           <div class="check-row" style="padding-top:0;"><input type="checkbox" id="prPublico"><label for="prPublico" style="margin:0;font-weight:600;">Exibir este profissional no diretório público</label></div>
+          <div style="display:flex;gap:14px;align-items:center;margin:12px 0;padding:12px;background:#fff;border-radius:10px;border:1px solid var(--line);flex-wrap:wrap;">
+            <div id="prFotoPrev" style="width:56px;height:56px;border-radius:50%;background:var(--line);display:grid;place-items:center;font-size:1.3rem;overflow:hidden;flex-shrink:0;background-size:cover;background-position:center;">📷</div>
+            <div style="flex:1;min-width:160px;">
+              <div style="font-size:.8rem;font-weight:700;color:var(--ink);">Foto de perfil</div>
+              <div style="font-size:.7rem;color:var(--text-soft);">Aparece no diretório e na página do profissional</div>
+            </div>
+            <label class="btn btn-soft btn-sm" style="cursor:pointer;">📤 Enviar<input type="file" id="prFotoInput" accept="image/jpeg,image/png,image/webp" style="display:none;"></label>
+            <button class="btn btn-ghost btn-sm" id="prFotoDel" onclick="removerFoto(event)" style="display:none;">Remover</button>
+          </div>
+          <div style="padding:12px;background:#fff;border-radius:10px;border:1px solid var(--line);margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+              <div style="flex:1;min-width:160px;">
+                <div style="font-size:.8rem;font-weight:700;color:var(--ink);">Galeria de fotos</div>
+                <div style="font-size:.7rem;color:var(--text-soft);">Consultório, equipamentos, atendimentos · até 12 fotos</div>
+              </div>
+              <label class="btn btn-soft btn-sm" style="cursor:pointer;">➕ Adicionar<input type="file" id="prGalInput" accept="image/jpeg,image/png,image/webp" multiple style="display:none;"></label>
+            </div>
+            <div id="prGalLista" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+          </div>
           <div class="form-grid" style="margin-top:10px;">
             <div class="field full"><label>Especialidades exibidas</label>
               <div style="display:flex;gap:7px;flex-wrap:wrap;" id="prEspChips"></div>
@@ -188,6 +207,80 @@
       } catch (e) { App.toast('Falha ao buscar coordenadas', 'error'); }
     }
 
+    /* ---------- Fotos ---------- */
+    async function comprimirImagem(file, max = 900) {
+      const bmp = await createImageBitmap(file);
+      const escala = Math.min(1, max / Math.max(bmp.width, bmp.height));
+      const cv = document.createElement('canvas');
+      cv.width = Math.round(bmp.width * escala);
+      cv.height = Math.round(bmp.height * escala);
+      cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+      const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.85));
+      const b64 = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result.split(',')[1]);
+        r.onerror = rej;
+        r.readAsDataURL(blob);
+      });
+      return { dados: b64, mime: 'image/jpeg' };
+    }
+
+    function fotoPrev(tem) {
+      const el = document.getElementById('prFotoPrev');
+      el.style.backgroundImage = tem ? `url(/api/public/fisio-foto/${editId}?v=${Date.now()})` : '';
+      el.textContent = tem ? '' : '📷';
+      document.getElementById('prFotoDel').style.display = tem ? '' : 'none';
+    }
+
+    async function carregarGaleria() {
+      const lista = document.getElementById('prGalLista');
+      if (!editId) { lista.innerHTML = '<div style="font-size:.72rem;color:var(--text-soft);">Salve o profissional primeiro para enviar fotos.</div>'; return; }
+      const fotos = await PF.api(`/api/fisios/${editId}/galeria`);
+      lista.innerHTML = fotos.map(g => `
+        <div style="position:relative;">
+          <img src="/api/public/galeria-foto/${g.id}?v=1" style="width:74px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--line);">
+          <button onclick="removerGaleria('${g.id}')" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:var(--red);color:#fff;font-size:.7rem;cursor:pointer;">✕</button>
+        </div>`).join('') || '<div style="font-size:.72rem;color:var(--text-soft);">Nenhuma foto ainda.</div>';
+    }
+
+    document.getElementById('prFotoInput').addEventListener('change', async e => {
+      const f = e.target.files[0]; e.target.value = '';
+      if (!f) return;
+      if (!editId) { App.toast('Salve o profissional primeiro para enviar a foto', 'info'); return; }
+      try {
+        App.toast('Enviando foto...', 'info');
+        const img = await comprimirImagem(f, 600);
+        await PF.api(`/api/fisios/${editId}/foto`, { method: 'POST', body: img });
+        fotoPrev(true);
+        App.toast('Foto de perfil atualizada!');
+      } catch (err) { App.toast(err.message, 'error'); }
+    });
+
+    document.getElementById('prGalInput').addEventListener('change', async e => {
+      const files = [...e.target.files]; e.target.value = '';
+      if (!files.length) return;
+      if (!editId) { App.toast('Salve o profissional primeiro para enviar fotos', 'info'); return; }
+      for (const f of files) {
+        try {
+          const img = await comprimirImagem(f, 1100);
+          await PF.api(`/api/fisios/${editId}/galeria`, { method: 'POST', body: { ...img, nome: f.name } });
+        } catch (err) { App.toast(`${f.name}: ${err.message}`, 'error'); }
+      }
+      App.toast('Galeria atualizada!');
+      carregarGaleria();
+    });
+
+    async function removerFoto(ev) {
+      ev.preventDefault();
+      try { await PF.api(`/api/fisios/${editId}/foto`, { method: 'DELETE' }); fotoPrev(false); App.toast('Foto removida'); }
+      catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    async function removerGaleria(id) {
+      try { await PF.api(`/api/fisio-galeria/${id}`, { method: 'DELETE' }); carregarGaleria(); }
+      catch (e) { App.toast(e.message, 'error'); }
+    }
+
     function preencherPublico(f) {
       const vazio = !f;
       prPublico.checked = vazio ? false : !!f.publico;
@@ -203,6 +296,8 @@
       prRegioes.value = vazio ? '' : (f.regioes || '');
       prDomiciliar.checked = vazio ? false : !!f.domiciliar;
       prCoord.value = (!vazio && f.lat != null && f.lng != null) ? `${Number(f.lat).toFixed(6)}, ${Number(f.lng).toFixed(6)}` : '';
+      fotoPrev(!vazio && !!f.foto_mime);
+      carregarGaleria();
     }
 
     function abrirNovo() {

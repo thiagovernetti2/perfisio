@@ -53,7 +53,9 @@
     .perfil-card .pc-avatar {
       width: 62px; height: 62px; border-radius: 50%; border: 3px solid #fff; position: absolute;
       bottom: -26px; left: 18px; display: grid; place-items: center; font-weight: 800; font-size: 1.1rem; color: #fff;
+      overflow: hidden;
     }
+    .perfil-card .pc-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
     .perfil-card .pc-body { padding: 34px 18px 18px; }
     .perfil-card .pc-nome { font-weight: 800; color: var(--ink); font-size: .98rem; }
     .perfil-card .pc-esp { font-size: .78rem; color: var(--text-soft); margin-top: 2px; }
@@ -513,7 +515,7 @@
         const tags = p.especialidades.map(e => LABEL[e] || e).slice(0, 3);
         if (p.domiciliar) tags.push('🏠 Domiciliar');
         return `<div class="perfil-card" onmouseenter="focarMapa(${i})" onclick="location.href='fisio.html?id=${p.id}'">
-          <div class="pc-top" style="background:linear-gradient(135deg,${g1},${g2});"><span class="pc-avatar" style="background:${g2};">${ini}</span></div>
+          <div class="pc-top" style="background:linear-gradient(135deg,${g1},${g2});"><span class="pc-avatar" style="background:${g2};">${ini}${p.tem_foto ? `<img src="/api/public/fisio-foto/${p.id}" alt="" loading="lazy" onerror="this.remove()">` : ''}</span></div>
           <div class="pc-body">
             <div class="pc-nome">${p.nome}</div>
             <div class="pc-esp">${p.esp || 'Fisioterapeuta'}${p.clinica_nome ? ` · <a href="clinica.html?id=${p.clinica_id}" onclick="event.stopPropagation()" style="color:var(--primary-dark);font-weight:700;">${p.clinica_nome}</a>` : ' · autônomo(a)'}</div>
