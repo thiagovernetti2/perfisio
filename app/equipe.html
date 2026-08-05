@@ -65,6 +65,10 @@
               </div>
             </div>
             <div class="field full"><label>Apresentação (bio)</label><textarea id="prBio" placeholder="Ex.: Especialista em corredores, atendo no consultório e em domicílio na zona sul."></textarea></div>
+            <div class="field"><label>WhatsApp (com DDD)</label><input type="text" id="prWhatsapp" placeholder="(11) 9 0000-0000"></div>
+            <div class="field"><label>Instagram</label><input type="text" id="prInstagram" placeholder="@perfil"></div>
+            <div class="field full"><label>Tratamentos (separados por vírgula)</label><input type="text" id="prTratamentos" placeholder="Articulares, Lesões do esporte, Musculares, Reabilitação funcional, Dores em geral"></div>
+            <div class="field full"><label>Regiões atendidas</label><input type="text" id="prRegioes" placeholder="Ex.: Vila Mariana, Moema e região · domiciliar na zona sul"></div>
             <div class="check-row full" style="padding-bottom:0;"><input type="checkbox" id="prDomiciliar"><label for="prDomiciliar" style="margin:0;font-weight:500;">🏠 Atende em domicílio</label></div>
           </div>
         </div>
@@ -193,6 +197,10 @@
       prCidade.value = vazio ? '' : (f.cidade || '');
       prPreco.value = vazio ? '' : (f.preco || '');
       prBio.value = vazio ? '' : (f.bio || '');
+      prWhatsapp.value = vazio ? '' : (f.whatsapp || '');
+      prInstagram.value = vazio ? '' : (f.instagram || '');
+      prTratamentos.value = vazio ? '' : (f.tratamentos || '');
+      prRegioes.value = vazio ? '' : (f.regioes || '');
       prDomiciliar.checked = vazio ? false : !!f.domiciliar;
       prCoord.value = (!vazio && f.lat != null && f.lng != null) ? `${Number(f.lat).toFixed(6)}, ${Number(f.lng).toFixed(6)}` : '';
     }
@@ -230,6 +238,8 @@
         domiciliar: prDomiciliar.checked, bairro: prBairro.value.trim() || null,
         cidade: prCidade.value.trim() || null, preco: prPreco.value.trim() || null,
         bio: prBio.value.trim() || null,
+        whatsapp: prWhatsapp.value.trim() || null, instagram: prInstagram.value.trim() || null,
+        tratamentos: prTratamentos.value.trim() || null, regioes: prRegioes.value.trim() || null,
         lat: temCoord ? coord[0] : null, lng: temCoord ? coord[1] : null,
       };
       const btn = document.getElementById('btnPro'); btn.disabled = true;

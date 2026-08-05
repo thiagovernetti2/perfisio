@@ -190,6 +190,11 @@ ALTER TABLE fisios ADD COLUMN IF NOT EXISTS lat numeric;
 ALTER TABLE fisios ADD COLUMN IF NOT EXISTS lng numeric;
 ALTER TABLE fisios ADD COLUMN IF NOT EXISTS preco text;
 ALTER TABLE fisios ADD COLUMN IF NOT EXISTS bio text;
+ALTER TABLE fisios ADD COLUMN IF NOT EXISTS whatsapp text;
+ALTER TABLE fisios ADD COLUMN IF NOT EXISTS tratamentos text;
+ALTER TABLE fisios ADD COLUMN IF NOT EXISTS regioes text;
+ALTER TABLE fisios ADD COLUMN IF NOT EXISTS instagram text;
+ALTER TABLE sessoes ADD COLUMN IF NOT EXISTS reserva text;
 `;
 
 /* migração de dados: pacientes com histórico ganham um tratamento inicial */
@@ -505,7 +510,8 @@ app.post('/api/campanhas/enviar', auth, async (req, res) => {
 /* ---------- CRUD GENÉRICO (escopado por clínica) ---------- */
 const TABLES = {
   fisios: ['nome', 'crefito', 'esp', 'cor', 'comissao', 'ativo',
-    'publico', 'especialidades', 'domiciliar', 'bairro', 'cidade', 'lat', 'lng', 'preco', 'bio'],
+    'publico', 'especialidades', 'domiciliar', 'bairro', 'cidade', 'lat', 'lng', 'preco', 'bio',
+    'whatsapp', 'tratamentos', 'regioes', 'instagram'],
   pacientes: ['nome', 'nascimento', 'cpf', 'telefone', 'email', 'convenio', 'queixa', 'obs', 'fisio_id', 'status', 'pacote_nome', 'sessoes_total', 'sessoes_feitas', 'avaliacao'],
   leads: ['nome', 'telefone', 'origem', 'interesse', 'obs', 'valor', 'fisio_id', 'col'],
   sessoes: ['paciente_id', 'tratamento_id', 'fisio_id', 'titulo', 'tipo', 'data', 'hora', 'duracao', 'obs', 'status'],
@@ -752,6 +758,7 @@ app.get('/api/public/profissionais/:id', async (req, res) => {
   const r = await pool.query(`
     SELECT f.id, f.nome, f.crefito, f.esp, f.cor, f.especialidades, f.domiciliar,
            f.bairro, f.cidade, f.preco, f.bio, f.lat, f.lng,
+           f.whatsapp, f.tratamentos, f.regioes, f.instagram,
            c.id AS clinica_id, c.nome AS clinica_nome, c.endereco AS clinica_endereco,
            c.telefone AS clinica_telefone, c.horario AS clinica_horario
     FROM fisios f JOIN clinicas c ON c.id = f.clinica_id
@@ -762,11 +769,16 @@ app.get('/api/public/profissionais/:id', async (req, res) => {
     SELECT id, nome, esp, cor, especialidades, bairro, preco, domiciliar
     FROM fisios WHERE clinica_id = $1 AND id <> $2 AND publico AND ativo ORDER BY nome LIMIT 6`,
     [p.clinica_id, p.id]);
+  const pacotes = await pool.query(
+    'SELECT nome, descricao, valor, sessoes, tipo FROM pacotes WHERE clinica_id = $1 ORDER BY valor LIMIT 4',
+    [p.clinica_id]);
   res.json({
     ...p,
     lat: p.lat === null ? null : Number(p.lat), lng: p.lng === null ? null : Number(p.lng),
     especialidades: (p.especialidades || '').split(',').map(s => s.trim()).filter(Boolean),
+    tratamentos: (p.tratamentos || '').split(',').map(s => s.trim()).filter(Boolean),
     colegas: colegas.rows.map(c => ({ ...c, especialidades: (c.especialidades || '').split(',').map(s => s.trim()).filter(Boolean) })),
+    pacotes: pacotes.rows.map(x => ({ ...x, valor: Number(x.valor) })),
   });
 });
 
@@ -785,6 +797,114 @@ app.get('/api/public/clinicas/:id', async (req, res) => {
       especialidades: (f.especialidades || '').split(',').map(s => s.trim()).filter(Boolean),
     })),
   });
+});
+
+/* ---------- AGENDAMENTO ONLINE (público) ---------- */
+// horários ocupados do profissional (sem nenhum dado de paciente)
+app.get('/api/public/agenda/:fisioId', async (req, res) => {
+  const f = await pool.query('SELECT 1 FROM fisios WHERE id=$1 AND publico AND ativo', [req.params.fisioId]);
+  if (!f.rowCount) return res.status(404).json({ erro: 'Profissional não encontrado' });
+  const r = await pool.query(
+    `SELECT to_char(data, 'YYYY-MM-DD') AS data, hora FROM sessoes
+     WHERE fisio_id=$1 AND status <> 'cancelada' AND data >= $2::date AND data <= $3::date`,
+    [req.params.fisioId, req.query.from, req.query.to]);
+  res.json(r.rows.map(s => ({ data: s.data, hora: s.hora.slice(0, 5) })));
+});
+
+const gerarCodigo = () => 'PF-' + Math.random().toString(36).slice(2, 8).toUpperCase();
+
+// cria o agendamento (único ou recorrente semanal)
+app.post('/api/public/agendar', async (req, res) => {
+  const { fisio_id, nome, telefone, data, hora, semanas, obs } = req.body || {};
+  if (!fisio_id || !nome || !data || !hora) return res.status(400).json({ erro: 'Preencha nome, data e horário' });
+  if (data < new Date().toISOString().slice(0, 10)) return res.status(400).json({ erro: 'Escolha uma data futura' });
+  const fq = await pool.query(`
+    SELECT f.id, f.nome, f.clinica_id FROM fisios f JOIN clinicas c ON c.id = f.clinica_id
+    WHERE f.id=$1 AND f.publico AND f.ativo AND c.ativa`, [fisio_id]);
+  if (!fq.rowCount) return res.status(404).json({ erro: 'Profissional não encontrado' });
+  const fisio = fq.rows[0];
+
+  // reutiliza paciente pelo telefone; senão cria
+  let pacienteId = null;
+  const telLimpo = (telefone || '').replace(/\D/g, '');
+  if (telLimpo) {
+    const ex = await pool.query(
+      `SELECT id FROM pacientes WHERE clinica_id=$1 AND regexp_replace(COALESCE(telefone,''), '\\D', '', 'g') = $2 LIMIT 1`,
+      [fisio.clinica_id, telLimpo]);
+    if (ex.rowCount) pacienteId = ex.rows[0].id;
+  }
+  if (!pacienteId) {
+    const novo = await pool.query(
+      `INSERT INTO pacientes (clinica_id, nome, telefone, fisio_id, status, queixa)
+       VALUES ($1,$2,$3,$4,'avaliacao',$5) RETURNING id`,
+      [fisio.clinica_id, nome, telefone || null, fisio_id, obs || null]);
+    pacienteId = novo.rows[0].id;
+  }
+
+  const n = Math.min(Math.max(Number(semanas) || 1, 1), 12);
+  const datas = [];
+  for (let i = 0; i < n; i++) {
+    const d = new Date(data + 'T12:00:00');
+    d.setDate(d.getDate() + i * 7);
+    datas.push(d.toISOString().slice(0, 10));
+  }
+
+  const codigo = gerarCodigo();
+  const criadas = [], conflitos = [];
+  for (let i = 0; i < datas.length; i++) {
+    const dt = datas[i];
+    const ocupado = await pool.query(
+      `SELECT 1 FROM sessoes WHERE fisio_id=$1 AND data=$2::date AND hora=$3 AND status <> 'cancelada'`,
+      [fisio_id, dt, hora]);
+    if (ocupado.rowCount) { conflitos.push(dt); continue; }
+    await pool.query(
+      `INSERT INTO sessoes (clinica_id, paciente_id, fisio_id, tipo, data, hora, status, obs, reserva)
+       VALUES ($1,$2,$3,$4,$5::date,$6,'agendada',$7,$8)`,
+      [fisio.clinica_id, pacienteId, fisio_id,
+       i === 0 ? 'Avaliação inicial' : 'Sessão de tratamento', dt, hora,
+       'Agendado pelo site' + (obs ? ' · ' + obs.slice(0, 140) : ''), codigo]);
+    criadas.push(dt);
+  }
+  if (!criadas.length) return res.status(409).json({ erro: 'Os horários escolhidos acabaram de ser ocupados. Escolha outro.' });
+  res.json({ codigo, hora, criadas, conflitos, fisio_nome: fisio.nome });
+});
+
+// consulta reserva pelo código (para remarcar/cancelar)
+app.get('/api/public/reserva/:codigo', async (req, res) => {
+  const r = await pool.query(`
+    SELECT s.id, to_char(s.data, 'YYYY-MM-DD') AS data, s.hora, s.tipo, f.nome AS fisio_nome, f.id AS fisio_id
+    FROM sessoes s JOIN fisios f ON f.id = s.fisio_id
+    WHERE s.reserva = $1 AND s.status = 'agendada' AND s.data >= CURRENT_DATE
+    ORDER BY s.data, s.hora`, [req.params.codigo.toUpperCase()]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Nenhum agendamento futuro com este código' });
+  res.json(r.rows.map(s => ({ ...s, hora: s.hora.slice(0, 5) })));
+});
+
+// remarca uma sessão da reserva
+app.post('/api/public/reserva/:codigo/remarcar', async (req, res) => {
+  const { sessao_id, data, hora } = req.body || {};
+  if (!sessao_id || !data || !hora) return res.status(400).json({ erro: 'Informe a sessão e o novo horário' });
+  if (data < new Date().toISOString().slice(0, 10)) return res.status(400).json({ erro: 'Escolha uma data futura' });
+  const s = await pool.query(
+    `SELECT id, fisio_id FROM sessoes WHERE id=$1 AND reserva=$2 AND status='agendada'`,
+    [sessao_id, req.params.codigo.toUpperCase()]);
+  if (!s.rowCount) return res.status(404).json({ erro: 'Sessão não encontrada para este código' });
+  const ocupado = await pool.query(
+    `SELECT 1 FROM sessoes WHERE fisio_id=$1 AND data=$2::date AND hora=$3 AND status <> 'cancelada' AND id <> $4`,
+    [s.rows[0].fisio_id, data, hora, sessao_id]);
+  if (ocupado.rowCount) return res.status(409).json({ erro: 'Este horário acabou de ser ocupado. Escolha outro.' });
+  await pool.query(`UPDATE sessoes SET data=$2::date, hora=$3 WHERE id=$1`, [sessao_id, data, hora]);
+  res.json({ ok: true, data, hora });
+});
+
+// cancela uma sessão da reserva
+app.post('/api/public/reserva/:codigo/cancelar', async (req, res) => {
+  const { sessao_id } = req.body || {};
+  const r = await pool.query(
+    `UPDATE sessoes SET status='cancelada' WHERE id=$1 AND reserva=$2 AND status='agendada' RETURNING id`,
+    [sessao_id, req.params.codigo.toUpperCase()]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Sessão não encontrada para este código' });
+  res.json({ ok: true });
 });
 
 // lead direto para um profissional
