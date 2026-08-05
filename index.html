@@ -35,10 +35,12 @@
     .filtros .f-chip:hover { border-color: var(--primary); color: var(--primary-dark); }
     .filtros .f-chip.on { background: var(--primary); border-color: var(--primary); color: #fff; }
     .geo-bar { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; margin-top: 20px; }
-    .dir-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; max-width: 1180px; margin: 0 auto; align-items: start; }
+    .dir-layout { display: grid; grid-template-columns: 1fr; gap: 22px; max-width: 1180px; margin: 0 auto; align-items: start; }
+    .dir-layout.com-mapa { grid-template-columns: 1fr 1fr; }
+    .dir-layout .perfil-grid { margin: 0; width: 100%; max-width: none; min-width: 0; }
     #mapa { height: 520px; border-radius: 16px; border: 1px solid var(--line); box-shadow: var(--shadow); overflow: hidden; position: sticky; top: 90px; }
     .perfil-card .pc-dist { display: inline-flex; align-items: center; gap: 4px; background: var(--primary-soft); color: var(--primary-dark); font-weight: 700; font-size: .72rem; padding: 3px 9px; border-radius: 999px; }
-    @media (max-width: 980px) { .dir-layout { grid-template-columns: 1fr; } #mapa { height: 320px; position: static; } }
+    @media (max-width: 980px) { .dir-layout, .dir-layout.com-mapa { grid-template-columns: 1fr; } #mapa { height: 320px; position: static; } }
 
     .section { padding: 56px 6vw; scroll-margin-top: 78px; }
     .section h2 { font-size: 1.6rem; font-weight: 800; color: var(--ink); letter-spacing: -.4px; text-align: center; }
@@ -160,27 +162,25 @@
     <div class="geo-bar">
       <button class="btn btn-primary" id="btnGeo" onclick="usarLocalizacao()">📍 Usar minha localização</button>
       <select id="raioSel" onchange="renderProfissionais()" style="padding:10px 12px;border:1px solid var(--line);border-radius:9px;font-size:.88rem;background:#fff;">
-        <option value="0">Qualquer distância</option>
+        <option value="0" selected>Qualquer distância</option>
         <option value="1000">Até 1 km</option>
-        <option value="3000" selected>Até 3 km</option>
+        <option value="3000">Até 3 km</option>
         <option value="10000">Até 10 km</option>
         <option value="30000">Até 30 km</option>
       </select>
       <span id="geoStatus" style="font-size:.82rem;color:var(--text-soft);"></span>
     </div>
-  </section>
 
-  <!-- DIRETÓRIO DE PROFISSIONAIS -->
-  <section class="section" id="profissionais">
-    <h2>Fisioterapeutas perto de você</h2>
-    <p class="sec-sub" id="dirSub">Profissionais verificados — autônomos ou vinculados a clínicas.</p>
-
-    <div class="dir-layout">
-      <div id="mapaWrap" style="display:none;">
-        <div id="mapa"></div>
-      </div>
-      <div class="perfil-grid" id="perfilGrid">
-        <div style="grid-column:1/-1;text-align:center;color:var(--text-soft);padding:30px;">Carregando profissionais...</div>
+    <!-- DIRETÓRIO DE PROFISSIONAIS (logo abaixo da busca) -->
+    <div id="profissionais" style="max-width:1180px;margin:34px auto 0;text-align:left;">
+      <p id="dirSub" style="text-align:center;font-size:.88rem;color:var(--text-soft);margin-bottom:20px;">Profissionais verificados — autônomos ou vinculados a clínicas.</p>
+      <div class="dir-layout">
+        <div id="mapaWrap" style="display:none;">
+          <div id="mapa"></div>
+        </div>
+        <div class="perfil-grid" id="perfilGrid">
+          <div style="grid-column:1/-1;text-align:center;color:var(--text-soft);padding:30px;">Carregando profissionais...</div>
+        </div>
       </div>
     </div>
   </section>
@@ -569,6 +569,7 @@
         });
       }
       if (!window.mapboxgl) { document.getElementById('mapaWrap').style.display = 'none'; return; }
+      document.querySelector('.dir-layout').classList.add('com-mapa');
       if (!mapa) {
         mapboxgl.accessToken = MAPBOX;
         mapa = new mapboxgl.Map({
