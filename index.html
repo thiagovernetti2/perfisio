@@ -213,7 +213,7 @@
   <!-- PARA CLÍNICAS -->
   <section class="section" id="clinicas" style="background:var(--bg);">
     <h2>Gestão completa para sua clínica ou consultório</h2>
-    <p class="sec-sub">Muito além do perfil: o PerFisio é um CRM e sistema de gestão feito para fisioterapeutas — por <b>meia consulta ao mês</b> por profissional.</p>
+    <p class="sec-sub">Muito além do perfil: o PerFisio é um CRM e sistema de gestão feito para fisioterapeutas — por <b>R$ 40 ao mês</b> por profissional.</p>
     <div class="feat-grid">
       <div class="feat"><div class="f-ico">🎯</div><h3>CRM de captação</h3><p>Leads do seu perfil público caem direto no funil. Acompanhe do primeiro contato até a conversão em paciente.</p></div>
       <div class="feat"><div class="f-ico">📅</div><h3>Agenda inteligente</h3><p>Sessões recorrentes, turmas de pilates e lembretes automáticos por WhatsApp que reduzem faltas em até 40%.</p></div>
@@ -292,27 +292,28 @@
 
   <!-- PREÇO -->
   <section class="section" id="precos">
-    <h2>Quanto custa? <em style="color:var(--primary);font-style:normal;">Meia consulta.</em></h2>
-    <p class="sec-sub">Por fisioterapeuta, por mês, o PerFisio custa a <b>metade do valor de uma consulta</b> sua. Meio atendimento no mês e o sistema já se pagou — e quem está começando <b>não paga nada</b> até 10 consultas/mês.</p>
+    <h2>Quanto custa? <em style="color:var(--primary);font-style:normal;">R$ 40 por profissional.</em></h2>
+    <p class="sec-sub">Preço fixo: <b>R$ 40 por fisioterapeuta, por mês</b>. Um único atendimento no mês já paga o sistema inteiro — e quem está começando <b>não paga nada</b> até 10 consultas/mês.</p>
     <div style="max-width:900px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:stretch;" class="preco-grid">
       <div style="border:1px solid var(--line);border-radius:16px;padding:28px;background:#fff;box-shadow:var(--shadow);">
         <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-soft);margin-bottom:18px;">Calcule para a sua clínica</div>
-        <label style="font-size:.88rem;font-weight:600;color:var(--ink);">Quanto custa a sua consulta?</label>
-        <div style="display:flex;align-items:center;gap:14px;margin:10px 0 22px;">
-          <input type="range" id="pcValor" min="80" max="400" step="10" value="160" style="flex:1;accent-color:var(--primary);">
-          <b id="pcValorLabel" style="min-width:74px;text-align:right;color:var(--ink);">R$ 160</b>
-        </div>
         <label style="font-size:.88rem;font-weight:600;color:var(--ink);">Quantos fisioterapeutas atendem?</label>
-        <div style="display:flex;align-items:center;gap:12px;margin-top:10px;">
+        <div style="display:flex;align-items:center;gap:12px;margin:10px 0 22px;">
           <button class="btn btn-ghost btn-sm" onclick="pcFisios(-1)" style="width:38px;">−</button>
           <b id="pcFisiosLabel" style="font-size:1.15rem;color:var(--ink);min-width:24px;text-align:center;">1</b>
           <button class="btn btn-ghost btn-sm" onclick="pcFisios(1)" style="width:38px;">＋</button>
         </div>
+        <label style="font-size:.88rem;font-weight:600;color:var(--ink);">Quanto custa a sua consulta?</label>
+        <div style="display:flex;align-items:center;gap:14px;margin:10px 0 14px;">
+          <input type="range" id="pcValor" min="80" max="400" step="10" value="160" style="flex:1;accent-color:var(--primary);">
+          <b id="pcValorLabel" style="min-width:74px;text-align:right;color:var(--ink);">R$ 160</b>
+        </div>
+        <div id="pcComparativo" style="font-size:.85rem;color:var(--text);line-height:1.6;background:var(--primary-soft);border-radius:10px;padding:12px 14px;"></div>
       </div>
       <div style="border:2px solid var(--primary);border-radius:16px;padding:28px;background:linear-gradient(180deg,#F0FAF7,#fff);display:flex;flex-direction:column;justify-content:center;text-align:center;">
         <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--primary-dark);">Você paga</div>
-        <div style="font-size:2.6rem;font-weight:900;color:var(--ink);letter-spacing:-1px;margin-top:6px;"><span id="pcMensal">R$ 80</span><span style="font-size:1rem;font-weight:600;color:var(--text-soft);">/mês por fisio</span></div>
-        <div id="pcTotal" style="font-size:.95rem;font-weight:700;color:var(--ink);margin-top:8px;">Total: R$ 80/mês</div>
+        <div style="font-size:2.6rem;font-weight:900;color:var(--ink);letter-spacing:-1px;margin-top:6px;"><span id="pcMensal">R$ 40</span><span style="font-size:1rem;font-weight:600;color:var(--text-soft);">/mês por fisio</span></div>
+        <div id="pcTotal" style="font-size:.95rem;font-weight:700;color:var(--ink);margin-top:8px;">Total: R$ 40/mês</div>
         <div style="font-size:.8rem;color:var(--text-soft);margin-top:12px;line-height:1.6;">Tudo incluso: agenda, prontuário eletrônico, CRM, financeiro, marketing e perfil no diretório.<br>Sem fidelidade · cancele quando quiser.</div>
         <a href="login.html#registro" class="btn btn-primary" style="margin:18px auto 0;">Começar grátis →</a>
       </div>
@@ -332,7 +333,7 @@
           <p style="font-size:.92rem;color:var(--text);line-height:1.7;margin-top:10px;">
             Para começar, o PerFisio é <b>gratuito até você atender 10 consultas por mês</b> — com agenda, prontuário
             e perfil no diretório completos. Sem prazo de teste, sem cartão de crédito. Quando a agenda encher,
-            aí sim você paga meia consulta.
+            aí sim você paga R$ 40 por mês.
           </p>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
             <span class="badge green">Grátis até 10 consultas/mês</span>
@@ -353,7 +354,7 @@
         Você atende o dobro de pacientes e a conta dobra junto, pelo mesmo software.
       </p>
       <p style="font-size:.95rem;color:var(--text);line-height:1.7;margin-top:12px;">
-        No PerFisio o preço é <b>fixo e pequeno: meia consulta por fisioterapeuta, por mês.</b>
+        No PerFisio o preço é <b>fixo e pequeno: R$ 40 por fisioterapeuta, por mês.</b>
         Se você dobrar seus atendimentos, a mensalidade continua a mesma — o crescimento é seu.
       </p>
       <p style="font-size:.95rem;color:var(--text);line-height:1.7;margin-top:12px;">
@@ -378,7 +379,7 @@
     <div class="faq">
       <details open>
         <summary>Preciso pagar para aparecer no diretório?</summary>
-        <p>Não. O perfil no diretório entra junto com a conta, e quem está começando usa tudo de graça até atender 10 consultas por mês. Depois disso, a mensalidade é meia consulta por fisioterapeuta.</p>
+        <p>Não. O perfil no diretório entra junto com a conta, e quem está começando usa tudo de graça até atender 10 consultas por mês. Depois disso, a mensalidade é de R$ 40 por fisioterapeuta.</p>
       </details>
       <details>
         <summary>Vocês cobram porcentagem por paciente que eu conseguir?</summary>
@@ -419,7 +420,7 @@
   <section style="padding-top:56px;">
     <div class="cta-band">
       <h2>Comece grátis hoje</h2>
-      <p>Crie seu perfil no diretório, receba pacientes e gerencie sua clínica em um só lugar. Depois, pague só <b style="color:#fff;">meia consulta por fisioterapeuta/mês</b>. Sem cartão de crédito para começar.</p>
+      <p>Crie seu perfil no diretório, receba pacientes e gerencie sua clínica em um só lugar. Depois, pague só <b style="color:#fff;">R$ 40 por fisioterapeuta/mês</b>. Sem cartão de crédito para começar.</p>
       <a href="login.html#registro" class="btn btn-primary" style="padding:13px 28px;font-size:.95rem;">Criar minha conta →</a>
     </div>
   </section>
@@ -728,18 +729,26 @@
     document.querySelectorAll('#mkTabs .mk-tab').forEach(t => t.addEventListener('click', () => mostrarMock(t.dataset.mk)));
     mostrarMock('dashboard');
 
-    /* ---------- Calculadora "meia consulta" ---------- */
+    /* ---------- Calculadora: R$ 40 por profissional ---------- */
+    const PRECO_FISIO = 40;
     let pcQtd = 1;
     const brl = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 
     function calcPreco() {
       const consulta = Number(document.getElementById('pcValor').value);
-      const porFisio = consulta / 2;
+      const total = PRECO_FISIO * pcQtd;
       document.getElementById('pcValorLabel').textContent = brl(consulta);
       document.getElementById('pcFisiosLabel').textContent = pcQtd;
-      document.getElementById('pcMensal').textContent = brl(porFisio);
+      document.getElementById('pcMensal').textContent = brl(PRECO_FISIO);
       document.getElementById('pcTotal').textContent =
-        pcQtd === 1 ? `Total: ${brl(porFisio)}/mês` : `Total: ${brl(porFisio * pcQtd)}/mês · ${pcQtd} fisioterapeutas`;
+        pcQtd === 1 ? `Total: ${brl(total)}/mês` : `Total: ${brl(total)}/mês · ${pcQtd} fisioterapeutas`;
+      const consultas = total / consulta, sobra = consulta - total;
+      const qtd = consultas.toFixed(1).replace('.0', '').replace('.', ',');
+      document.getElementById('pcComparativo').innerHTML = consultas > 1
+        ? `O mês inteiro do PerFisio para a clínica toda custa o equivalente a <b>${qtd} consultas</b> de ${brl(consulta)}.`
+        : sobra >= 20
+          ? `<b>Um único atendimento</b> de ${brl(consulta)} no mês já paga o PerFisio da equipe inteira — e ainda sobram ${brl(sobra)}.`
+          : `<b>Um único atendimento</b> de ${brl(consulta)} no mês já paga o PerFisio da equipe inteira.`;
     }
 
     function pcFisios(d) {
