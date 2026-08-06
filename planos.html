@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planos e preços — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/app.css">
+  <style>
+    body { background: #fff; }
+    .lp-header {
+      display: flex; align-items: center; gap: 12px; padding: 18px 6vw;
+      border-bottom: 1px solid var(--line); position: sticky; top: 0; background: rgba(255,255,255,.92);
+      backdrop-filter: blur(8px); z-index: 50;
+    }
+    .lp-header .logo { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 1.15rem; color: var(--ink); }
+    .lp-header .logo .mark { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff; display: grid; place-items: center; font-size: 1rem; }
+    .lp-header nav { margin-left: auto; display: flex; align-items: center; gap: 22px; font-size: .9rem; font-weight: 600; color: var(--text-soft); }
+    .lp-header nav a:hover { color: var(--ink); }
+
+    .pl-hero { padding: 64px 6vw 40px; text-align: center; background: linear-gradient(180deg, #F0FAF7 0%, #fff 100%); }
+    .pl-hero .kicker { font-size: .78rem; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; color: var(--primary-dark); }
+    .pl-hero h1 { font-size: clamp(1.8rem, 4.2vw, 2.9rem); font-weight: 900; color: var(--ink); letter-spacing: -1px; margin-top: 12px; }
+    .pl-hero h1 em { color: var(--primary); font-style: normal; }
+    .pl-hero p { color: var(--text-soft); font-size: 1.05rem; margin: 14px auto 0; max-width: 620px; line-height: 1.7; }
+
+    .planos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; max-width: 1080px; margin: 40px auto 0; padding: 0 6vw; align-items: stretch; }
+    .plano { border: 1px solid var(--line); border-radius: 18px; padding: 30px 26px; background: #fff; display: flex; flex-direction: column; box-shadow: var(--shadow); }
+    .plano.destaque { border: 2px solid var(--primary); box-shadow: var(--shadow-lg); position: relative; }
+    .plano .selo { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); background: var(--primary); color: #fff; font-size: .7rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; padding: 5px 14px; border-radius: 999px; white-space: nowrap; }
+    .plano h2 { font-size: 1.15rem; font-weight: 800; color: var(--ink); letter-spacing: -.3px; }
+    .plano .tag { font-size: .82rem; color: var(--text-soft); margin-top: 6px; min-height: 38px; line-height: 1.5; }
+    .plano .valor { font-size: 2.5rem; font-weight: 900; color: var(--ink); letter-spacing: -1.5px; margin: 16px 0 2px; }
+    .plano .valor small { font-size: .95rem; font-weight: 600; color: var(--text-soft); letter-spacing: 0; }
+    .plano .un { font-size: .82rem; color: var(--text-soft); font-weight: 600; }
+    .plano ul { list-style: none; margin: 20px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+    .plano li { font-size: .88rem; color: var(--text); display: flex; gap: 9px; align-items: flex-start; line-height: 1.5; }
+    .plano li .ck { color: var(--primary); font-weight: 800; }
+    .plano li.off { color: var(--text-soft); opacity: .75; }
+    .plano .btn { margin-top: 22px; width: 100%; justify-content: center; }
+
+    .calc { max-width: 900px; margin: 46px auto 0; padding: 0 6vw; }
+    .calc-box { border: 1px solid var(--line); border-radius: 18px; background: #fff; box-shadow: var(--shadow); display: grid; grid-template-columns: 1.1fr 1fr; }
+    .calc-box .esq { padding: 30px; border-right: 1px solid var(--line); }
+    .calc-box .dir { padding: 30px; background: linear-gradient(180deg, #F0FAF7, #fff); border-radius: 0 18px 18px 0; text-align: center; display: flex; flex-direction: column; justify-content: center; }
+    .calc-box label { font-size: .88rem; font-weight: 600; color: var(--ink); display: block; }
+    .stepper { display: flex; align-items: center; gap: 12px; margin: 10px 0 20px; }
+    .stepper b { font-size: 1.15rem; color: var(--ink); min-width: 26px; text-align: center; }
+    .switch-row { display: flex; align-items: center; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; margin-top: 6px; }
+    .switch-row input { width: 18px; height: 18px; accent-color: var(--primary); }
+
+    .sec { max-width: 900px; margin: 0 auto; padding: 56px 6vw 0; }
+    .sec h2 { font-size: 1.5rem; font-weight: 800; color: var(--ink); letter-spacing: -.5px; text-align: center; }
+    .sec .sub { color: var(--text-soft); text-align: center; margin: 10px auto 26px; font-size: .96rem; max-width: 620px; line-height: 1.7; }
+    .cmp { width: 100%; border-collapse: collapse; font-size: .88rem; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    .cmp th, .cmp td { padding: 13px 16px; text-align: left; border-bottom: 1px solid var(--line); }
+    .cmp thead th { background: var(--bg); font-size: .76rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-soft); }
+    .cmp td:not(:first-child), .cmp th:not(:first-child) { text-align: center; width: 130px; }
+    .cmp tr:last-child td { border-bottom: none; }
+    .cmp .sim { color: var(--primary); font-weight: 800; }
+    .cmp .nao { color: var(--line-dark, #C7D6D3); font-weight: 700; }
+
+    .faq details { border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; margin-bottom: 10px; background: #fff; }
+    .faq summary { font-weight: 700; color: var(--ink); cursor: pointer; font-size: .94rem; }
+    .faq p { color: var(--text); font-size: .9rem; line-height: 1.7; margin-top: 10px; }
+
+    .cta-final { margin: 64px 0 0; padding: 56px 6vw; background: var(--ink); color: #fff; text-align: center; }
+    .cta-final h2 { font-size: 1.7rem; font-weight: 900; letter-spacing: -.5px; }
+    .cta-final p { color: #9DB3B0; margin: 12px auto 22px; max-width: 540px; line-height: 1.7; }
+    .lp-footer { padding: 28px 6vw; text-align: center; color: var(--text-soft); font-size: .84rem; }
+
+    @media (max-width: 900px) {
+      .planos { grid-template-columns: 1fr; }
+      .calc-box { grid-template-columns: 1fr; }
+      .calc-box .esq { border-right: none; border-bottom: 1px solid var(--line); }
+      .calc-box .dir { border-radius: 0 0 18px 18px; }
+      .lp-header nav a:not(.btn) { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="lp-header">
+    <a class="logo" href="index.html"><span class="mark">P</span> PerFisio</a>
+    <nav>
+      <a href="index.html#profissionais">Encontrar fisioterapeuta</a>
+      <a href="index.html#sistema">O sistema</a>
+      <a href="planos.html" style="color:var(--ink);">Planos</a>
+      <a href="login.html" class="btn btn-ghost btn-sm">Entrar</a>
+      <a href="login.html#registro" class="btn btn-primary btn-sm">Criar perfil grátis</a>
+    </nav>
+  </header>
+
+  <section class="pl-hero">
+    <div class="kicker">Planos e preços</div>
+    <h1>Comece de graça. Depois, <em>R$ 40 por profissional.</em></h1>
+    <p>Sem porcentagem do seu faturamento, sem taxa por atendimento e sem fidelidade.
+       Você paga uma licença por fisioterapeuta que atende — e só quando a agenda já estiver girando.</p>
+  </section>
+
+  <section class="planos">
+    <div class="plano">
+      <h2>📍 Fisioterapeuta local</h2>
+      <div class="tag">Para quem está começando ou atende poucos pacientes por mês.</div>
+      <div class="valor">Grátis</div>
+      <div class="un">até <b id="limGratis">10</b> consultas por mês</div>
+      <ul>
+        <li><span class="ck">✓</span> Perfil no diretório do PerFisio</li>
+        <li><span class="ck">✓</span> Agenda com agendamento online</li>
+        <li><span class="ck">✓</span> Prontuário eletrônico e evoluções SOAP</li>
+        <li><span class="ck">✓</span> Biblioteca de exercícios</li>
+        <li><span class="ck">✓</span> Sem prazo de teste e sem cartão</li>
+        <li class="off"><span class="ck">·</span> Acima do limite, vira o plano PerFisio</li>
+      </ul>
+      <a href="login.html#registro" class="btn btn-soft">Começar de graça</a>
+    </div>
+
+    <div class="plano destaque">
+      <div class="selo">Mais escolhido</div>
+      <h2>💚 PerFisio</h2>
+      <div class="tag">Consultório ou clínica com a agenda cheia. Tudo liberado, sem limite.</div>
+      <div class="valor" id="vFisio">R$ 40 <small>/mês</small></div>
+      <div class="un">por fisioterapeuta ativo</div>
+      <ul>
+        <li><span class="ck">✓</span> Consultas e pacientes ilimitados</li>
+        <li><span class="ck">✓</span> CRM de captação com funil de leads</li>
+        <li><span class="ck">✓</span> Financeiro: a receber, a pagar e comissões</li>
+        <li><span class="ck">✓</span> Pacotes, convênios e créditos de sessão</li>
+        <li><span class="ck">✓</span> Marketing por e-mail para os pacientes</li>
+        <li><span class="ck">✓</span> Relatórios e prontuário para impressão</li>
+        <li><span class="ck">✓</span> Cancele quando quiser, sem multa</li>
+      </ul>
+      <button class="btn btn-primary" onclick="assinar(false)">Assinar agora</button>
+    </div>
+
+    <div class="plano">
+      <h2>📱 Redes sociais</h2>
+      <div class="tag">Add-on: a gente produz o conteúdo, você só aprova pelo sistema.</div>
+      <div class="valor" id="vSocial">R$ 149 <small>/mês</small></div>
+      <div class="un">por clínica · soma-se ao plano PerFisio</div>
+      <ul>
+        <li><span class="ck">✓</span> Posts prontos todo mês para o Instagram</li>
+        <li><span class="ck">✓</span> Aprovação dentro do sistema, com preview real</li>
+        <li><span class="ck">✓</span> Peça ajustes sem sair do PerFisio</li>
+        <li><span class="ck">✓</span> Calendário com a data prevista de cada post</li>
+        <li><span class="ck">✓</span> Conteúdo escrito para fisioterapia</li>
+      </ul>
+      <button class="btn btn-soft" onclick="assinar(true)">Assinar com o add-on</button>
+    </div>
+  </section>
+
+  <div class="calc">
+    <div class="calc-box">
+      <div class="esq">
+        <div style="font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-soft);margin-bottom:18px;">Simule a sua clínica</div>
+        <label>Quantos fisioterapeutas atendem?</label>
+        <div class="stepper">
+          <button class="btn btn-ghost btn-sm" style="width:38px;" onclick="mudarQtd(-1)">−</button>
+          <b id="qtdLabel">1</b>
+          <button class="btn btn-ghost btn-sm" style="width:38px;" onclick="mudarQtd(1)">＋</button>
+        </div>
+        <label>Add-on de redes sociais</label>
+        <div class="switch-row">
+          <input type="checkbox" id="cSocial" onchange="calcular()">
+          <label for="cSocial" style="margin:0;font-weight:500;font-size:.86rem;color:var(--text);">Quero os posts prontos todo mês</label>
+        </div>
+      </div>
+      <div class="dir">
+        <div style="font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--primary-dark);">Sua mensalidade</div>
+        <div style="font-size:2.6rem;font-weight:900;color:var(--ink);letter-spacing:-1.5px;margin-top:8px;" id="cTotal">R$ 40</div>
+        <div id="cDetalhe" style="font-size:.85rem;color:var(--text-soft);line-height:1.6;margin-top:8px;"></div>
+        <button class="btn btn-primary" style="margin:20px auto 0;" onclick="assinar(document.getElementById('cSocial').checked)">Assinar →</button>
+        <div style="font-size:.76rem;color:var(--text-soft);margin-top:10px;">Cartão de crédito · cobrança mensal · cancele quando quiser</div>
+      </div>
+    </div>
+  </div>
+
+  <section class="sec">
+    <h2>O que entra em cada plano</h2>
+    <p class="sub">A diferença entre o gratuito e o pago é o volume de atendimentos — não a qualidade das ferramentas.</p>
+    <div style="overflow-x:auto;">
+      <table class="cmp">
+        <thead><tr><th>Recurso</th><th>Local (grátis)</th><th>PerFisio</th></tr></thead>
+        <tbody>
+          <tr><td>Consultas por mês</td><td>até 10</td><td class="sim">ilimitadas</td></tr>
+          <tr><td>Perfil no diretório com agendamento online</td><td class="sim">✓</td><td class="sim">✓</td></tr>
+          <tr><td>Agenda, prontuário e exercícios</td><td class="sim">✓</td><td class="sim">✓</td></tr>
+          <tr><td>CRM de leads e captação</td><td class="nao">—</td><td class="sim">✓</td></tr>
+          <tr><td>Financeiro, comissões e contas a pagar</td><td class="nao">—</td><td class="sim">✓</td></tr>
+          <tr><td>Marketing por e-mail</td><td class="nao">—</td><td class="sim">✓</td></tr>
+          <tr><td>Vários profissionais e perfis de acesso</td><td class="nao">—</td><td class="sim">✓</td></tr>
+          <tr><td>Posts de Instagram com aprovação</td><td class="nao">—</td><td>add-on</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Por que tão barato?</h2>
+    <p class="sub">Porque não queremos ser sócios do seu negócio.</p>
+    <div style="border:1px solid var(--line);border-radius:16px;padding:28px 32px;background:#fff;">
+      <p style="font-size:.95rem;color:var(--text);line-height:1.75;">
+        Existe muito sistema que cobra porcentagem do faturamento ou taxa por atendimento: quanto mais você trabalha,
+        mais você paga. No PerFisio o preço é <b>fixo por profissional</b> — se você dobrar os atendimentos,
+        a mensalidade continua a mesma. O crescimento é seu.
+      </p>
+      <p style="font-size:.95rem;color:var(--text);line-height:1.75;margin-top:12px;">
+        Nosso objetivo é <b>dar visibilidade a mais fisioterapeutas em todo o Brasil</b>. Cada profissional no diretório
+        é mais um paciente que encontra um bom atendimento perto de casa. Por isso quem está começando não paga nada
+        até as 10 primeiras consultas do mês: ninguém deveria ficar de fora por não ter caixa no início.
+      </p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;">
+        <span class="badge primary">Sem porcentagem do faturamento</span>
+        <span class="badge green">Sem taxa por atendimento</span>
+        <span class="badge blue">Sem fidelidade</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec faq" style="padding-bottom:10px;">
+    <h2>Dúvidas sobre cobrança</h2>
+    <p class="sub">Como funciona o pagamento, a nota e o cancelamento.</p>
+    <details open>
+      <summary>Como é cobrado quando eu tenho mais de um fisioterapeuta?</summary>
+      <p>Uma licença por fisioterapeuta ativo na sua clínica. Três profissionais atendendo = 3 × R$ 40 = R$ 120 por mês. Recepção e gestor que não atendem não contam licença. Quando você ativa ou desativa um profissional, é só clicar em "atualizar licenças" na tela de Assinatura e a Stripe cobra a diferença proporcional.</p>
+    </details>
+    <details>
+      <summary>Quais formas de pagamento vocês aceitam?</summary>
+      <p>Cartão de crédito, processado pela Stripe. O PerFisio não guarda o número do seu cartão em nenhum momento — os dados são digitados direto no ambiente seguro da Stripe.</p>
+    </details>
+    <details>
+      <summary>Posso cancelar quando quiser?</summary>
+      <p>Pode, sem multa e sem falar com ninguém: em Assinatura → Gerenciar assinatura você cancela em dois cliques. O acesso continua até o fim do período já pago, e seus dados ficam guardados caso queira voltar.</p>
+    </details>
+    <details>
+      <summary>O que acontece se eu passar de 10 consultas no plano grátis?</summary>
+      <p>O sistema avisa você dentro da tela de Assinatura, mostrando quantas consultas você já registrou no mês. Nada é apagado nem bloqueado de surpresa — o aviso aparece para você decidir quando assinar.</p>
+    </details>
+    <details>
+      <summary>Emitem nota fiscal?</summary>
+      <p>Sim. Cada cobrança gera um recibo da Stripe enviado por e-mail, e a nota fiscal do serviço é emitida pelo PerFisio para o CNPJ (ou CPF) cadastrado na clínica.</p>
+    </details>
+    <details>
+      <summary>O add-on de redes sociais é obrigatório?</summary>
+      <p>Não. Ele é opcional e pode ser ligado ou desligado a qualquer momento na tela de Assinatura — a cobrança é ajustada proporcionalmente no mesmo ciclo.</p>
+    </details>
+  </section>
+
+  <section class="cta-final">
+    <h2>Comece hoje, pague quando fizer sentido</h2>
+    <p>Crie sua conta em 1 minuto — já vem com biblioteca de exercícios, pacotes e o seu perfil no diretório.</p>
+    <a href="login.html#registro" class="btn btn-primary">Criar conta grátis →</a>
+  </section>
+
+  <footer class="lp-footer">© 2026 PerFisio · <a href="index.html" style="color:var(--primary-dark);font-weight:600;">Voltar para a página inicial</a></footer>
+
+  <script src="assets/js/app.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script>
+    let CAT = { fisio: 4000, social: 14900 }, qtd = 1, pagamentoOn = false;
+    const brl = c => (c / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+
+    async function carregar() {
+      try {
+        const d = await PF.api('/api/public/planos');
+        pagamentoOn = d.pagamento;
+        d.planos.forEach(p => CAT[p.chave] = p.centavos);
+        document.getElementById('limGratis').textContent = d.limite_gratis;
+        document.getElementById('vFisio').innerHTML = `${brl(CAT.fisio)} <small>/mês</small>`;
+        document.getElementById('vSocial').innerHTML = `${brl(CAT.social)} <small>/mês</small>`;
+      } catch (e) { /* mantém os valores padrão da página */ }
+      calcular();
+    }
+
+    function mudarQtd(d) { qtd = Math.min(Math.max(qtd + d, 1), 30); calcular(); }
+
+    function calcular() {
+      const social = document.getElementById('cSocial').checked;
+      const total = CAT.fisio * qtd + (social ? CAT.social : 0);
+      document.getElementById('qtdLabel').textContent = qtd;
+      document.getElementById('cTotal').textContent = brl(total);
+      document.getElementById('cDetalhe').innerHTML =
+        `${qtd} ${qtd > 1 ? 'licenças' : 'licença'} × ${brl(CAT.fisio)}` +
+        (social ? ` + redes sociais ${brl(CAT.social)}` : '') +
+        `<br>por mês, sem fidelidade`;
+    }
+
+    /* Assinar exige estar logado: sem sessão, manda para o login e volta */
+    function assinar(social) {
+      if (!PF.token()) { location.href = 'login.html?destino=assinatura' + (social ? '&social=1' : ''); return; }
+      location.href = 'app/assinatura.html?assinar=1' + (social ? '&social=1' : '');
+    }
+
+    carregar();
+  </script>
+</body>
+</html>

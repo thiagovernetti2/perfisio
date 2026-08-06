@@ -86,7 +86,13 @@
   <script>
     App.initTabs(document.getElementById('authTabs'));
     if (location.hash === '#registro') document.querySelector('[data-tab="registro"]').click();
-    if (PF.token()) location.href = 'app/dashboard.html';
+
+    /* quem chegou pela página de planos volta direto para o checkout */
+    const qs = new URLSearchParams(location.search);
+    const DESTINO = qs.get('destino') === 'assinatura'
+      ? 'app/assinatura.html?assinar=1' + (qs.get('social') === '1' ? '&social=1' : '')
+      : 'app/dashboard.html';
+    if (PF.token()) location.href = DESTINO;
 
     function erro(msg) {
       const b = document.getElementById('erroBox');
@@ -100,7 +106,7 @@
       try {
         const r = await PF.api('/api/auth/login', { method: 'POST', body: { email: loEmail.value.trim(), senha: loSenha.value } });
         PF.setSession(r.token, r.usuario);
-        location.href = 'app/dashboard.html';
+        location.href = DESTINO;
       } catch (e) { erro(e.message); btn.disabled = false; btn.textContent = 'Entrar'; }
     }
 
@@ -110,7 +116,7 @@
       try {
         const r = await PF.api('/api/auth/register', { method: 'POST', body: { clinica: reClinica.value.trim(), nome: reNome.value.trim(), email: reEmail.value.trim(), senha: reSenha.value } });
         PF.setSession(r.token, r.usuario);
-        location.href = 'app/dashboard.html';
+        location.href = DESTINO;
       } catch (e) { erro(e.message); btn.disabled = false; btn.textContent = 'Criar minha clínica →'; }
     }
   </script>

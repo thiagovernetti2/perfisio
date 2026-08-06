@@ -25,6 +25,7 @@
     { id: 'aprovacoes',    href: 'aprovacoes.html',    ico: '📱', text: 'Aprovações' },
     { id: 'equipe',        href: 'equipe.html',        ico: '🧑‍⚕️', text: 'Equipe' },
     { id: 'relatorios',    href: 'relatorios.html',    ico: '📈', text: 'Relatórios' },
+    { id: 'assinatura',    href: 'assinatura.html',    ico: '💳', text: 'Assinatura' },
     { id: 'configuracoes', href: 'configuracoes.html', ico: '⚙️', text: 'Configurações' },
   ];
 

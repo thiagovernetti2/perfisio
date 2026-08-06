@@ -175,6 +175,11 @@ ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS superadmin boolean NOT NULL DEFAUL
 ALTER TABLE usuarios ALTER COLUMN clinica_id DROP NOT NULL;
 ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS ativa boolean NOT NULL DEFAULT true;
 ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS plano_social boolean NOT NULL DEFAULT false;
+ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS stripe_customer_id text;
+ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS stripe_subscription_id text;
+ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS assinatura_status text NOT NULL DEFAULT 'gratuito';
+ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS licencas int NOT NULL DEFAULT 0;
+ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS assinatura_fim timestamptz;
 ALTER TABLE evolucoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
 ALTER TABLE prescricoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
 ALTER TABLE sessoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
@@ -274,8 +279,92 @@ async function seedClinica(client, cid) {
     await client.query('INSERT INTO pacotes (clinica_id,nome,descricao,valor,sessoes,tipo) VALUES ($1,$2,$3,$4,$5,$6)', [cid, nome, descricao, valor, sessoes, tipo]);
 }
 
+/* ============ PLANOS / STRIPE ============ */
+const stripe = process.env.STRIPE_SECRET_KEY ? require('stripe')(process.env.STRIPE_SECRET_KEY) : null;
+
+// catálogo — a fonte da verdade do preço; os Price da Stripe são criados sob demanda
+const PLANOS = {
+  fisio: {
+    lookup: 'perfisio_fisio_mensal', nome: 'PerFisio · por profissional',
+    descricao: 'Agenda, prontuário eletrônico, CRM, financeiro e perfil no diretório.',
+    centavos: 4000, unidade: 'por fisioterapeuta/mês', tipo: 'licenca',
+  },
+  social: {
+    lookup: 'perfisio_social_mensal', nome: 'Redes sociais',
+    descricao: 'Posts prontos todo mês para o Instagram da clínica, com aprovação pelo sistema.',
+    centavos: 14900, unidade: 'por clínica/mês', tipo: 'clinica',
+  },
+};
+const LIMITE_GRATIS = 10; // consultas/mês do plano "fisioterapeuta local"
+
+// cria (uma vez) o Product + Price recorrente na Stripe e reaproveita pelo lookup_key
+const cachePrecos = {};
+async function precoStripe(chave) {
+  if (cachePrecos[chave]) return cachePrecos[chave];
+  const p = PLANOS[chave];
+  const achados = await stripe.prices.list({ lookup_keys: [p.lookup], active: true, limit: 1 });
+  let price = achados.data[0];
+  if (!price) {
+    const produto = await stripe.products.create({ name: `PerFisio — ${p.nome}`, description: p.descricao });
+    price = await stripe.prices.create({
+      product: produto.id, currency: 'brl', unit_amount: p.centavos,
+      recurring: { interval: 'month' }, lookup_key: p.lookup,
+    });
+  }
+  cachePrecos[chave] = price.id;
+  return price.id;
+}
+
+// espelha uma assinatura da Stripe nas colunas da clínica
+async function sincronizarAssinatura(sub) {
+  const cid = sub.metadata?.clinica_id;
+  if (!cid) return;
+  const itens = sub.items?.data || [];
+  const lookupDe = it => it.price?.lookup_key || '';
+  const itemFisio = itens.find(it => lookupDe(it) === PLANOS.fisio.lookup);
+  const temSocial = itens.some(it => lookupDe(it) === PLANOS.social.lookup);
+  const ativa = ['active', 'trialing', 'past_due'].includes(sub.status);
+  const fim = sub.items?.data?.[0]?.current_period_end || sub.current_period_end;
+  await pool.query(`UPDATE clinicas SET stripe_customer_id=$2, stripe_subscription_id=$3, assinatura_status=$4,
+      licencas=$5, plano_social=$6, assinatura_fim=$7 WHERE id=$1`,
+    [cid, typeof sub.customer === 'string' ? sub.customer : sub.customer?.id,
+     ativa ? sub.id : null, ativa ? sub.status : 'cancelado',
+     ativa && itemFisio ? (itemFisio.quantity || 0) : 0,
+     ativa && temSocial, fim ? new Date(fim * 1000) : null]);
+}
+
 /* ============ APP ============ */
 const app = express();
+
+// webhook ANTES do express.json: a assinatura da Stripe exige o corpo cru
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  if (!stripe) return res.status(503).send('Stripe não configurado');
+  const segredo = process.env.STRIPE_WEBHOOK_SECRET;
+  let evento;
+  try {
+    evento = segredo
+      ? stripe.webhooks.constructEvent(req.body, req.headers['stripe-signature'], segredo)
+      : JSON.parse(req.body.toString());
+  } catch (e) {
+    console.error('webhook inválido:', e.message);
+    return res.status(400).send(`Webhook Error: ${e.message}`);
+  }
+  try {
+    const o = evento.data.object;
+    if (evento.type === 'checkout.session.completed' && o.subscription) {
+      const sub = await stripe.subscriptions.retrieve(o.subscription);
+      if (!sub.metadata?.clinica_id && o.metadata?.clinica_id) {
+        await stripe.subscriptions.update(sub.id, { metadata: { clinica_id: o.metadata.clinica_id } });
+        sub.metadata = { clinica_id: o.metadata.clinica_id };
+      }
+      await sincronizarAssinatura(sub);
+    } else if (evento.type.startsWith('customer.subscription.')) {
+      await sincronizarAssinatura(o);
+    }
+  } catch (e) { console.error('erro processando webhook', evento.type, e); }
+  res.json({ recebido: true });
+});
+
 app.use(express.json({ limit: '12mb' })); // fotos de prontuário sobem em base64
 
 const sign = u => jwt.sign({ uid: u.id, cid: u.clinica_id, sa: !!u.superadmin }, JWT_SECRET, { expiresIn: '30d' });
@@ -696,6 +785,157 @@ app.delete('/api/admin/social/:id', superauth, async (req, res) => {
   res.json({ ok: r.rowCount > 0 });
 });
 
+/* ---------- ASSINATURA (Stripe) ---------- */
+const urlBase = req => process.env.APP_URL
+  || `${req.headers['x-forwarded-proto'] || req.protocol}://${req.get('host')}`;
+
+const catalogo = () => Object.entries(PLANOS).map(([chave, p]) =>
+  ({ chave, nome: p.nome, descricao: p.descricao, centavos: p.centavos, unidade: p.unidade, tipo: p.tipo }));
+
+// catálogo público — alimenta a página de planos sem exigir login
+app.get('/api/public/planos', (req, res) => {
+  res.json({ pagamento: !!stripe, limite_gratis: LIMITE_GRATIS, planos: catalogo() });
+});
+
+async function contexto(cid) {
+  const c = (await pool.query(`SELECT nome, email, assinatura_status, licencas, plano_social, assinatura_fim,
+      stripe_customer_id, stripe_subscription_id FROM clinicas WHERE id=$1`, [cid])).rows[0];
+  const fisios = (await pool.query('SELECT count(*)::int n FROM fisios WHERE clinica_id=$1 AND ativo', [cid])).rows[0].n;
+  const consultas = (await pool.query(`SELECT count(*)::int n FROM sessoes WHERE clinica_id=$1
+      AND date_trunc('month', data) = date_trunc('month', CURRENT_DATE) AND status <> 'cancelada'`, [cid])).rows[0].n;
+  return { ...c, fisios_ativos: fisios, consultas_mes: consultas };
+}
+
+app.get('/api/billing', auth, async (req, res) => {
+  const c = await contexto(req.auth.cid);
+  res.json({
+    pagamento: !!stripe, limite_gratis: LIMITE_GRATIS, planos: catalogo(),
+    nome: c.nome, status: c.assinatura_status, licencas: c.licencas, plano_social: c.plano_social,
+    assinatura_fim: c.assinatura_fim, assinante: !!c.stripe_subscription_id,
+    fisios_ativos: c.fisios_ativos, consultas_mes: c.consultas_mes,
+    mensal: c.stripe_subscription_id
+      ? (c.licencas * PLANOS.fisio.centavos + (c.plano_social ? PLANOS.social.centavos : 0)) / 100 : 0,
+  });
+});
+
+async function gestor(req, res) {
+  const u = (await pool.query('SELECT perfil, nome, email FROM usuarios WHERE id=$1', [req.auth.uid])).rows[0];
+  if (!u || u.perfil !== 'gestor') { res.status(403).json({ erro: 'Só o gestor da clínica pode mexer na assinatura' }); return null; }
+  return u;
+}
+
+async function clienteStripe(cid, email) {
+  const c = (await pool.query('SELECT nome, email, stripe_customer_id FROM clinicas WHERE id=$1', [cid])).rows[0];
+  if (c.stripe_customer_id) return c.stripe_customer_id;
+  const cliente = await stripe.customers.create({
+    name: c.nome, email: c.email || email || undefined, metadata: { clinica_id: cid },
+  });
+  await pool.query('UPDATE clinicas SET stripe_customer_id=$2 WHERE id=$1', [cid, cliente.id]);
+  return cliente.id;
+}
+
+// inicia o checkout: 1 licença por fisioterapeuta ativo (+ add-on de redes sociais, se pedido)
+app.post('/api/billing/checkout', auth, async (req, res) => {
+  if (!stripe) return res.status(503).json({ erro: 'Pagamento ainda não está configurado no servidor' });
+  const u = await gestor(req, res); if (!u) return;
+  try {
+    const c = await contexto(req.auth.cid);
+    if (c.stripe_subscription_id)
+      return res.status(400).json({ erro: 'Esta clínica já tem assinatura — use "Gerenciar assinatura"' });
+    const itens = [{ price: await precoStripe('fisio'), quantity: Math.max(c.fisios_ativos, 1) }];
+    if (req.body?.social) itens.push({ price: await precoStripe('social'), quantity: 1 });
+    const base = urlBase(req);
+    const sessao = await stripe.checkout.sessions.create({
+      mode: 'subscription', locale: 'pt-BR', allow_promotion_codes: true,
+      customer: await clienteStripe(req.auth.cid, u.email),
+      line_items: itens,
+      metadata: { clinica_id: req.auth.cid },
+      subscription_data: { metadata: { clinica_id: req.auth.cid } },
+      success_url: `${base}/app/assinatura.html?ok=1`,
+      cancel_url: `${base}/app/assinatura.html?cancelado=1`,
+    });
+    res.json({ url: sessao.url });
+  } catch (e) { console.error(e); res.status(500).json({ erro: e.message || 'Erro ao abrir o checkout' }); }
+});
+
+// portal da Stripe: trocar cartão, ver faturas, cancelar
+app.post('/api/billing/portal', auth, async (req, res) => {
+  if (!stripe) return res.status(503).json({ erro: 'Pagamento ainda não está configurado no servidor' });
+  const u = await gestor(req, res); if (!u) return;
+  try {
+    const sessao = await stripe.billingPortal.sessions.create({
+      customer: await clienteStripe(req.auth.cid, u.email),
+      return_url: `${urlBase(req)}/app/assinatura.html`,
+    });
+    res.json({ url: sessao.url });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ erro: /configuration/i.test(e.message || '')
+      ? 'Ative o Customer Portal no painel da Stripe (Settings → Billing → Customer portal)' : e.message });
+  }
+});
+
+// ajusta as licenças ao número de fisioterapeutas ativos (cobrança proporcional)
+app.post('/api/billing/licencas', auth, async (req, res) => {
+  if (!stripe) return res.status(503).json({ erro: 'Pagamento ainda não está configurado no servidor' });
+  const u = await gestor(req, res); if (!u) return;
+  try {
+    const c = await contexto(req.auth.cid);
+    if (!c.stripe_subscription_id) return res.status(400).json({ erro: 'Esta clínica ainda não tem assinatura' });
+    const sub = await stripe.subscriptions.retrieve(c.stripe_subscription_id);
+    const item = sub.items.data.find(i => i.price.lookup_key === PLANOS.fisio.lookup);
+    if (!item) return res.status(400).json({ erro: 'Assinatura sem item de licenças' });
+    const qtd = Math.max(c.fisios_ativos, 1);
+    if (item.quantity === qtd) return res.json({ ok: true, licencas: qtd, mudou: false });
+    const novo = await stripe.subscriptions.update(sub.id, {
+      items: [{ id: item.id, quantity: qtd }], proration_behavior: 'create_prorations',
+    });
+    await sincronizarAssinatura(novo);
+    res.json({ ok: true, licencas: qtd, mudou: true });
+  } catch (e) { console.error(e); res.status(500).json({ erro: e.message }); }
+});
+
+// contrata/cancela o add-on de redes sociais dentro da assinatura existente
+app.post('/api/billing/social', auth, async (req, res) => {
+  if (!stripe) return res.status(503).json({ erro: 'Pagamento ainda não está configurado no servidor' });
+  const u = await gestor(req, res); if (!u) return;
+  try {
+    const ligar = req.body?.ativo !== false;
+    const c = await contexto(req.auth.cid);
+    if (!c.stripe_subscription_id) return res.status(400).json({ erro: 'Assine o PerFisio antes de contratar o add-on' });
+    const sub = await stripe.subscriptions.retrieve(c.stripe_subscription_id);
+    const item = sub.items.data.find(i => i.price.lookup_key === PLANOS.social.lookup);
+    if (ligar && item) return res.json({ ok: true, plano_social: true });
+    if (!ligar && !item) return res.json({ ok: true, plano_social: false });
+    const novo = await stripe.subscriptions.update(sub.id, {
+      items: ligar
+        ? [{ price: await precoStripe('social'), quantity: 1 }]
+        : [{ id: item.id, deleted: true }],
+      proration_behavior: 'create_prorations',
+    });
+    await sincronizarAssinatura(novo);
+    res.json({ ok: true, plano_social: ligar });
+  } catch (e) { console.error(e); res.status(500).json({ erro: e.message }); }
+});
+
+// relê a assinatura na Stripe (usado ao voltar do checkout e quando não há webhook)
+app.post('/api/billing/sincronizar', auth, async (req, res) => {
+  if (!stripe) return res.status(503).json({ erro: 'Pagamento ainda não está configurado no servidor' });
+  try {
+    const c = (await pool.query('SELECT stripe_customer_id FROM clinicas WHERE id=$1', [req.auth.cid])).rows[0];
+    if (!c.stripe_customer_id) return res.json({ ok: true, encontrada: false });
+    const subs = await stripe.subscriptions.list({ customer: c.stripe_customer_id, status: 'all', limit: 5 });
+    const viva = subs.data.find(s => ['active', 'trialing', 'past_due'].includes(s.status)) || subs.data[0];
+    if (!viva) return res.json({ ok: true, encontrada: false });
+    if (!viva.metadata?.clinica_id) {
+      await stripe.subscriptions.update(viva.id, { metadata: { clinica_id: req.auth.cid } });
+      viva.metadata = { clinica_id: req.auth.cid };
+    }
+    await sincronizarAssinatura(viva);
+    res.json({ ok: true, encontrada: true, status: viva.status });
+  } catch (e) { console.error(e); res.status(500).json({ erro: e.message }); }
+});
+
 /* ---------- CRUD GENÉRICO (escopado por clínica) ---------- */
 const TABLES = {
   fisios: ['nome', 'crefito', 'esp', 'cor', 'comissao', 'ativo',
@@ -822,6 +1062,7 @@ function superauth(req, res, next) {
 app.get('/api/admin/clinicas', superauth, async (req, res) => {
   const r = await pool.query(`
     SELECT c.id, c.nome, c.email, c.endereco, c.ativa, c.plano_social, c.criado_em,
+      c.assinatura_status, c.licencas, (c.stripe_subscription_id IS NOT NULL) AS assinante,
       (c.perfil->>'visivel')::boolean AS visivel,
       (SELECT count(*)::int FROM usuarios u WHERE u.clinica_id = c.id) AS usuarios,
       (SELECT count(*)::int FROM pacientes p WHERE p.clinica_id = c.id) AS pacientes,
@@ -882,7 +1123,9 @@ app.post('/api/admin/clinicas', superauth, async (req, res) => {
 
 // detalhe da clínica: dados + equipe + usuários
 app.get('/api/admin/clinicas/:id', superauth, async (req, res) => {
-  const c = await pool.query('SELECT id, nome, cnpj, email, telefone, endereco, horario, ativa, plano_social, perfil, criado_em FROM clinicas WHERE id=$1', [req.params.id]);
+  const c = await pool.query(`SELECT id, nome, cnpj, email, telefone, endereco, horario, ativa, plano_social, perfil,
+    assinatura_status, licencas, assinatura_fim, (stripe_subscription_id IS NOT NULL) AS assinante, criado_em
+    FROM clinicas WHERE id=$1`, [req.params.id]);
   if (!c.rowCount) return res.status(404).json({ erro: 'Clínica não encontrada' });
   const fisios = await pool.query(`
     SELECT id, nome, crefito, esp, cor, comissao, ativo, publico, especialidades, domiciliar,

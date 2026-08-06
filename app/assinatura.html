@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assinatura — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/app.css">
+  <style>
+    .as-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; align-items: start; }
+    .as-card { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 26px; box-shadow: var(--shadow); }
+    .as-card h3 { font-size: 1rem; font-weight: 800; color: var(--ink); letter-spacing: -.2px; }
+    .as-valor { font-size: 2.4rem; font-weight: 900; color: var(--ink); letter-spacing: -1.5px; margin: 10px 0 2px; }
+    .as-valor small { font-size: .9rem; font-weight: 600; color: var(--text-soft); letter-spacing: 0; }
+    .as-linha { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #F0F4F3; font-size: .88rem; }
+    .as-linha:last-child { border-bottom: none; }
+    .as-linha .rot { color: var(--text-soft); }
+    .as-linha .val { font-weight: 700; color: var(--ink); }
+    .uso-bar { height: 10px; border-radius: 99px; background: var(--bg); overflow: hidden; margin-top: 10px; }
+    .uso-bar span { display: block; height: 100%; background: var(--primary); border-radius: 99px; transition: width .3s; }
+    .uso-bar.cheio span { background: var(--amber); }
+    @media (max-width: 900px) { .as-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body data-page="assinatura" data-title="Assinatura" data-subtitle="Seu plano, licenças e cobrança">
+
+  <div id="avisoStripe" style="display:none;background:var(--amber-soft);border:1px solid #EED9B8;border-radius:12px;padding:14px 18px;margin-bottom:20px;font-size:.86rem;color:var(--amber);">
+    ⚠️ <b>Pagamento não configurado neste servidor</b> — a assinatura fica em modo demonstração.
+    Defina <code>STRIPE_SECRET_KEY</code> (e <code>STRIPE_WEBHOOK_SECRET</code>) nas variáveis do Railway e redeploye.
+  </div>
+
+  <div id="msg" style="display:none;border-radius:12px;padding:14px 18px;margin-bottom:20px;font-size:.88rem;"></div>
+
+  <div class="as-grid">
+    <div>
+      <div class="as-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+          <div>
+            <h3 id="planoNome">Carregando...</h3>
+            <div id="planoTag" style="font-size:.85rem;color:var(--text-soft);margin-top:4px;"></div>
+          </div>
+          <span class="badge gray" id="planoStatus">—</span>
+        </div>
+        <div class="as-valor" id="planoValor">—</div>
+        <div style="font-size:.84rem;color:var(--text-soft);" id="planoRenova"></div>
+
+        <div style="margin-top:20px;" id="planoLinhas"></div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:22px;" id="planoAcoes"></div>
+      </div>
+
+      <div class="as-card" style="margin-top:20px;">
+        <h3>📱 Add-on de redes sociais</h3>
+        <p style="font-size:.88rem;color:var(--text);line-height:1.65;margin-top:8px;">
+          Posts prontos todo mês para o Instagram da clínica, com aprovação dentro do PerFisio
+          (menu <b>Aprovações</b>). Pode ligar e desligar quando quiser — a cobrança é proporcional.
+        </p>
+        <div style="display:flex;align-items:center;gap:14px;margin-top:16px;flex-wrap:wrap;">
+          <div style="font-size:1.35rem;font-weight:900;color:var(--ink);" id="socialValor">—</div>
+          <span class="badge gray" id="socialStatus">—</span>
+          <div style="flex:1;"></div>
+          <button class="btn btn-soft btn-sm" id="btnSocial" onclick="alternarSocial()">—</button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="as-card">
+        <h3>Consultas deste mês</h3>
+        <div style="font-size:2rem;font-weight:900;color:var(--ink);margin-top:8px;" id="usoNum">—</div>
+        <div class="uso-bar" id="usoBar"><span style="width:0%"></span></div>
+        <div style="font-size:.83rem;color:var(--text-soft);margin-top:10px;line-height:1.6;" id="usoTexto"></div>
+      </div>
+
+      <div class="as-card" style="margin-top:20px;">
+        <h3>Licenças</h3>
+        <div class="as-linha"><span class="rot">Fisioterapeutas ativos</span><span class="val" id="licFisios">—</span></div>
+        <div class="as-linha"><span class="rot">Licenças pagas</span><span class="val" id="licPagas">—</span></div>
+        <div id="licAviso" style="display:none;font-size:.83rem;color:var(--amber);background:var(--amber-soft);border-radius:10px;padding:11px 13px;margin-top:12px;line-height:1.6;"></div>
+        <button class="btn btn-soft btn-sm" style="width:100%;margin-top:14px;display:none;" id="btnLic" onclick="atualizarLicencas()">Atualizar licenças</button>
+        <div style="font-size:.78rem;color:var(--text-soft);margin-top:12px;line-height:1.6;">
+          Cada fisioterapeuta ativo ocupa 1 licença. Gestor e recepção que não atendem não contam.
+        </div>
+      </div>
+
+      <div class="as-card" style="margin-top:20px;">
+        <h3>Pagamento seguro</h3>
+        <div style="font-size:.85rem;color:var(--text);line-height:1.7;margin-top:8px;">
+          A cobrança é processada pela <b>Stripe</b>. O PerFisio nunca armazena os dados do seu cartão.
+          No portal você troca o cartão, baixa as faturas e cancela quando quiser.
+        </div>
+        <a href="../planos.html" style="display:inline-block;margin-top:12px;font-size:.85rem;font-weight:700;color:var(--primary-dark);">Ver todos os planos →</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/sidebar.js"></script>
+  <script>
+    let B = null;
+    const brl = c => Number(c).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+    const params = new URLSearchParams(location.search);
+
+    const STATUS = {
+      gratuito:  ['gray',    'Plano gratuito'],
+      active:    ['green',   'Assinatura ativa'],
+      trialing:  ['blue',    'Em período de teste'],
+      past_due:  ['amber',   'Pagamento pendente'],
+      cancelado: ['red',     'Assinatura cancelada'],
+    };
+
+    function aviso(texto, tipo) {
+      const el = document.getElementById('msg');
+      const cores = {
+        ok:   ['var(--green-soft)', '#BFE5D2', 'var(--green)'],
+        erro: ['var(--red-soft)',   '#F2C9C9', 'var(--red)'],
+        info: ['var(--blue-soft)',  '#C9DCF2', 'var(--blue)'],
+      }[tipo] || ['var(--bg)', 'var(--line)', 'var(--text)'];
+      el.style.display = '';
+      el.style.background = cores[0]; el.style.border = '1px solid ' + cores[1]; el.style.color = cores[2];
+      el.innerHTML = texto;
+    }
+
+    async function carregar() {
+      B = await PF.api('/api/billing');
+      const preco = c => B.planos.find(p => p.chave === c) || { centavos: 0 };
+      const pFisio = preco('fisio'), pSocial = preco('social');
+      document.getElementById('avisoStripe').style.display = B.pagamento ? 'none' : '';
+
+      const [cor, rotulo] = STATUS[B.status] || ['gray', B.status];
+      const st = document.getElementById('planoStatus');
+      st.className = 'badge ' + cor; st.textContent = rotulo;
+
+      const assinante = B.assinante;
+      document.getElementById('planoNome').textContent = assinante ? '💚 PerFisio' : '📍 Fisioterapeuta local';
+      document.getElementById('planoTag').textContent = assinante
+        ? 'Consultas e pacientes ilimitados, com todos os módulos liberados.'
+        : `Gratuito até ${B.limite_gratis} consultas por mês. Tudo funcionando, sem cartão.`;
+      document.getElementById('planoValor').innerHTML = assinante
+        ? `${brl(B.mensal)} <small>/mês</small>`
+        : 'Grátis';
+      document.getElementById('planoRenova').textContent = assinante && B.assinatura_fim
+        ? 'Próxima cobrança em ' + new Date(B.assinatura_fim).toLocaleDateString('pt-BR')
+        : (assinante ? '' : `Assine por ${brl(pFisio.centavos / 100)} por fisioterapeuta/mês quando quiser.`);
+
+      document.getElementById('planoLinhas').innerHTML = assinante ? `
+        <div class="as-linha"><span class="rot">${B.licencas} × licença de profissional</span><span class="val">${brl(B.licencas * pFisio.centavos / 100)}</span></div>
+        ${B.plano_social ? `<div class="as-linha"><span class="rot">Add-on de redes sociais</span><span class="val">${brl(pSocial.centavos / 100)}</span></div>` : ''}
+        <div class="as-linha"><span class="rot"><b>Total mensal</b></span><span class="val">${brl(B.mensal)}</span></div>` : `
+        <div class="as-linha"><span class="rot">Licença por profissional</span><span class="val">${brl(pFisio.centavos / 100)}/mês</span></div>
+        <div class="as-linha"><span class="rot">Você tem hoje</span><span class="val">${B.fisios_ativos} fisioterapeuta(s) ativo(s)</span></div>
+        <div class="as-linha"><span class="rot"><b>Ficaria</b></span><span class="val">${brl(Math.max(B.fisios_ativos, 1) * pFisio.centavos / 100)}/mês</span></div>`;
+
+      document.getElementById('planoAcoes').innerHTML = assinante
+        ? `<button class="btn btn-soft" onclick="portal()">Gerenciar assinatura, cartão e faturas</button>`
+        : `<button class="btn btn-primary" onclick="assinar(false)">Assinar o PerFisio</button>
+           <button class="btn btn-ghost" onclick="assinar(true)">Assinar com redes sociais</button>`;
+
+      /* add-on */
+      document.getElementById('socialValor').textContent = brl(pSocial.centavos / 100) + '/mês';
+      const ss = document.getElementById('socialStatus');
+      ss.className = 'badge ' + (B.plano_social ? 'green' : 'gray');
+      ss.textContent = B.plano_social ? 'Contratado' : 'Não contratado';
+      const bs = document.getElementById('btnSocial');
+      bs.textContent = B.plano_social ? 'Cancelar add-on' : 'Contratar add-on';
+      bs.className = 'btn btn-sm ' + (B.plano_social ? 'btn-ghost' : 'btn-soft');
+      bs.disabled = !assinante;
+      bs.title = assinante ? '' : 'Assine o PerFisio para contratar o add-on';
+
+      /* uso do mês */
+      const pct = Math.min(Math.round(B.consultas_mes / B.limite_gratis * 100), 100);
+      document.getElementById('usoNum').textContent = B.consultas_mes;
+      const bar = document.getElementById('usoBar');
+      bar.firstElementChild.style.width = (assinante ? 100 : pct) + '%';
+      bar.classList.toggle('cheio', !assinante && B.consultas_mes >= B.limite_gratis);
+      document.getElementById('usoTexto').innerHTML = assinante
+        ? 'Consultas <b>ilimitadas</b> no plano PerFisio.'
+        : B.consultas_mes >= B.limite_gratis
+          ? `Você já passou das <b>${B.limite_gratis} consultas</b> do plano gratuito. Nada foi bloqueado — quando quiser, assine e siga sem limite.`
+          : `${B.limite_gratis - B.consultas_mes} consulta(s) restantes no plano gratuito deste mês.`;
+
+      /* licenças */
+      document.getElementById('licFisios').textContent = B.fisios_ativos;
+      document.getElementById('licPagas').textContent = assinante ? B.licencas : '—';
+      const desalinhado = assinante && B.licencas !== Math.max(B.fisios_ativos, 1);
+      const av = document.getElementById('licAviso');
+      av.style.display = desalinhado ? '' : 'none';
+      if (desalinhado) av.innerHTML = B.licencas < B.fisios_ativos
+        ? `Você tem <b>${B.fisios_ativos} profissionais</b> ativos e só <b>${B.licencas} licenças</b> pagas.`
+        : `Você paga <b>${B.licencas} licenças</b> e tem <b>${B.fisios_ativos}</b> profissionais ativos — dá para reduzir.`;
+      const bl = document.getElementById('btnLic');
+      bl.style.display = desalinhado ? '' : 'none';
+      bl.textContent = `Ajustar para ${Math.max(B.fisios_ativos, 1)} licença(s)`;
+    }
+
+    async function assinar(social) {
+      try {
+        aviso('Abrindo o checkout seguro da Stripe...', 'info');
+        const r = await PF.api('/api/billing/checkout', { method: 'POST', body: { social: !!social } });
+        location.href = r.url;
+      } catch (e) { aviso('❌ ' + e.message, 'erro'); }
+    }
+
+    async function portal() {
+      try {
+        const r = await PF.api('/api/billing/portal', { method: 'POST' });
+        location.href = r.url;
+      } catch (e) { aviso('❌ ' + e.message, 'erro'); }
+    }
+
+    async function atualizarLicencas() {
+      try {
+        const r = await PF.api('/api/billing/licencas', { method: 'POST' });
+        App.toast(r.mudou ? `Licenças atualizadas para ${r.licencas}` : 'Licenças já estavam corretas');
+        carregar();
+      } catch (e) { aviso('❌ ' + e.message, 'erro'); }
+    }
+
+    async function alternarSocial() {
+      const ligar = !B.plano_social;
+      if (!ligar && !confirm('Cancelar o add-on de redes sociais? Você deixa de receber os posts no próximo ciclo.')) return;
+      try {
+        await PF.api('/api/billing/social', { method: 'POST', body: { ativo: ligar } });
+        App.toast(ligar ? 'Add-on contratado!' : 'Add-on cancelado');
+        carregar();
+      } catch (e) { aviso('❌ ' + e.message, 'erro'); }
+    }
+
+    (async function inicio() {
+      if (params.get('ok')) {
+        aviso('✅ <b>Assinatura confirmada!</b> Já pode usar o PerFisio sem limites.', 'ok');
+        try { await PF.api('/api/billing/sincronizar', { method: 'POST' }); } catch (e) {}
+      } else if (params.get('cancelado')) {
+        aviso('Checkout cancelado — nada foi cobrado. Você segue no plano gratuito.', 'info');
+      }
+      await carregar();
+      if (params.get('assinar') && !B.assinante) assinar(params.get('social') === '1');
+    })();
+  </script>
+</body>
+</html>
