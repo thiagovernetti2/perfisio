@@ -8,14 +8,7 @@
   <link rel="stylesheet" href="../assets/css/app.css">
   <style>
     body { background: var(--bg); }
-    .adm-topbar {
-      background: var(--ink); color: #fff; padding: 16px 4vw;
-      display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 50;
-    }
-    .adm-topbar .mark { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); display: grid; place-items: center; font-weight: 800; }
-    .adm-topbar .t-name { font-weight: 900; font-size: 1.05rem; }
-    .adm-topbar .t-sub { font-size: .68rem; color: #7C918F; text-transform: uppercase; letter-spacing: 1.4px; }
-    .adm-wrap { max-width: 1280px; margin: 0 auto; padding: 28px 4vw 70px; }
+    .sidebar .logo-sub { color: #7C918F; }
     .adm-login { max-width: 400px; margin: 8vh auto; }
     .cred-box { background: var(--primary-soft); border: 1.5px dashed var(--primary); border-radius: 12px; padding: 16px; font-size: .9rem; }
     .cred-box code { background: #fff; padding: 2px 8px; border-radius: 6px; font-weight: 700; }
@@ -24,19 +17,13 @@
 </head>
 <body>
 
-  <div class="adm-topbar">
-    <span class="mark">P</span>
-    <div>
-      <div class="t-name">PerFisio</div>
-      <div class="t-sub">Painel do Superadmin</div>
-    </div>
-    <div style="flex:1;"></div>
-    <span id="admUser" style="font-size:.84rem;color:#BFCDCB;"></span>
-    <button class="btn btn-soft btn-sm" id="btnSair" style="display:none;" onclick="sair()">Sair</button>
-  </div>
-
   <!-- LOGIN -->
   <div class="adm-login" id="loginBox" style="display:none;">
+    <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:22px;">
+      <span style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;display:grid;place-items:center;font-weight:800;font-size:1.1rem;">P</span>
+      <div><div style="font-weight:900;font-size:1.1rem;color:var(--ink);">PerFisio</div>
+      <div style="font-size:.64rem;color:var(--text-soft);text-transform:uppercase;letter-spacing:1.4px;">Painel do Superadmin</div></div>
+    </div>
     <div class="card card-pad">
       <h2 style="font-size:1.3rem;font-weight:800;color:var(--ink);margin-bottom:4px;">Acesso restrito</h2>
       <div style="font-size:.86rem;color:var(--text-soft);margin-bottom:20px;">Entre com a conta de superadmin do PerFisio.</div>
@@ -47,86 +34,136 @@
     </div>
   </div>
 
-  <!-- PAINEL -->
-  <div class="adm-wrap" id="painel" style="display:none;">
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="s-top"><span class="s-label">Clínicas cadastradas</span><div class="s-ico" style="background:var(--primary-soft);">🏥</div></div>
-        <div class="s-value" id="mClinicas">—</div>
-        <div class="s-delta"><span class="muted" id="mClinicasSub"></span></div>
+  <!-- SHELL -->
+  <div class="app-shell" id="painel" style="display:none;">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo-mark">P</div>
+        <div>
+          <div class="logo-name">PerFisio</div>
+          <div class="logo-sub">Superadmin</div>
+        </div>
       </div>
-      <div class="stat-card">
-        <div class="s-top"><span class="s-label">Pacientes na plataforma</span><div class="s-ico" style="background:var(--blue-soft);">👥</div></div>
-        <div class="s-value" id="mPacientes">—</div>
-        <div class="s-delta"><span class="muted" id="mPacientesSub"></span></div>
+      <nav id="admNav">
+        <div class="nav-label">Plataforma</div>
+        <a class="nav-item active" data-sec="dashboard" onclick="irSecao('dashboard')"><span class="ico">📊</span>Visão geral</a>
+        <a class="nav-item" data-sec="clinicas" onclick="irSecao('clinicas')"><span class="ico">🏥</span>Clínicas</a>
+        <a class="nav-item" data-sec="fisios" onclick="irSecao('fisios')"><span class="ico">🧑‍⚕️</span>Profissionais</a>
+        <div class="nav-label">Marketing</div>
+        <a class="nav-item" data-sec="social" onclick="irSecao('social')"><span class="ico">📱</span>Posts · Aprovações</a>
+        <div class="nav-label">Atalhos</div>
+        <a class="nav-item" href="../index.html" target="_blank"><span class="ico">🌐</span>Site público</a>
+        <a class="nav-item" href="../login.html" target="_blank"><span class="ico">🔑</span>Login das clínicas</a>
+      </nav>
+      <div class="user-box">
+        <div class="avatar">SA</div>
+        <div style="min-width:0;">
+          <div class="u-name">Superadmin</div>
+          <div class="u-role" id="admUser" style="overflow:hidden;text-overflow:ellipsis;"></div>
+        </div>
+        <button class="logout" title="Sair" onclick="sair()">⎋</button>
       </div>
-      <div class="stat-card">
-        <div class="s-top"><span class="s-label">Sessões (30 dias)</span><div class="s-ico" style="background:var(--green-soft);">📅</div></div>
-        <div class="s-value" id="mSessoes">—</div>
-        <div class="s-delta"><span class="muted">em toda a plataforma</span></div>
-      </div>
-      <div class="stat-card">
-        <div class="s-top"><span class="s-label">Receita registrada</span><div class="s-ico" style="background:var(--amber-soft);">💰</div></div>
-        <div class="s-value" id="mReceita">—</div>
-        <div class="s-delta"><span class="muted">somando todas as clínicas</span></div>
-      </div>
-    </div>
+    </aside>
 
-    <div class="tabs" data-auto>
-      <button class="tab active" data-tab="clinicas">🏥 Clínicas</button>
-      <button class="tab" data-tab="fisios">🧑‍⚕️ Profissionais</button>
-      <button class="tab" data-tab="social">📱 Posts</button>
-    </div>
+    <div class="main">
+      <header class="topbar">
+        <div>
+          <h1 id="secTitulo">Visão geral</h1>
+          <div class="subtitle" id="secSub">Métricas de toda a plataforma</div>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn btn-primary btn-sm" onclick="abrirNovaClinica()">+ Nova clínica</button>
+      </header>
+      <div class="content">
 
-    <!-- CLÍNICAS -->
-    <div data-tab-panel="clinicas">
-      <div class="card">
-        <div class="card-header">
-          <h3>Clínicas <span id="clinCount" style="font-weight:500;font-size:.78rem;color:var(--text-soft);"></span></h3>
-          <button class="btn btn-primary btn-sm" onclick="abrirNovaClinica()">+ Nova clínica</button>
+        <!-- VISÃO GERAL -->
+        <div data-sec-panel="dashboard">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="s-top"><span class="s-label">Clínicas cadastradas</span><div class="s-ico" style="background:var(--primary-soft);">🏥</div></div>
+              <div class="s-value" id="mClinicas">—</div>
+              <div class="s-delta"><span class="muted" id="mClinicasSub"></span></div>
+            </div>
+            <div class="stat-card">
+              <div class="s-top"><span class="s-label">Pacientes na plataforma</span><div class="s-ico" style="background:var(--blue-soft);">👥</div></div>
+              <div class="s-value" id="mPacientes">—</div>
+              <div class="s-delta"><span class="muted" id="mPacientesSub"></span></div>
+            </div>
+            <div class="stat-card">
+              <div class="s-top"><span class="s-label">Sessões (30 dias)</span><div class="s-ico" style="background:var(--green-soft);">📅</div></div>
+              <div class="s-value" id="mSessoes">—</div>
+              <div class="s-delta"><span class="muted">em toda a plataforma</span></div>
+            </div>
+            <div class="stat-card">
+              <div class="s-top"><span class="s-label">Receita registrada</span><div class="s-ico" style="background:var(--amber-soft);">💰</div></div>
+              <div class="s-value" id="mReceita">—</div>
+              <div class="s-delta"><span class="muted">somando todas as clínicas</span></div>
+            </div>
+          </div>
+          <div class="grid-2-eq" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+            <div class="card card-pad">
+              <h3 style="font-size:.95rem;margin-bottom:14px;">Novas clínicas por mês</h3>
+              <div class="bar-chart" id="chartNovas" style="height:150px;"></div>
+            </div>
+            <div class="card card-pad">
+              <h3 style="font-size:.95rem;margin-bottom:12px;">Como funciona</h3>
+              <div style="font-size:.84rem;color:var(--text-soft);line-height:1.7;">
+                🏥 <b style="color:var(--ink);">Clínicas</b>: crie contas completas e entregue as credenciais.<br>
+                🧑‍⚕️ <b style="color:var(--ink);">Profissionais</b>: gerencie os perfis do diretório de todas as clínicas.<br>
+                📱 <b style="color:var(--ink);">Posts</b>: crie conteúdo para as redes das clínicas e acompanhe as aprovações.
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="table-wrap" style="padding-top:8px;">
-          <table class="data">
-            <thead><tr><th>Clínica</th><th>Equipe</th><th>Pacientes</th><th>Sessões 30d</th><th>Receita</th><th>Diretório</th><th>Status</th><th></th></tr></thead>
-            <tbody id="clinRows"></tbody>
-          </table>
-        </div>
-      </div>
-      <div class="card card-pad" style="margin-top:18px;max-width:520px;">
-        <h3 style="font-size:.95rem;margin-bottom:14px;">Novas clínicas por mês</h3>
-        <div class="bar-chart" id="chartNovas" style="height:130px;"></div>
-      </div>
-    </div>
 
-    <!-- PROFISSIONAIS -->
-    <div data-tab-panel="fisios" style="display:none;">
-      <div class="card">
-        <div class="card-header">
-          <h3>Fisioterapeutas de todas as clínicas <span id="fisioCount" style="font-weight:500;font-size:.78rem;color:var(--text-soft);"></span></h3>
-          <button class="btn btn-primary btn-sm" onclick="abrirFisio(null)">+ Novo fisioterapeuta</button>
+        <!-- CLÍNICAS -->
+        <div data-sec-panel="clinicas" style="display:none;">
+          <div class="card">
+            <div class="card-header">
+              <h3>Clínicas <span id="clinCount" style="font-weight:500;font-size:.78rem;color:var(--text-soft);"></span></h3>
+              <button class="btn btn-primary btn-sm" onclick="abrirNovaClinica()">+ Nova clínica</button>
+            </div>
+            <div class="table-wrap" style="padding-top:8px;">
+              <table class="data">
+                <thead><tr><th>Clínica</th><th>Equipe</th><th>Pacientes</th><th>Sessões 30d</th><th>Receita</th><th>Diretório</th><th>Status</th><th></th></tr></thead>
+                <tbody id="clinRows"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
-        <div class="table-wrap" style="padding-top:8px;">
-          <table class="data">
-            <thead><tr><th>Profissional</th><th>Clínica</th><th>Especialidade</th><th>Cidade</th><th>Público no diretório</th><th>Ativo</th><th></th></tr></thead>
-            <tbody id="fisioRows"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
 
-    <!-- POSTS -->
-    <div data-tab-panel="social" style="display:none;">
-      <div class="card">
-        <div class="card-header">
-          <h3>Posts para aprovação das clínicas</h3>
-          <button class="btn btn-primary btn-sm" onclick="App.openModal('mPost')">+ Criar post</button>
+        <!-- PROFISSIONAIS -->
+        <div data-sec-panel="fisios" style="display:none;">
+          <div class="card">
+            <div class="card-header">
+              <h3>Fisioterapeutas de todas as clínicas <span id="fisioCount" style="font-weight:500;font-size:.78rem;color:var(--text-soft);"></span></h3>
+              <button class="btn btn-primary btn-sm" onclick="abrirFisio(null)">+ Novo fisioterapeuta</button>
+            </div>
+            <div class="table-wrap" style="padding-top:8px;">
+              <table class="data">
+                <thead><tr><th>Profissional</th><th>Clínica</th><th>Especialidade</th><th>Cidade</th><th>Público no diretório</th><th>Ativo</th><th></th></tr></thead>
+                <tbody id="fisioRows"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
-        <div class="table-wrap" style="padding-top:8px;">
-          <table class="data">
-            <thead><tr><th>Clínica</th><th>Post</th><th>Previsto</th><th>Status</th><th>Feedback da clínica</th><th></th></tr></thead>
-            <tbody id="socialRows"><tr><td colspan="6" class="empty">Carregando...</td></tr></tbody>
-          </table>
+
+        <!-- POSTS -->
+        <div data-sec-panel="social" style="display:none;">
+          <div class="card">
+            <div class="card-header">
+              <h3>Posts para aprovação das clínicas</h3>
+              <button class="btn btn-primary btn-sm" onclick="App.openModal('mPost')">+ Criar post</button>
+            </div>
+            <div class="table-wrap" style="padding-top:8px;">
+              <table class="data">
+                <thead><tr><th>Clínica</th><th>Post</th><th>Previsto</th><th>Status</th><th>Feedback da clínica</th><th></th></tr></thead>
+                <tbody id="socialRows"><tr><td colspan="6" class="empty">Carregando...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
         </div>
+
       </div>
     </div>
   </div>
@@ -242,6 +279,19 @@
     let CLINICAS = [], FISIOS = [], detalheId = null, fisioEditId = null;
     const CORES = ['#0DA189','#2D7DD2','#7C5CBF','#D9820B','#D64545','#1E9E6A'];
 
+    const SECOES = {
+      dashboard: ['Visão geral', 'Métricas de toda a plataforma'],
+      clinicas: ['Clínicas', 'Contas, equipes e acessos'],
+      fisios: ['Profissionais', 'Fisioterapeutas de todas as clínicas'],
+      social: ['Posts · Aprovações', 'Conteúdo para as redes das clínicas'],
+    };
+    function irSecao(sec) {
+      document.querySelectorAll('#admNav .nav-item[data-sec]').forEach(n => n.classList.toggle('active', n.dataset.sec === sec));
+      document.querySelectorAll('[data-sec-panel]').forEach(p => p.style.display = p.dataset.secPanel === sec ? '' : 'none');
+      document.getElementById('secTitulo').textContent = SECOES[sec][0];
+      document.getElementById('secSub').textContent = SECOES[sec][1];
+    }
+
     function erro(msg) {
       const b = document.getElementById('erroBox');
       b.textContent = msg; b.style.display = 'block';
@@ -275,8 +325,7 @@
         return;
       }
       document.getElementById('loginBox').style.display = 'none';
-      document.getElementById('painel').style.display = '';
-      document.getElementById('btnSair').style.display = '';
+      document.getElementById('painel').style.display = 'flex';
       document.getElementById('admUser').textContent = me.email;
       await carregar();
     }
