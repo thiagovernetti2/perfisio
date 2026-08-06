@@ -374,7 +374,8 @@
           <td style="font-weight:700;">${App.money(Number(c.receita))}</td>
           <td>${c.visivel ? '<span class="badge green">Visível</span>' : '<span class="badge gray">Oculto</span>'}</td>
           <td>${c.ativa ? '<span class="badge green">Ativa</span>' : '<span class="badge red">Desativada</span>'}</td>
-          <td onclick="event.stopPropagation()">
+          <td onclick="event.stopPropagation()" style="white-space:nowrap;">
+            ${c.ativa ? `<button class="btn btn-soft btn-sm" onclick="entrarComo('${c.id}', '${c.nome.replace(/'/g, '')}')" title="Abrir o sistema logado como esta clínica">🎭 Entrar como</button>` : ''}
             ${c.ativa
               ? `<button class="btn btn-danger btn-sm" onclick="mudar('${c.id}', false, '${c.nome.replace(/'/g, '')}')">Desativar</button>`
               : `<button class="btn btn-soft btn-sm" onclick="mudar('${c.id}', true, '${c.nome.replace(/'/g, '')}')">Reativar</button>`}
@@ -467,6 +468,18 @@
         App.closeModal('mDetalhe');
         CLINICAS = await PF.api('/api/admin/clinicas');
         renderClinicas();
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    async function entrarComo(id, nome) {
+      try {
+        const r = await PF.api(`/api/admin/clinicas/${id}/impersonar`, { method: 'POST' });
+        // guarda a sessão de superadmin para poder voltar
+        localStorage.setItem('pf_admin_token', PF.token());
+        localStorage.setItem('pf_admin_user', localStorage.getItem('pf_user'));
+        PF.setSession(r.token, r.usuario);
+        App.toast(`Entrando como ${nome}...`);
+        location.href = '../app/dashboard.html';
       } catch (e) { App.toast(e.message, 'error'); }
     }
 

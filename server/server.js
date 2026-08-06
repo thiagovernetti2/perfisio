@@ -948,6 +948,20 @@ app.put('/api/admin/usuarios/:id/senha', superauth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// entrar como a clínica (impersonation): gera sessão do gestor
+app.post('/api/admin/clinicas/:id/impersonar', superauth, async (req, res) => {
+  const r = await pool.query(`
+    SELECT u.*, c.nome AS clinica_nome, c.ativa FROM usuarios u JOIN clinicas c ON c.id = u.clinica_id
+    WHERE u.clinica_id = $1 ORDER BY (u.perfil = 'gestor') DESC, u.criado_em LIMIT 1`, [req.params.id]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Esta clínica não tem usuários' });
+  const u = r.rows[0];
+  if (!u.ativa) return res.status(400).json({ erro: 'Clínica desativada — reative antes de entrar' });
+  res.json({
+    token: sign(u),
+    usuario: { id: u.id, clinica_id: u.clinica_id, nome: u.nome, email: u.email, perfil: u.perfil, clinica_nome: u.clinica_nome },
+  });
+});
+
 app.patch('/api/admin/clinicas/:id', superauth, async (req, res) => {
   const { ativa } = req.body || {};
   if (typeof ativa !== 'boolean') return res.status(400).json({ erro: 'Informe ativa: true/false' });

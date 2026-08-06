@@ -83,6 +83,25 @@
   body.appendChild(shell);
 
   sidebar.querySelector('#pfLogout').addEventListener('click', PF.logout);
+
+  // modo superadmin (impersonation): faixa fixa para voltar ao painel
+  if (localStorage.getItem('pf_admin_token')) {
+    const faixa = document.createElement('div');
+    faixa.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:300;' +
+      'background:#4A3480;color:#fff;padding:10px 18px;border-radius:99px;display:flex;gap:12px;align-items:center;' +
+      'font-size:.84rem;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.3);';
+    faixa.innerHTML = `🎭 Você está vendo o sistema como <b>${usuario.clinica_nome || 'a clínica'}</b>
+      <button style="background:#fff;color:#4A3480;border:none;border-radius:99px;padding:6px 14px;font-weight:700;font-size:.8rem;cursor:pointer;">
+        Voltar ao painel</button>`;
+    faixa.querySelector('button').addEventListener('click', () => {
+      localStorage.setItem('pf_token', localStorage.getItem('pf_admin_token'));
+      localStorage.setItem('pf_user', localStorage.getItem('pf_admin_user'));
+      localStorage.removeItem('pf_admin_token');
+      localStorage.removeItem('pf_admin_user');
+      location.href = '../admin/';
+    });
+    document.body.appendChild(faixa);
+  }
   topbar.querySelector('#pfGlobalSearch').addEventListener('keydown', e => {
     if (e.key === 'Enter' && e.target.value.trim())
       location.href = 'pacientes.html?q=' + encodeURIComponent(e.target.value.trim());
