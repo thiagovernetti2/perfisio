@@ -9,15 +9,17 @@
   <style>
     body { background: var(--bg); }
     .adm-topbar {
-      background: var(--ink); color: #fff; padding: 16px 5vw;
+      background: var(--ink); color: #fff; padding: 16px 4vw;
       display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 50;
     }
     .adm-topbar .mark { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); display: grid; place-items: center; font-weight: 800; }
     .adm-topbar .t-name { font-weight: 900; font-size: 1.05rem; }
     .adm-topbar .t-sub { font-size: .68rem; color: #7C918F; text-transform: uppercase; letter-spacing: 1.4px; }
-    .adm-wrap { max-width: 1180px; margin: 0 auto; padding: 28px 5vw 60px; }
+    .adm-wrap { max-width: 1280px; margin: 0 auto; padding: 28px 4vw 70px; }
     .adm-login { max-width: 400px; margin: 8vh auto; }
-    .badge.dark { background: #DCE5E3; color: var(--ink); }
+    .cred-box { background: var(--primary-soft); border: 1.5px dashed var(--primary); border-radius: 12px; padding: 16px; font-size: .9rem; }
+    .cred-box code { background: #fff; padding: 2px 8px; border-radius: 6px; font-weight: 700; }
+    .tgl { cursor: pointer; }
   </style>
 </head>
 <body>
@@ -38,7 +40,7 @@
     <div class="card card-pad">
       <h2 style="font-size:1.3rem;font-weight:800;color:var(--ink);margin-bottom:4px;">Acesso restrito</h2>
       <div style="font-size:.86rem;color:var(--text-soft);margin-bottom:20px;">Entre com a conta de superadmin do PerFisio.</div>
-      <div class="erro-box" id="erroBox" style="display:none;background:var(--red-soft);color:var(--red);border-radius:9px;padding:10px 14px;font-size:.85rem;font-weight:600;margin-bottom:14px;"></div>
+      <div id="erroBox" style="display:none;background:var(--red-soft);color:var(--red);border-radius:9px;padding:10px 14px;font-size:.85rem;font-weight:600;margin-bottom:14px;"></div>
       <div class="field" style="margin-bottom:14px;"><label>E-mail</label><input type="email" id="loEmail"></div>
       <div class="field" style="margin-bottom:18px;"><label>Senha</label><input type="password" id="loSenha" onkeydown="if(event.key==='Enter')entrar()"></div>
       <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;" id="btnEntrar" onclick="entrar()">Entrar</button>
@@ -66,23 +68,57 @@
       <div class="stat-card">
         <div class="s-top"><span class="s-label">Receita registrada</span><div class="s-ico" style="background:var(--amber-soft);">💰</div></div>
         <div class="s-value" id="mReceita">—</div>
-        <div class="s-delta"><span class="muted" id="mReceitaSub"></span></div>
+        <div class="s-delta"><span class="muted">somando todas as clínicas</span></div>
       </div>
     </div>
 
-    <div class="grid-2" style="grid-template-columns:1fr 320px;">
+    <div class="tabs" data-auto>
+      <button class="tab active" data-tab="clinicas">🏥 Clínicas</button>
+      <button class="tab" data-tab="fisios">🧑‍⚕️ Profissionais</button>
+      <button class="tab" data-tab="social">📱 Posts</button>
+    </div>
+
+    <!-- CLÍNICAS -->
+    <div data-tab-panel="clinicas">
       <div class="card">
-        <div class="card-header"><h3>Clínicas</h3><span style="font-size:.78rem;color:var(--text-soft);" id="clinCount"></span></div>
+        <div class="card-header">
+          <h3>Clínicas <span id="clinCount" style="font-weight:500;font-size:.78rem;color:var(--text-soft);"></span></h3>
+          <button class="btn btn-primary btn-sm" onclick="abrirNovaClinica()">+ Nova clínica</button>
+        </div>
         <div class="table-wrap" style="padding-top:8px;">
           <table class="data">
-            <thead><tr><th>Clínica</th><th>Usuários</th><th>Pacientes</th><th>Sessões 30d</th><th>Receita</th><th>Diretório</th><th>Última atividade</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Clínica</th><th>Equipe</th><th>Pacientes</th><th>Sessões 30d</th><th>Receita</th><th>Diretório</th><th>Status</th><th></th></tr></thead>
             <tbody id="clinRows"></tbody>
           </table>
         </div>
       </div>
-      <div class="card" style="grid-column:1/-1;">
+      <div class="card card-pad" style="margin-top:18px;max-width:520px;">
+        <h3 style="font-size:.95rem;margin-bottom:14px;">Novas clínicas por mês</h3>
+        <div class="bar-chart" id="chartNovas" style="height:130px;"></div>
+      </div>
+    </div>
+
+    <!-- PROFISSIONAIS -->
+    <div data-tab-panel="fisios" style="display:none;">
+      <div class="card">
         <div class="card-header">
-          <h3>📱 Posts para aprovação das clínicas</h3>
+          <h3>Fisioterapeutas de todas as clínicas <span id="fisioCount" style="font-weight:500;font-size:.78rem;color:var(--text-soft);"></span></h3>
+          <button class="btn btn-primary btn-sm" onclick="abrirFisio(null)">+ Novo fisioterapeuta</button>
+        </div>
+        <div class="table-wrap" style="padding-top:8px;">
+          <table class="data">
+            <thead><tr><th>Profissional</th><th>Clínica</th><th>Especialidade</th><th>Cidade</th><th>Público no diretório</th><th>Ativo</th><th></th></tr></thead>
+            <tbody id="fisioRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- POSTS -->
+    <div data-tab-panel="social" style="display:none;">
+      <div class="card">
+        <div class="card-header">
+          <h3>Posts para aprovação das clínicas</h3>
           <button class="btn btn-primary btn-sm" onclick="App.openModal('mPost')">+ Criar post</button>
         </div>
         <div class="table-wrap" style="padding-top:8px;">
@@ -92,13 +128,86 @@
           </table>
         </div>
       </div>
+    </div>
+  </div>
 
-      <div class="card card-pad">
-        <h3 style="font-size:.98rem;margin-bottom:16px;">Novas clínicas por mês</h3>
-        <div class="bar-chart" id="chartNovas" style="height:150px;"></div>
-        <div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--line);">
-          <div style="font-size:.8rem;color:var(--text-soft);line-height:1.7;" id="resumoExtra"></div>
+  <!-- MODAL NOVA CLÍNICA -->
+  <div class="modal-overlay" id="mClinica">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Nova clínica / consultório</h3>
+        <button class="close" onclick="App.closeModal('mClinica')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field full"><label>Nome da clínica *</label><input type="text" id="ncNome" placeholder="Ex.: Clínica Fisio+ (autônomo: use o nome do profissional)"></div>
+          <div class="field"><label>Nome do gestor *</label><input type="text" id="ncGestor"></div>
+          <div class="field"><label>E-mail de acesso *</label><input type="email" id="ncEmail"></div>
+          <div class="field"><label>Senha provisória *</label>
+            <div style="display:flex;gap:6px;">
+              <input type="text" id="ncSenha" style="flex:1;">
+              <button class="btn btn-soft btn-sm" onclick="ncSenha.value = 'pf' + Math.random().toString(36).slice(2, 10)">🎲</button>
+            </div>
+          </div>
+          <div class="field"><label>Telefone</label><input type="text" id="ncTel"></div>
+          <div class="field full"><label>Endereço</label><input type="text" id="ncEnd" placeholder="Rua, número · bairro · cidade/UF"></div>
         </div>
+        <div id="ncResultado" style="display:none;margin-top:14px;" class="cred-box"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal('mClinica')">Fechar</button>
+        <button class="btn btn-primary" id="btnNc" onclick="criarClinica()">Criar clínica</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DETALHE DA CLÍNICA -->
+  <div class="modal-overlay" id="mDetalhe">
+    <div class="modal wide">
+      <div class="modal-head">
+        <h3 id="dtTitulo">Clínica</h3>
+        <button class="close" onclick="App.closeModal('mDetalhe')">×</button>
+      </div>
+      <div class="modal-body" id="dtBody"></div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal('mDetalhe')">Fechar</button>
+        <button class="btn btn-soft" id="dtNovoFisio">+ Fisioterapeuta</button>
+        <button class="btn btn-primary" id="dtSalvar" onclick="salvarClinica()">Salvar dados</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL FISIOTERAPEUTA -->
+  <div class="modal-overlay" id="mFisio">
+    <div class="modal wide">
+      <div class="modal-head">
+        <h3 id="mfTitulo">Novo fisioterapeuta</h3>
+        <button class="close" onclick="App.closeModal('mFisio')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field"><label>Clínica *</label><select id="mfClinica"></select></div>
+          <div class="field"><label>Nome completo *</label><input type="text" id="mfNome"></div>
+          <div class="field"><label>CREFITO</label><input type="text" id="mfCrefito"></div>
+          <div class="field"><label>Especialidade principal</label>
+            <select id="mfEsp"><option>Ortopedia e Traumato</option><option>Fisioterapia Esportiva</option><option>Neurofuncional</option><option>Pilates Clínico · RPG</option><option>Respiratória</option><option>Pélvica</option><option>Geriátrica</option></select>
+          </div>
+          <div class="field"><label>Comissão (%)</label><input type="number" id="mfComissao" value="40"></div>
+          <div class="field"><label>Cor</label><input type="color" id="mfCor" value="#0DA189" style="height:42px;padding:4px;"></div>
+          <div class="field"><label>WhatsApp</label><input type="text" id="mfWhatsapp"></div>
+          <div class="field"><label>Preço exibido</label><input type="text" id="mfPreco" placeholder="R$ 160 por sessão"></div>
+          <div class="field"><label>Bairro</label><input type="text" id="mfBairro"></div>
+          <div class="field"><label>Cidade/UF</label><input type="text" id="mfCidade"></div>
+          <div class="field full"><label>Especialidades no diretório (separadas por vírgula)</label><input type="text" id="mfEspecialidades" placeholder="esportiva, ortopedia, pilates, neuro, rpg, respiratoria, pelvica, geriatrica"></div>
+          <div class="field full"><label>Bio</label><textarea id="mfBio"></textarea></div>
+          <div class="check-row"><input type="checkbox" id="mfPublico"><label for="mfPublico" style="margin:0;font-weight:500;">🌐 Público no diretório</label></div>
+          <div class="check-row"><input type="checkbox" id="mfDomiciliar"><label for="mfDomiciliar" style="margin:0;font-weight:500;">🏠 Atende em domicílio</label></div>
+          <div class="check-row"><input type="checkbox" id="mfAtivo" checked><label for="mfAtivo" style="margin:0;font-weight:500;">Ativo na clínica</label></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal('mFisio')">Cancelar</button>
+        <button class="btn btn-primary" id="btnMf" onclick="salvarFisio()">Salvar</button>
       </div>
     </div>
   </div>
@@ -117,7 +226,7 @@
           <div class="field full"><label>Texto da arte (aparece na imagem)</label><input type="text" id="psTitulo" placeholder="Ex.: 5 sinais de que sua dor lombar precisa de fisioterapia"></div>
           <div class="field full"><label>Legenda *</label><textarea id="psLegenda" style="min-height:110px;" placeholder="Legenda do post com #hashtags..."></textarea></div>
           <div class="field"><label>Cor da arte</label><input type="color" id="psCor" value="#0DA189" style="height:42px;padding:4px;"></div>
-          <div class="field"><label>Imagem própria (opcional — substitui a arte)</label><input type="file" id="psImg" accept="image/jpeg,image/png,image/webp"></div>
+          <div class="field"><label>Imagem própria (opcional)</label><input type="file" id="psImg" accept="image/jpeg,image/png,image/webp"></div>
         </div>
       </div>
       <div class="modal-foot">
@@ -130,6 +239,9 @@
   <script src="../assets/js/app.js"></script>
   <script src="../assets/js/api.js"></script>
   <script>
+    let CLINICAS = [], FISIOS = [], detalheId = null, fisioEditId = null;
+    const CORES = ['#0DA189','#2D7DD2','#7C5CBF','#D9820B','#D64545','#1E9E6A'];
+
     function erro(msg) {
       const b = document.getElementById('erroBox');
       b.textContent = msg; b.style.display = 'block';
@@ -152,13 +264,11 @@
       location.reload();
     }
 
-    function fmtDataHora(iso) {
-      return iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
-    }
+    const fmtDataHora = iso => iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
 
     async function boot() {
       let me = null;
-      if (PF.token()) { try { me = await PF.api('/api/me'); } catch (e) { /* token inválido */ } }
+      if (PF.token()) { try { me = await PF.api('/api/me'); } catch (e) {} }
       if (!me || !me.superadmin) {
         document.getElementById('loginBox').style.display = '';
         document.getElementById('painel').style.display = 'none';
@@ -171,28 +281,18 @@
       await carregar();
     }
 
-    let CLINICAS = [];
-
     async function carregar() {
-      const [m, clinicas] = await Promise.all([
-        PF.api('/api/admin/metricas'), PF.api('/api/admin/clinicas'),
-      ]);
+      const [m, clinicas] = await Promise.all([PF.api('/api/admin/metricas'), PF.api('/api/admin/clinicas')]);
       CLINICAS = clinicas;
-      document.getElementById('psClinica').innerHTML =
-        clinicas.filter(c => c.ativa).map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
-      carregarSocial();
-
       document.getElementById('mClinicas').textContent = m.clinicas;
       document.getElementById('mClinicasSub').textContent = `${m.clinicas_ativas} ativas · ${m.no_diretorio} no diretório`;
       document.getElementById('mPacientes').textContent = m.pacientes;
       document.getElementById('mPacientesSub').textContent = `${m.leads_site} leads vieram do site`;
       document.getElementById('mSessoes').textContent = m.sessoes_30d;
       document.getElementById('mReceita').textContent = App.money(Number(m.receita_total));
-      document.getElementById('mReceitaSub').textContent = 'somando todas as clínicas';
 
       /* gráfico novas clínicas */
-      const agora = new Date();
-      const meses = [];
+      const agora = new Date(), meses = [];
       for (let i = 5; i >= 0; i--) {
         const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
         meses.push({ key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, label: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][d.getMonth()] });
@@ -200,39 +300,221 @@
       const vals = meses.map(mm => (m.clinicas_por_mes.find(x => x.mes === mm.key) || {}).novas || 0);
       const max = Math.max(...vals, 1);
       document.getElementById('chartNovas').innerHTML = vals.map((v, i) => `
-        <div class="bc-item">
-          <span class="bc-val">${v}</span>
+        <div class="bc-item"><span class="bc-val">${v}</span>
           <div class="bc-bar${i === 5 ? '' : ' muted'}" style="height:${Math.max(Math.round(v / max * 100), 3)}%;"></div>
-          <span class="bc-label">${meses[i].label}</span>
-        </div>`).join('');
+          <span class="bc-label">${meses[i].label}</span></div>`).join('');
 
-      document.getElementById('resumoExtra').innerHTML =
-        `💡 <b style="color:var(--ink);">${m.no_diretorio}</b> clínica(s) visíveis no diretório público geram leads pelo site.<br>
-         Clínicas desativadas não conseguem fazer login e saem do diretório.`;
+      renderClinicas();
+      carregarFisios();
+      carregarSocial();
+      const opts = clinicas.filter(c => c.ativa).map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+      document.getElementById('psClinica').innerHTML = opts;
+      document.getElementById('mfClinica').innerHTML = opts;
+    }
 
-      /* tabela */
-      document.getElementById('clinCount').textContent = clinicas.length + ' no total';
-      const CORES = ['#0DA189','#2D7DD2','#7C5CBF','#D9820B','#D64545','#1E9E6A'];
-      document.getElementById('clinRows').innerHTML = clinicas.map((c, i) => `
-        <tr>
+    /* ================= CLÍNICAS ================= */
+    function renderClinicas() {
+      document.getElementById('clinCount').textContent = '· ' + CLINICAS.length + ' no total';
+      document.getElementById('clinRows').innerHTML = CLINICAS.map((c, i) => `
+        <tr onclick="abrirDetalhe('${c.id}')" style="cursor:pointer;">
           <td><div class="cell-person"><span class="avatar-sm" style="background:${CORES[i % 6]};">${App.iniciais(c.nome)}</span>
-            <div><div class="p-name">${c.nome}</div><div class="p-sub">${c.email || ''}${c.endereco ? ' · ' + c.endereco : ''}</div></div></div></td>
+            <div><div class="p-name">${c.nome}</div><div class="p-sub">${c.email || ''}</div></div></div></td>
           <td>${c.usuarios}</td>
           <td>${c.pacientes}</td>
           <td>${c.sessoes_30d}</td>
           <td style="font-weight:700;">${App.money(Number(c.receita))}</td>
           <td>${c.visivel ? '<span class="badge green">Visível</span>' : '<span class="badge gray">Oculto</span>'}</td>
-          <td style="font-size:.78rem;">${fmtDataHora(c.ult_atividade)}</td>
           <td>${c.ativa ? '<span class="badge green">Ativa</span>' : '<span class="badge red">Desativada</span>'}</td>
-          <td>
+          <td onclick="event.stopPropagation()">
             ${c.ativa
               ? `<button class="btn btn-danger btn-sm" onclick="mudar('${c.id}', false, '${c.nome.replace(/'/g, '')}')">Desativar</button>`
               : `<button class="btn btn-soft btn-sm" onclick="mudar('${c.id}', true, '${c.nome.replace(/'/g, '')}')">Reativar</button>`}
           </td>
-        </tr>`).join('') || '<tr><td colspan="9" class="empty">Nenhuma clínica cadastrada ainda.</td></tr>';
+        </tr>`).join('') || '<tr><td colspan="8" class="empty">Nenhuma clínica.</td></tr>';
     }
 
-    /* ---------- Posts sociais ---------- */
+    function abrirNovaClinica() {
+      ['ncNome', 'ncGestor', 'ncEmail', 'ncTel', 'ncEnd'].forEach(id => document.getElementById(id).value = '');
+      ncSenha.value = 'pf' + Math.random().toString(36).slice(2, 10);
+      document.getElementById('ncResultado').style.display = 'none';
+      document.getElementById('btnNc').style.display = '';
+      App.openModal('mClinica');
+    }
+
+    async function criarClinica() {
+      const btn = document.getElementById('btnNc'); btn.disabled = true;
+      try {
+        const r = await PF.api('/api/admin/clinicas', { method: 'POST', body: {
+          nome: ncNome.value.trim(), gestor_nome: ncGestor.value.trim(),
+          email: ncEmail.value.trim(), senha: ncSenha.value.trim(),
+          telefone: ncTel.value.trim() || null, endereco: ncEnd.value.trim() || null,
+        }});
+        const res = document.getElementById('ncResultado');
+        res.style.display = '';
+        res.innerHTML = `✅ <b>${r.nome}</b> criada com biblioteca de exercícios e pacotes!<br><br>
+          <b>Acessos do gestor</b> (copie e envie):<br>
+          🔗 <code>${location.origin}/login.html</code><br>
+          ✉️ <code>${r.email}</code> &nbsp; 🔑 <code>${ncSenha.value.trim()}</code>`;
+        document.getElementById('btnNc').style.display = 'none';
+        App.toast('Clínica criada!');
+        CLINICAS = await PF.api('/api/admin/clinicas');
+        renderClinicas();
+        carregar();
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false;
+    }
+
+    async function abrirDetalhe(id) {
+      detalheId = id;
+      const d = await PF.api('/api/admin/clinicas/' + id);
+      document.getElementById('dtTitulo').textContent = d.nome;
+      document.getElementById('dtNovoFisio').onclick = () => { App.closeModal('mDetalhe'); abrirFisio(null, id); };
+      const BADGE_U = { gestor: 'primary', fisio: 'blue', recepcao: 'amber' };
+      document.getElementById('dtBody').innerHTML = `
+        <div class="form-grid" style="margin-bottom:18px;">
+          <div class="field"><label>Nome</label><input type="text" id="dcNome" value="${d.nome || ''}"></div>
+          <div class="field"><label>E-mail</label><input type="text" id="dcEmail" value="${d.email || ''}"></div>
+          <div class="field"><label>Telefone</label><input type="text" id="dcTel" value="${d.telefone || ''}"></div>
+          <div class="field"><label>CNPJ</label><input type="text" id="dcCnpj" value="${d.cnpj || ''}"></div>
+          <div class="field full"><label>Endereço</label><input type="text" id="dcEnd" value="${d.endereco || ''}"></div>
+        </div>
+
+        <h4 style="font-size:.85rem;color:var(--ink);margin-bottom:8px;">🧑‍⚕️ Equipe (${d.fisios.length})</h4>
+        ${d.fisios.map(f => `
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #F0F4F3;font-size:.86rem;">
+            <span class="avatar-sm" style="background:${f.cor};">${App.iniciais(f.nome)}</span>
+            <div style="flex:1;"><b style="color:var(--ink);">${f.nome}</b> <span style="color:var(--text-soft);">· ${f.esp || '—'}${f.cidade ? ' · ' + f.cidade : ''}</span></div>
+            ${f.publico ? '<span class="badge green">🌐 público</span>' : '<span class="badge gray">oculto</span>'}
+            ${f.ativo ? '' : '<span class="badge red">inativo</span>'}
+            <button class="btn btn-ghost btn-sm" onclick="App.closeModal('mDetalhe');abrirFisioDeDetalhe('${f.id}')">Editar</button>
+          </div>`).join('') || '<div class="empty" style="padding:10px;">Nenhum profissional.</div>'}
+
+        <h4 style="font-size:.85rem;color:var(--ink);margin:18px 0 8px;">🔐 Usuários com acesso (${d.usuarios.length})</h4>
+        ${d.usuarios.map(u => `
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #F0F4F3;font-size:.86rem;">
+            <div style="flex:1;"><b style="color:var(--ink);">${u.nome}</b> <span style="color:var(--text-soft);">· ${u.email}</span></div>
+            <span class="badge ${BADGE_U[u.perfil] || 'gray'}">${u.perfil}</span>
+            <span style="font-size:.72rem;color:var(--text-soft);">${fmtDataHora(u.ultimo_acesso)}</span>
+            <button class="btn btn-ghost btn-sm" onclick="resetSenha('${u.id}', '${u.nome.replace(/'/g, '')}')">🔑 Nova senha</button>
+          </div>`).join('')}
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+          <div class="field" style="flex:1;min-width:130px;"><label>Novo usuário</label><input type="text" id="nuNome" placeholder="Nome"></div>
+          <div class="field" style="flex:1;min-width:150px;"><label>&nbsp;</label><input type="email" id="nuEmail" placeholder="email@clinica.com"></div>
+          <div class="field"><label>&nbsp;</label>
+            <select id="nuPerfil"><option value="gestor">Gestor</option><option value="fisio">Fisioterapeuta</option><option value="recepcao">Recepção</option></select>
+          </div>
+          <button class="btn btn-soft btn-sm" style="margin-bottom:2px;" onclick="criarUsuario()">＋ Criar</button>
+        </div>`;
+      App.openModal('mDetalhe');
+    }
+
+    async function salvarClinica() {
+      try {
+        await PF.api('/api/admin/clinicas/' + detalheId, { method: 'PUT', body: {
+          nome: dcNome.value.trim(), email: dcEmail.value.trim(), telefone: dcTel.value.trim(),
+          cnpj: dcCnpj.value.trim(), endereco: dcEnd.value.trim(),
+        }});
+        App.toast('Dados da clínica salvos!');
+        App.closeModal('mDetalhe');
+        CLINICAS = await PF.api('/api/admin/clinicas');
+        renderClinicas();
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    async function resetSenha(userId, nome) {
+      const senha = prompt(`Nova senha para ${nome} (mín. 6 caracteres):`, 'pf' + Math.random().toString(36).slice(2, 10));
+      if (!senha) return;
+      try {
+        await PF.api(`/api/admin/usuarios/${userId}/senha`, { method: 'PUT', body: { senha } });
+        alert(`Senha de ${nome} alterada para:\n\n${senha}\n\nCopie e envie ao usuário.`);
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    async function criarUsuario() {
+      const senha = 'pf' + Math.random().toString(36).slice(2, 10);
+      if (!nuNome.value.trim() || !nuEmail.value.trim()) { App.toast('Preencha nome e e-mail', 'error'); return; }
+      try {
+        const r = await PF.api('/api/admin/usuarios', { method: 'POST', body: {
+          clinica_id: detalheId, nome: nuNome.value.trim(), email: nuEmail.value.trim(),
+          senha, perfil: nuPerfil.value,
+        }});
+        alert(`Usuário criado!\n\n✉️ ${r.email}\n🔑 ${senha}\n\nCopie e envie os acessos.`);
+        abrirDetalhe(detalheId);
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    /* ================= PROFISSIONAIS ================= */
+    async function carregarFisios() {
+      FISIOS = await PF.api('/api/admin/fisios');
+      document.getElementById('fisioCount').textContent = '· ' + FISIOS.length + ' no total';
+      document.getElementById('fisioRows').innerHTML = FISIOS.map(f => `
+        <tr>
+          <td><div class="cell-person"><span class="avatar-sm" style="background:${f.cor};">${App.iniciais(f.nome)}</span>
+            <div><div class="p-name">${f.nome}</div><div class="p-sub">${f.crefito || ''}</div></div></div></td>
+          <td>${f.clinica_nome}</td>
+          <td>${f.esp || '—'}</td>
+          <td>${[f.bairro, f.cidade].filter(Boolean).join(', ') || '—'}</td>
+          <td><span class="badge ${f.publico ? 'green' : 'gray'} tgl" onclick="togglePublico('${f.id}', ${!f.publico})">${f.publico ? '🌐 Público' : 'Oculto'} ↺</span></td>
+          <td><span class="badge ${f.ativo ? 'green' : 'red'} tgl" onclick="toggleAtivo('${f.id}', ${!f.ativo})">${f.ativo ? 'Ativo' : 'Inativo'} ↺</span></td>
+          <td><button class="btn btn-ghost btn-sm" onclick="abrirFisio('${f.id}')">Editar</button></td>
+        </tr>`).join('') || '<tr><td colspan="7" class="empty">Nenhum profissional.</td></tr>';
+    }
+
+    async function togglePublico(id, v) {
+      try { await PF.api('/api/admin/fisios/' + id, { method: 'PUT', body: { publico: v } }); carregarFisios(); }
+      catch (e) { App.toast(e.message, 'error'); }
+    }
+    async function toggleAtivo(id, v) {
+      try { await PF.api('/api/admin/fisios/' + id, { method: 'PUT', body: { ativo: v } }); carregarFisios(); }
+      catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    function abrirFisio(id, clinicaPre) {
+      fisioEditId = id;
+      const f = id ? FISIOS.find(x => x.id === id) : null;
+      document.getElementById('mfTitulo').textContent = f ? f.nome : 'Novo fisioterapeuta';
+      mfClinica.value = f ? f.clinica_id : (clinicaPre || mfClinica.value);
+      mfClinica.disabled = !!f;
+      mfNome.value = f ? f.nome : ''; mfCrefito.value = f ? (f.crefito || '') : '';
+      mfEsp.value = f ? (f.esp || 'Ortopedia e Traumato') : 'Ortopedia e Traumato';
+      mfComissao.value = f ? Number(f.comissao) : 40; mfCor.value = f ? f.cor : '#0DA189';
+      mfWhatsapp.value = f ? (f.whatsapp || '') : ''; mfPreco.value = f ? (f.preco || '') : '';
+      mfBairro.value = f ? (f.bairro || '') : ''; mfCidade.value = f ? (f.cidade || '') : '';
+      mfEspecialidades.value = f ? (f.especialidades || '') : '';
+      mfBio.value = f ? (f.bio || '') : '';
+      mfPublico.checked = f ? !!f.publico : false;
+      mfDomiciliar.checked = f ? !!f.domiciliar : false;
+      mfAtivo.checked = f ? !!f.ativo : true;
+      App.openModal('mFisio');
+    }
+
+    async function abrirFisioDeDetalhe(id) {
+      if (!FISIOS.length) await carregarFisios();
+      abrirFisio(id);
+    }
+
+    async function salvarFisio() {
+      if (!mfNome.value.trim()) { App.toast('Informe o nome', 'error'); return; }
+      const body = {
+        nome: mfNome.value.trim(), crefito: mfCrefito.value.trim() || null, esp: mfEsp.value,
+        comissao: Number(mfComissao.value) || 0, cor: mfCor.value,
+        whatsapp: mfWhatsapp.value.trim() || null, preco: mfPreco.value.trim() || null,
+        bairro: mfBairro.value.trim() || null, cidade: mfCidade.value.trim() || null,
+        especialidades: mfEspecialidades.value.trim() || null, bio: mfBio.value.trim() || null,
+        publico: mfPublico.checked, domiciliar: mfDomiciliar.checked, ativo: mfAtivo.checked,
+      };
+      const btn = document.getElementById('btnMf'); btn.disabled = true;
+      try {
+        if (fisioEditId) await PF.api('/api/admin/fisios/' + fisioEditId, { method: 'PUT', body });
+        else await PF.api('/api/admin/fisios', { method: 'POST', body: { ...body, clinica_id: mfClinica.value } });
+        App.closeModal('mFisio');
+        App.toast(fisioEditId ? 'Profissional atualizado!' : 'Profissional criado!');
+        carregarFisios();
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false;
+    }
+
+    /* ================= POSTS SOCIAIS ================= */
     const ST_POST = {
       pendente: '<span class="badge amber">⏳ Pendente</span>',
       aprovado: '<span class="badge green">✓ Aprovado</span>',
@@ -244,19 +526,16 @@
       document.getElementById('socialRows').innerHTML = posts.map(p => `
         <tr>
           <td style="font-weight:600;">${p.clinica_nome}</td>
-          <td>
-            <div style="display:flex;align-items:center;gap:9px;">
-              <span style="width:26px;height:26px;border-radius:6px;background:${p.cor};flex-shrink:0;"></span>
-              <div><div class="p-name">${p.titulo || 'Post'}</div>
-              <div class="p-sub">${p.legenda.slice(0, 60)}${p.legenda.length > 60 ? '…' : ''}</div></div>
-            </div>
-          </td>
+          <td><div style="display:flex;align-items:center;gap:9px;">
+            <span style="width:26px;height:26px;border-radius:6px;background:${p.cor};flex-shrink:0;"></span>
+            <div><div class="p-name">${p.titulo || 'Post'}</div>
+            <div class="p-sub">${p.legenda.slice(0, 60)}${p.legenda.length > 60 ? '…' : ''}</div></div></div></td>
           <td>${p.data_prevista ? PF.fmtData(p.data_prevista.slice(0,10)) : '—'}</td>
           <td>${ST_POST[p.status] || p.status}</td>
           <td style="max-width:260px;font-size:.8rem;">${p.status === 'ajustes' && p.comentario ? '💬 ' + p.comentario : '—'}</td>
           <td style="white-space:nowrap;">
-            ${p.status === 'ajustes' ? `<button class="btn btn-soft btn-sm" onclick="reenviarPost('${p.id}')" title="Marcar como revisado e reenviar">↻ Reenviar</button>` : ''}
-            <button class="btn btn-ghost btn-sm" onclick="excluirPost('${p.id}')" title="Excluir">🗑</button>
+            ${p.status === 'ajustes' ? `<button class="btn btn-soft btn-sm" onclick="reenviarPost('${p.id}')">↻ Reenviar</button>` : ''}
+            <button class="btn btn-ghost btn-sm" onclick="excluirPost('${p.id}')">🗑</button>
           </td>
         </tr>`).join('') || '<tr><td colspan="6" class="empty">Nenhum post criado. Use <b>+ Criar post</b>.</td></tr>';
     }
@@ -312,7 +591,8 @@
       try {
         await PF.api(`/api/admin/clinicas/${id}`, { method: 'PATCH', body: { ativa } });
         App.toast(ativa ? `${nome} reativada` : `${nome} desativada`);
-        await carregar();
+        CLINICAS = await PF.api('/api/admin/clinicas');
+        renderClinicas();
       } catch (e) { App.toast(e.message, 'error'); }
     }
 

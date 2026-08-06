@@ -841,6 +841,113 @@ app.get('/api/admin/metricas', superauth, async (req, res) => {
   res.json({ ...tot, clinicas_por_mes: porMes });
 });
 
+// cria clínica completa (gestor + fisio + seed) — onboarding pelo superadmin
+app.post('/api/admin/clinicas', superauth, async (req, res) => {
+  const { nome, gestor_nome, email, senha, telefone, endereco } = req.body || {};
+  if (!nome || !gestor_nome || !email || !senha) return res.status(400).json({ erro: 'Preencha clínica, gestor, e-mail e senha' });
+  if (senha.length < 6) return res.status(400).json({ erro: 'Senha com ao menos 6 caracteres' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const dup = await client.query('SELECT 1 FROM usuarios WHERE email=$1', [email.toLowerCase()]);
+    if (dup.rowCount) { await client.query('ROLLBACK'); return res.status(409).json({ erro: 'E-mail já cadastrado' }); }
+    const c = (await client.query(
+      'INSERT INTO clinicas (nome, email, telefone, endereco) VALUES ($1,$2,$3,$4) RETURNING id',
+      [nome, email.toLowerCase(), telefone || null, endereco || null])).rows[0];
+    const f = (await client.query(
+      'INSERT INTO fisios (clinica_id, nome, cor) VALUES ($1,$2,$3) RETURNING id', [c.id, gestor_nome, '#0DA189'])).rows[0];
+    await client.query(
+      'INSERT INTO usuarios (clinica_id, nome, email, senha_hash, perfil, fisio_id) VALUES ($1,$2,$3,$4,$5,$6)',
+      [c.id, gestor_nome, email.toLowerCase(), bcrypt.hashSync(senha, 10), 'gestor', f.id]);
+    await seedClinica(client, c.id);
+    await client.query('COMMIT');
+    res.json({ id: c.id, nome, email: email.toLowerCase() });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error(e);
+    res.status(500).json({ erro: 'Erro ao criar clínica' });
+  } finally { client.release(); }
+});
+
+// detalhe da clínica: dados + equipe + usuários
+app.get('/api/admin/clinicas/:id', superauth, async (req, res) => {
+  const c = await pool.query('SELECT id, nome, cnpj, email, telefone, endereco, horario, ativa, perfil, criado_em FROM clinicas WHERE id=$1', [req.params.id]);
+  if (!c.rowCount) return res.status(404).json({ erro: 'Clínica não encontrada' });
+  const fisios = await pool.query(`
+    SELECT id, nome, crefito, esp, cor, comissao, ativo, publico, especialidades, domiciliar,
+           bairro, cidade, preco, whatsapp, (foto IS NOT NULL) AS tem_foto
+    FROM fisios WHERE clinica_id=$1 ORDER BY nome`, [req.params.id]);
+  const usuarios = await pool.query(
+    'SELECT id, nome, email, perfil, ultimo_acesso FROM usuarios WHERE clinica_id=$1 ORDER BY criado_em', [req.params.id]);
+  res.json({ ...c.rows[0], fisios: fisios.rows, usuarios: usuarios.rows });
+});
+
+// edita dados da clínica
+app.put('/api/admin/clinicas/:id', superauth, async (req, res) => {
+  const cols = ['nome', 'cnpj', 'email', 'telefone', 'endereco', 'horario'].filter(c => req.body[c] !== undefined);
+  if (!cols.length) return res.status(400).json({ erro: 'Nada a atualizar' });
+  const sets = cols.map((c, i) => `${c}=$${i + 2}`).join(',');
+  const r = await pool.query(`UPDATE clinicas SET ${sets} WHERE id=$1 RETURNING id`, [req.params.id, ...cols.map(c => req.body[c])]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Clínica não encontrada' });
+  res.json({ ok: true });
+});
+
+// fisioterapeutas de todas as clínicas
+const ADMIN_FISIO_COLS = ['nome', 'crefito', 'esp', 'cor', 'comissao', 'ativo', 'publico', 'especialidades',
+  'domiciliar', 'bairro', 'cidade', 'lat', 'lng', 'preco', 'bio', 'whatsapp', 'tratamentos', 'regioes', 'instagram'];
+
+app.get('/api/admin/fisios', superauth, async (req, res) => {
+  const r = await pool.query(`
+    SELECT f.id, f.clinica_id, f.nome, f.crefito, f.esp, f.cor, f.comissao, f.ativo, f.publico,
+           f.especialidades, f.domiciliar, f.bairro, f.cidade, f.preco, f.whatsapp, f.bio,
+           f.tratamentos, f.regioes, f.instagram, f.lat, f.lng,
+           (f.foto IS NOT NULL) AS tem_foto, c.nome AS clinica_nome
+    FROM fisios f JOIN clinicas c ON c.id = f.clinica_id ORDER BY c.nome, f.nome`);
+  res.json(r.rows);
+});
+
+app.post('/api/admin/fisios', superauth, async (req, res) => {
+  const { clinica_id } = req.body || {};
+  if (!clinica_id || !req.body.nome) return res.status(400).json({ erro: 'Informe a clínica e o nome' });
+  const cols = ADMIN_FISIO_COLS.filter(c => req.body[c] !== undefined);
+  const vals = cols.map(c => req.body[c] === '' ? null : req.body[c]);
+  const r = await pool.query(
+    `INSERT INTO fisios (clinica_id, ${cols.join(',')}) VALUES ($1, ${cols.map((_, i) => `$${i + 2}`).join(',')}) RETURNING id, nome`,
+    [clinica_id, ...vals]);
+  res.json(r.rows[0]);
+});
+
+app.put('/api/admin/fisios/:id', superauth, async (req, res) => {
+  const cols = ADMIN_FISIO_COLS.filter(c => req.body[c] !== undefined);
+  if (!cols.length) return res.status(400).json({ erro: 'Nada a atualizar' });
+  const sets = cols.map((c, i) => `${c}=$${i + 2}`).join(',');
+  const r = await pool.query(`UPDATE fisios SET ${sets} WHERE id=$1 RETURNING id`,
+    [req.params.id, ...cols.map(c => req.body[c] === '' ? null : req.body[c])]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Profissional não encontrado' });
+  res.json({ ok: true });
+});
+
+// usuários de qualquer clínica + reset de senha
+app.post('/api/admin/usuarios', superauth, async (req, res) => {
+  const { clinica_id, nome, email, senha, perfil } = req.body || {};
+  if (!clinica_id || !nome || !email || !senha) return res.status(400).json({ erro: 'Preencha todos os campos' });
+  try {
+    const r = await pool.query(
+      'INSERT INTO usuarios (clinica_id, nome, email, senha_hash, perfil) VALUES ($1,$2,$3,$4,$5) RETURNING id, nome, email',
+      [clinica_id, nome, email.toLowerCase(), bcrypt.hashSync(senha, 10), perfil || 'fisio']);
+    res.json(r.rows[0]);
+  } catch { res.status(409).json({ erro: 'E-mail já cadastrado' }); }
+});
+
+app.put('/api/admin/usuarios/:id/senha', superauth, async (req, res) => {
+  const { senha } = req.body || {};
+  if (!senha || senha.length < 6) return res.status(400).json({ erro: 'Senha com ao menos 6 caracteres' });
+  const r = await pool.query('UPDATE usuarios SET senha_hash=$2 WHERE id=$1 AND superadmin IS NOT TRUE RETURNING id',
+    [req.params.id, bcrypt.hashSync(senha, 10)]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Usuário não encontrado' });
+  res.json({ ok: true });
+});
+
 app.patch('/api/admin/clinicas/:id', superauth, async (req, res) => {
   const { ativa } = req.body || {};
   if (typeof ativa !== 'boolean') return res.status(400).json({ erro: 'Informe ativa: true/false' });
