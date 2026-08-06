@@ -125,7 +125,7 @@
             </div>
             <div class="table-wrap" style="padding-top:8px;">
               <table class="data">
-                <thead><tr><th>Clínica</th><th>Equipe</th><th>Pacientes</th><th>Sessões 30d</th><th>Receita</th><th>Diretório</th><th>Status</th><th></th></tr></thead>
+                <thead><tr><th>Clínica</th><th>Equipe</th><th>Pacientes</th><th>Sessões 30d</th><th>Receita</th><th>Diretório</th><th>Redes sociais</th><th>Status</th><th></th></tr></thead>
                 <tbody id="clinRows"></tbody>
               </table>
             </div>
@@ -153,7 +153,7 @@
           <div class="card">
             <div class="card-header">
               <h3>Posts para aprovação das clínicas</h3>
-              <button class="btn btn-primary btn-sm" onclick="App.openModal('mPost')">+ Criar post</button>
+              <button class="btn btn-primary btn-sm" id="btnCriarPost" onclick="App.openModal('mPost')">+ Criar post</button>
             </div>
             <div class="table-wrap" style="padding-top:8px;">
               <table class="data">
@@ -188,6 +188,10 @@
           </div>
           <div class="field"><label>Telefone</label><input type="text" id="ncTel"></div>
           <div class="field full"><label>Endereço</label><input type="text" id="ncEnd" placeholder="Rua, número · bairro · cidade/UF"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
+          <input type="checkbox" id="ncSocial" style="width:17px;height:17px;">
+          <label for="ncSocial" style="margin:0;font-weight:500;font-size:.85rem;">📱 Contratou o plano de redes sociais</label>
         </div>
         <div id="ncResultado" style="display:none;margin-top:14px;" class="cred-box"></div>
       </div>
@@ -257,8 +261,11 @@
         <button class="close" onclick="App.closeModal('mPost')">×</button>
       </div>
       <div class="modal-body">
+        <div id="psAviso" style="display:none;background:#FEF3E2;border:1px solid #F5C88B;color:#8A5B12;border-radius:10px;padding:10px 14px;font-size:.84rem;margin-bottom:14px;">
+          ⚠️ Nenhuma clínica ativa tem o <b>plano de redes sociais</b> contratado. Abra a clínica em <b>Clínicas</b> e ative o plano para poder enviar posts.
+        </div>
         <div class="form-grid">
-          <div class="field"><label>Clínica *</label><select id="psClinica"></select></div>
+          <div class="field"><label>Clínica * <span id="psContagem" style="font-weight:500;color:var(--text-soft);font-size:.74rem;"></span></label><select id="psClinica"></select></div>
           <div class="field"><label>Data prevista de publicação</label><input type="date" id="psData"></div>
           <div class="field full"><label>Texto da arte (aparece na imagem)</label><input type="text" id="psTitulo" placeholder="Ex.: 5 sinais de que sua dor lombar precisa de fisioterapia"></div>
           <div class="field full"><label>Legenda *</label><textarea id="psLegenda" style="min-height:110px;" placeholder="Legenda do post com #hashtags..."></textarea></div>
@@ -357,8 +364,25 @@
       carregarFisios();
       carregarSocial();
       const opts = clinicas.filter(c => c.ativa).map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
-      document.getElementById('psClinica').innerHTML = opts;
       document.getElementById('mfClinica').innerHTML = opts;
+      preencherClinicasSocial();
+    }
+
+    /* no "criar post" só entram clínicas ativas COM plano de redes sociais */
+    function preencherClinicasSocial() {
+      const comPlano = CLINICAS.filter(c => c.ativa && c.plano_social);
+      const sel = document.getElementById('psClinica');
+      sel.innerHTML = comPlano.length
+        ? comPlano.map(c => `<option value="${c.id}">${c.nome}</option>`).join('')
+        : '<option value="">Nenhuma clínica com o plano contratado</option>';
+      sel.disabled = !comPlano.length;
+      document.getElementById('psAviso').style.display = comPlano.length ? 'none' : '';
+      document.getElementById('psContagem').textContent = comPlano.length
+        ? `${comPlano.length} clínica${comPlano.length > 1 ? 's' : ''} com plano de redes sociais`
+        : '';
+      document.getElementById('btnPost').disabled = !comPlano.length;
+      const btnCriar = document.getElementById('btnCriarPost');
+      if (btnCriar) btnCriar.disabled = !comPlano.length;
     }
 
     /* ================= CLÍNICAS ================= */
@@ -373,6 +397,7 @@
           <td>${c.sessoes_30d}</td>
           <td style="font-weight:700;">${App.money(Number(c.receita))}</td>
           <td>${c.visivel ? '<span class="badge green">Visível</span>' : '<span class="badge gray">Oculto</span>'}</td>
+          <td>${c.plano_social ? '<span class="badge primary">📱 Plano ativo</span>' : '<span class="badge gray">—</span>'}</td>
           <td>${c.ativa ? '<span class="badge green">Ativa</span>' : '<span class="badge red">Desativada</span>'}</td>
           <td onclick="event.stopPropagation()" style="white-space:nowrap;">
             ${c.ativa ? `<button class="btn btn-soft btn-sm" onclick="entrarComo('${c.id}', '${c.nome.replace(/'/g, '')}')" title="Abrir o sistema logado como esta clínica">🎭 Entrar como</button>` : ''}
@@ -380,11 +405,12 @@
               ? `<button class="btn btn-danger btn-sm" onclick="mudar('${c.id}', false, '${c.nome.replace(/'/g, '')}')">Desativar</button>`
               : `<button class="btn btn-soft btn-sm" onclick="mudar('${c.id}', true, '${c.nome.replace(/'/g, '')}')">Reativar</button>`}
           </td>
-        </tr>`).join('') || '<tr><td colspan="8" class="empty">Nenhuma clínica.</td></tr>';
+        </tr>`).join('') || '<tr><td colspan="9" class="empty">Nenhuma clínica.</td></tr>';
     }
 
     function abrirNovaClinica() {
       ['ncNome', 'ncGestor', 'ncEmail', 'ncTel', 'ncEnd'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('ncSocial').checked = false;
       ncSenha.value = 'pf' + Math.random().toString(36).slice(2, 10);
       document.getElementById('ncResultado').style.display = 'none';
       document.getElementById('btnNc').style.display = '';
@@ -398,6 +424,7 @@
           nome: ncNome.value.trim(), gestor_nome: ncGestor.value.trim(),
           email: ncEmail.value.trim(), senha: ncSenha.value.trim(),
           telefone: ncTel.value.trim() || null, endereco: ncEnd.value.trim() || null,
+          plano_social: document.getElementById('ncSocial').checked,
         }});
         const res = document.getElementById('ncResultado');
         res.style.display = '';
@@ -427,6 +454,14 @@
           <div class="field"><label>Telefone</label><input type="text" id="dcTel" value="${d.telefone || ''}"></div>
           <div class="field"><label>CNPJ</label><input type="text" id="dcCnpj" value="${d.cnpj || ''}"></div>
           <div class="field full"><label>Endereço</label><input type="text" id="dcEnd" value="${d.endereco || ''}"></div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;background:#F4FAF9;border:1px solid #DCEEEA;border-radius:10px;padding:12px 14px;margin-bottom:18px;">
+          <input type="checkbox" id="dcSocial" ${d.plano_social ? 'checked' : ''} style="width:18px;height:18px;">
+          <label for="dcSocial" style="margin:0;font-weight:600;color:var(--ink);font-size:.86rem;flex:1;">
+            📱 Plano de redes sociais contratado
+            <span style="display:block;font-weight:500;color:var(--text-soft);font-size:.76rem;">Só clínicas com este plano aparecem em “Criar post para aprovação”.</span>
+          </label>
         </div>
 
         <h4 style="font-size:.85rem;color:var(--ink);margin-bottom:8px;">🧑‍⚕️ Equipe (${d.fisios.length})</h4>
@@ -463,11 +498,13 @@
         await PF.api('/api/admin/clinicas/' + detalheId, { method: 'PUT', body: {
           nome: dcNome.value.trim(), email: dcEmail.value.trim(), telefone: dcTel.value.trim(),
           cnpj: dcCnpj.value.trim(), endereco: dcEnd.value.trim(),
+          plano_social: document.getElementById('dcSocial').checked,
         }});
         App.toast('Dados da clínica salvos!');
         App.closeModal('mDetalhe');
         CLINICAS = await PF.api('/api/admin/clinicas');
         renderClinicas();
+        preencherClinicasSocial();
       } catch (e) { App.toast(e.message, 'error'); }
     }
 

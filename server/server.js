@@ -174,6 +174,7 @@ CREATE TABLE IF NOT EXISTS tratamentos (
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS superadmin boolean NOT NULL DEFAULT false;
 ALTER TABLE usuarios ALTER COLUMN clinica_id DROP NOT NULL;
 ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS ativa boolean NOT NULL DEFAULT true;
+ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS plano_social boolean NOT NULL DEFAULT false;
 ALTER TABLE evolucoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
 ALTER TABLE prescricoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
 ALTER TABLE sessoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
@@ -240,6 +241,10 @@ async function migrarTratamentos() {
     UPDATE sessoes s SET tratamento_id = t.id FROM tratamentos t
     WHERE s.tratamento_id IS NULL AND s.paciente_id IS NOT NULL AND t.paciente_id = s.paciente_id
       AND (SELECT count(*) FROM tratamentos x WHERE x.paciente_id = s.paciente_id) = 1`);
+  // quem já recebe posts hoje é porque contratou o plano de redes sociais
+  await pool.query(`
+    UPDATE clinicas c SET plano_social = true
+    WHERE NOT c.plano_social AND EXISTS (SELECT 1 FROM posts_sociais p WHERE p.clinica_id = c.id)`);
 }
 
 /* ============ SEED (por clínica nova) ============ */
@@ -656,6 +661,12 @@ app.get('/api/admin/social', superauth, async (req, res) => {
 app.post('/api/admin/social', superauth, async (req, res) => {
   const { clinica_id, titulo, legenda, plataforma, data_prevista, cor, imagem, imagem_mime } = req.body || {};
   if (!clinica_id || !legenda) return res.status(400).json({ erro: 'Informe a clínica e a legenda' });
+  // só clínicas com o plano de redes sociais contratado recebem posts
+  const cl = await pool.query('SELECT nome, plano_social, ativa FROM clinicas WHERE id=$1', [clinica_id]);
+  if (!cl.rowCount) return res.status(404).json({ erro: 'Clínica não encontrada' });
+  if (!cl.rows[0].plano_social)
+    return res.status(400).json({ erro: `${cl.rows[0].nome} não tem o plano de redes sociais contratado` });
+  if (!cl.rows[0].ativa) return res.status(400).json({ erro: `${cl.rows[0].nome} está desativada` });
   let buf = null;
   if (imagem) {
     buf = Buffer.from(imagem, 'base64');
@@ -810,7 +821,7 @@ function superauth(req, res, next) {
 
 app.get('/api/admin/clinicas', superauth, async (req, res) => {
   const r = await pool.query(`
-    SELECT c.id, c.nome, c.email, c.endereco, c.ativa, c.criado_em,
+    SELECT c.id, c.nome, c.email, c.endereco, c.ativa, c.plano_social, c.criado_em,
       (c.perfil->>'visivel')::boolean AS visivel,
       (SELECT count(*)::int FROM usuarios u WHERE u.clinica_id = c.id) AS usuarios,
       (SELECT count(*)::int FROM pacientes p WHERE p.clinica_id = c.id) AS pacientes,
@@ -843,7 +854,7 @@ app.get('/api/admin/metricas', superauth, async (req, res) => {
 
 // cria clínica completa (gestor + fisio + seed) — onboarding pelo superadmin
 app.post('/api/admin/clinicas', superauth, async (req, res) => {
-  const { nome, gestor_nome, email, senha, telefone, endereco } = req.body || {};
+  const { nome, gestor_nome, email, senha, telefone, endereco, plano_social } = req.body || {};
   if (!nome || !gestor_nome || !email || !senha) return res.status(400).json({ erro: 'Preencha clínica, gestor, e-mail e senha' });
   if (senha.length < 6) return res.status(400).json({ erro: 'Senha com ao menos 6 caracteres' });
   const client = await pool.connect();
@@ -852,8 +863,8 @@ app.post('/api/admin/clinicas', superauth, async (req, res) => {
     const dup = await client.query('SELECT 1 FROM usuarios WHERE email=$1', [email.toLowerCase()]);
     if (dup.rowCount) { await client.query('ROLLBACK'); return res.status(409).json({ erro: 'E-mail já cadastrado' }); }
     const c = (await client.query(
-      'INSERT INTO clinicas (nome, email, telefone, endereco) VALUES ($1,$2,$3,$4) RETURNING id',
-      [nome, email.toLowerCase(), telefone || null, endereco || null])).rows[0];
+      'INSERT INTO clinicas (nome, email, telefone, endereco, plano_social) VALUES ($1,$2,$3,$4,$5) RETURNING id',
+      [nome, email.toLowerCase(), telefone || null, endereco || null, !!plano_social])).rows[0];
     const f = (await client.query(
       'INSERT INTO fisios (clinica_id, nome, cor) VALUES ($1,$2,$3) RETURNING id', [c.id, gestor_nome, '#0DA189'])).rows[0];
     await client.query(
@@ -871,7 +882,7 @@ app.post('/api/admin/clinicas', superauth, async (req, res) => {
 
 // detalhe da clínica: dados + equipe + usuários
 app.get('/api/admin/clinicas/:id', superauth, async (req, res) => {
-  const c = await pool.query('SELECT id, nome, cnpj, email, telefone, endereco, horario, ativa, perfil, criado_em FROM clinicas WHERE id=$1', [req.params.id]);
+  const c = await pool.query('SELECT id, nome, cnpj, email, telefone, endereco, horario, ativa, plano_social, perfil, criado_em FROM clinicas WHERE id=$1', [req.params.id]);
   if (!c.rowCount) return res.status(404).json({ erro: 'Clínica não encontrada' });
   const fisios = await pool.query(`
     SELECT id, nome, crefito, esp, cor, comissao, ativo, publico, especialidades, domiciliar,
@@ -884,7 +895,7 @@ app.get('/api/admin/clinicas/:id', superauth, async (req, res) => {
 
 // edita dados da clínica
 app.put('/api/admin/clinicas/:id', superauth, async (req, res) => {
-  const cols = ['nome', 'cnpj', 'email', 'telefone', 'endereco', 'horario'].filter(c => req.body[c] !== undefined);
+  const cols = ['nome', 'cnpj', 'email', 'telefone', 'endereco', 'horario', 'plano_social'].filter(c => req.body[c] !== undefined);
   if (!cols.length) return res.status(400).json({ erro: 'Nada a atualizar' });
   const sets = cols.map((c, i) => `${c}=$${i + 2}`).join(',');
   const r = await pool.query(`UPDATE clinicas SET ${sets} WHERE id=$1 RETURNING id`, [req.params.id, ...cols.map(c => req.body[c])]);
