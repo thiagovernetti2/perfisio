@@ -22,6 +22,7 @@
     { id: 'exercicios',    href: 'exercicios.html',    ico: '💪', text: 'Exercícios' },
     { id: 'financeiro',    href: 'financeiro.html',    ico: '💳', text: 'Financeiro' },
     { id: 'marketing',     href: 'marketing.html',     ico: '📣', text: 'Marketing' },
+    { id: 'aprovacoes',    href: 'aprovacoes.html',    ico: '📱', text: 'Aprovações' },
     { id: 'equipe',        href: 'equipe.html',        ico: '🧑‍⚕️', text: 'Equipe' },
     { id: 'relatorios',    href: 'relatorios.html',    ico: '📈', text: 'Relatórios' },
     { id: 'configuracoes', href: 'configuracoes.html', ico: '⚙️', text: 'Configurações' },

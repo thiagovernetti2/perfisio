@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aprovações — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/app.css">
+  <style>
+    /* ===== Mockup do Instagram ===== */
+    .ig-phone {
+      width: 330px; flex-shrink: 0; background: #fff; border-radius: 38px; border: 11px solid var(--ink);
+      overflow: hidden; box-shadow: 0 18px 44px rgba(15,42,46,.22); position: relative;
+    }
+    .ig-notch { height: 22px; display: grid; place-items: center; }
+    .ig-notch::after { content: ''; width: 86px; height: 9px; border-radius: 9px; background: var(--ink); opacity: .9; }
+    .ig-top { display: flex; align-items: center; gap: 9px; padding: 9px 13px; border-bottom: 1px solid #F2F2F2; }
+    .ig-av { width: 32px; height: 32px; border-radius: 50%; padding: 2px;
+      background: linear-gradient(45deg, #F58529, #DD2A7B, #8134AF); }
+    .ig-av span { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%;
+      background: var(--ink); color: #fff; font-weight: 800; font-size: .62rem; border: 2px solid #fff; }
+    .ig-user { font-size: .78rem; font-weight: 700; color: #111; }
+    .ig-user small { display: block; font-weight: 400; color: #777; font-size: .62rem; }
+    .ig-img { aspect-ratio: 1; display: grid; place-items: center; padding: 26px; text-align: center; position: relative; overflow: hidden; }
+    .ig-img .arte { color: #fff; font-weight: 800; font-size: 1.28rem; line-height: 1.35; letter-spacing: -.3px; text-shadow: 0 2px 12px rgba(0,0,0,.18); }
+    .ig-img .marca { position: absolute; bottom: 12px; right: 14px; font-size: .6rem; font-weight: 700; color: rgba(255,255,255,.85); letter-spacing: 1px; }
+    .ig-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .ig-acts { display: flex; gap: 14px; padding: 10px 13px 4px; font-size: 1.25rem; color: #111; }
+    .ig-acts .dir { margin-left: auto; }
+    .ig-likes { padding: 0 13px; font-size: .76rem; font-weight: 700; color: #111; }
+    .ig-cap { padding: 4px 13px 8px; font-size: .76rem; color: #222; line-height: 1.5; max-height: 128px; overflow-y: auto; }
+    .ig-cap b { font-weight: 700; }
+    .ig-cap .tags { color: #1B4F9C; }
+    .ig-time { padding: 0 13px 16px; font-size: .62rem; color: #999; text-transform: uppercase; letter-spacing: .4px; }
+
+    /* ===== Painel de aprovação ===== */
+    .ap-row { display: flex; gap: 26px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 30px;
+      background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 24px; box-shadow: var(--shadow); }
+    .ap-info { flex: 1; min-width: 280px; }
+    .ap-status { margin-bottom: 12px; }
+    .ap-meta { font-size: .82rem; color: var(--text-soft); margin: 10px 0 16px; display: flex; gap: 14px; flex-wrap: wrap; }
+    .ap-coment { background: var(--amber-soft); border-left: 4px solid var(--amber); border-radius: 8px; padding: 10px 14px; font-size: .84rem; margin-bottom: 14px; }
+    .ap-acoes { display: flex; gap: 10px; flex-wrap: wrap; }
+    .ap-ajuste { margin-top: 14px; display: none; }
+    .ap-ajuste.aberto { display: block; }
+  </style>
+</head>
+<body data-page="aprovacoes" data-title="Aprovações" data-subtitle="Revise os posts criados para as redes da clínica — aprove ou peça ajustes">
+
+  <div class="page-head">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;" id="filtroChips"></div>
+  </div>
+
+  <div id="lista"><div class="empty">Carregando posts...</div></div>
+
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/sidebar.js"></script>
+  <script>
+    let POSTS = [], filtro = 'pendente';
+    const usuario = PF.user() || {};
+    const handle = (usuario.clinica_nome || 'clinica').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '');
+
+    const BADGE = {
+      pendente: '<span class="badge amber">⏳ Aguardando sua aprovação</span>',
+      aprovado: '<span class="badge green">✓ Aprovado</span>',
+      ajustes: '<span class="badge blue">✎ Ajustes solicitados</span>',
+    };
+
+    async function boot() {
+      POSTS = await PF.api('/api/social');
+      render();
+    }
+
+    function chips() {
+      const defs = [['pendente', '⏳ Pendentes'], ['aprovado', '✓ Aprovados'], ['ajustes', '✎ Com ajustes'], ['todos', 'Todos']];
+      document.getElementById('filtroChips').innerHTML = defs.map(([k, l]) => {
+        const n = k === 'todos' ? POSTS.length : POSTS.filter(p => p.status === k).length;
+        return `<button class="chip${filtro === k ? ' active' : ''}" onclick="filtro='${k}';render()">${l} <span style="font-weight:400;">${n}</span></button>`;
+      }).join('');
+    }
+
+    function formatarLegenda(l) {
+      return l.replace(/\n/g, '<br>').replace(/(#[\wÀ-ú]+)/g, '<span class="tags">$1</span>');
+    }
+
+    function render() {
+      chips();
+      const itens = POSTS.filter(p => filtro === 'todos' || p.status === filtro);
+      document.getElementById('lista').innerHTML = itens.map(p => {
+        const iniciais = (usuario.clinica_nome || 'CL').split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase();
+        return `
+        <div class="ap-row">
+          <!-- MOCKUP INSTAGRAM -->
+          <div class="ig-phone">
+            <div class="ig-notch"></div>
+            <div class="ig-top">
+              <div class="ig-av"><span>${iniciais}</span></div>
+              <div class="ig-user">${handle}<small>Patrocinado · Instagram</small></div>
+              <div style="margin-left:auto;color:#111;font-weight:800;">⋯</div>
+            </div>
+            <div class="ig-img" style="background:linear-gradient(135deg,${p.cor},${escurecer(p.cor)});">
+              ${p.tem_imagem
+                ? `<img src="/api/social/${p.id}/imagem?t=${encodeURIComponent(PF.token())}" alt="">`
+                : `<div class="arte">${p.titulo || ''}</div><div class="marca">@${handle}</div>`}
+            </div>
+            <div class="ig-acts"><span>♡</span><span>💬</span><span>✈️</span><span class="dir">🔖</span></div>
+            <div class="ig-likes">128 curtidas</div>
+            <div class="ig-cap"><b>${handle}</b> ${formatarLegenda(p.legenda)}</div>
+            <div class="ig-time">${p.data_prevista ? 'Publicação prevista: ' + PF.fmtData(p.data_prevista.slice(0,10)) : 'Prévia do post'}</div>
+          </div>
+
+          <!-- PAINEL DE AÇÃO -->
+          <div class="ap-info">
+            <div class="ap-status">${BADGE[p.status]}</div>
+            <h3 style="font-size:1.05rem;font-weight:800;color:var(--ink);">${p.titulo || 'Post para o Instagram'}</h3>
+            <div class="ap-meta">
+              <span>📱 ${p.plataforma.charAt(0).toUpperCase() + p.plataforma.slice(1)}</span>
+              ${p.data_prevista ? `<span>🗓 Previsto para ${PF.fmtData(p.data_prevista.slice(0,10))}</span>` : ''}
+              <span>Criado em ${PF.fmtData(p.criado_em.slice(0,10))}</span>
+            </div>
+            ${p.status === 'ajustes' && p.comentario ? `<div class="ap-coment"><b>Seu pedido de ajuste:</b><br>${p.comentario.replace(/\n/g, '<br>')}</div>` : ''}
+            ${p.status !== 'aprovado' ? `
+              <div class="ap-acoes">
+                <button class="btn btn-primary" onclick="aprovar('${p.id}')">✓ Aprovar post</button>
+                <button class="btn btn-ghost" onclick="toggleAjuste('${p.id}')">✎ Pedir ajustes</button>
+              </div>
+              <div class="ap-ajuste" id="aj-${p.id}">
+                <div class="field">
+                  <label>O que você quer mudar?</label>
+                  <textarea id="tx-${p.id}" placeholder="Ex.: trocar a cor de fundo, citar o nome da fisioterapeuta, deixar a legenda mais curta...">${p.comentario || ''}</textarea>
+                </div>
+                <button class="btn btn-soft" style="margin-top:8px;" onclick="enviarAjuste('${p.id}')">Enviar pedido de ajuste</button>
+              </div>` : `
+              <div style="font-size:.84rem;color:var(--text-soft);">Post liberado para publicação. 🎉</div>
+              <div class="ap-acoes" style="margin-top:12px;">
+                <button class="btn btn-ghost btn-sm" onclick="toggleAjuste('${p.id}')">✎ Mudei de ideia, pedir ajuste</button>
+              </div>
+              <div class="ap-ajuste" id="aj-${p.id}">
+                <div class="field"><label>O que você quer mudar?</label><textarea id="tx-${p.id}"></textarea></div>
+                <button class="btn btn-soft" style="margin-top:8px;" onclick="enviarAjuste('${p.id}')">Enviar pedido de ajuste</button>
+              </div>`}
+          </div>
+        </div>`;
+      }).join('') || `<div class="card card-pad"><div class="empty">
+        ${filtro === 'pendente' ? 'Nenhum post aguardando aprovação no momento. 🎉<br><span style="font-size:.8rem;">Quando a equipe PerFisio criar conteúdo para sua clínica, ele aparece aqui para você revisar antes de ir ao ar.</span>' : 'Nada por aqui.'}
+      </div></div>`;
+    }
+
+    function escurecer(hex) {
+      const n = parseInt(hex.slice(1), 16);
+      const f = c => Math.max(0, Math.round(c * 0.6)).toString(16).padStart(2, '0');
+      return '#' + f(n >> 16 & 255) + f(n >> 8 & 255) + f(n & 255);
+    }
+
+    function toggleAjuste(id) {
+      document.getElementById('aj-' + id).classList.toggle('aberto');
+    }
+
+    async function aprovar(id) {
+      try {
+        await PF.api(`/api/social/${id}/aprovar`, { method: 'POST' });
+        App.toast('Post aprovado! Ele será publicado na data prevista. 🎉');
+        POSTS = await PF.api('/api/social');
+        render();
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    async function enviarAjuste(id) {
+      const texto = document.getElementById('tx-' + id).value.trim();
+      if (!texto) { App.toast('Descreva o que quer mudar', 'error'); return; }
+      try {
+        await PF.api(`/api/social/${id}/ajustes`, { method: 'POST', body: { comentario: texto } });
+        App.toast('Pedido de ajuste enviado à equipe PerFisio! ✎');
+        POSTS = await PF.api('/api/social');
+        render();
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    boot().catch(e => App.toast(e.message, 'error'));
+  </script>
+</body>
+</html>

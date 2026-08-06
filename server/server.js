@@ -197,6 +197,19 @@ ALTER TABLE fisios ADD COLUMN IF NOT EXISTS instagram text;
 ALTER TABLE sessoes ADD COLUMN IF NOT EXISTS reserva text;
 ALTER TABLE fisios ADD COLUMN IF NOT EXISTS foto bytea;
 ALTER TABLE fisios ADD COLUMN IF NOT EXISTS foto_mime text;
+CREATE TABLE IF NOT EXISTS posts_sociais (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+  titulo text,
+  legenda text NOT NULL,
+  plataforma text NOT NULL DEFAULT 'instagram',
+  data_prevista date,
+  imagem bytea, imagem_mime text,
+  cor text NOT NULL DEFAULT '#0DA189',
+  status text NOT NULL DEFAULT 'pendente',
+  comentario text,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
 CREATE TABLE IF NOT EXISTS fisio_fotos (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
@@ -586,6 +599,90 @@ app.post('/api/campanhas/enviar', auth, async (req, res) => {
     'INSERT INTO campanhas (clinica_id, assunto, corpo, filtro, total, enviados, falhas, status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
     [req.auth.cid, assunto, corpo, filtro || 'todos', pacs.length, enviados, falhas, status]);
   res.json(camp.rows[0]);
+});
+
+/* ---------- APROVAÇÕES (posts de redes sociais) ---------- */
+// clínica: lista os próprios posts
+app.get('/api/social', auth, async (req, res) => {
+  const r = await pool.query(`
+    SELECT id, titulo, legenda, plataforma, data_prevista, cor, status, comentario, criado_em,
+           (imagem IS NOT NULL) AS tem_imagem
+    FROM posts_sociais WHERE clinica_id=$1 ORDER BY criado_em DESC`, [req.auth.cid]);
+  res.json(r.rows);
+});
+
+app.get('/api/social/:id/imagem', async (req, res) => {
+  // aceita token no header OU em ?t= (para <img src>)
+  const h = req.headers.authorization || '';
+  const token = h.startsWith('Bearer ') ? h.slice(7) : req.query.t;
+  let payload;
+  try { payload = jwt.verify(token || '', JWT_SECRET); }
+  catch { return res.status(401).end(); }
+  const r = await pool.query('SELECT imagem, imagem_mime FROM posts_sociais WHERE id=$1 AND clinica_id=$2 AND imagem IS NOT NULL',
+    [req.params.id, payload.cid]);
+  if (!r.rowCount) return res.status(404).end();
+  res.set('Content-Type', r.rows[0].imagem_mime);
+  res.set('Cache-Control', 'private, max-age=3600');
+  res.send(r.rows[0].imagem);
+});
+
+app.post('/api/social/:id/aprovar', auth, async (req, res) => {
+  const r = await pool.query(
+    `UPDATE posts_sociais SET status='aprovado', comentario=NULL WHERE id=$1 AND clinica_id=$2 RETURNING id`,
+    [req.params.id, req.auth.cid]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Post não encontrado' });
+  res.json({ ok: true });
+});
+
+app.post('/api/social/:id/ajustes', auth, async (req, res) => {
+  const { comentario } = req.body || {};
+  if (!comentario || !comentario.trim()) return res.status(400).json({ erro: 'Descreva o ajuste desejado' });
+  const r = await pool.query(
+    `UPDATE posts_sociais SET status='ajustes', comentario=$3 WHERE id=$1 AND clinica_id=$2 RETURNING id`,
+    [req.params.id, req.auth.cid, comentario.trim()]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Post não encontrado' });
+  res.json({ ok: true });
+});
+
+// superadmin: cria e gerencia os posts das clínicas
+app.get('/api/admin/social', superauth, async (req, res) => {
+  const r = await pool.query(`
+    SELECT p.id, p.clinica_id, p.titulo, p.legenda, p.plataforma, p.data_prevista, p.cor,
+           p.status, p.comentario, p.criado_em, (p.imagem IS NOT NULL) AS tem_imagem, c.nome AS clinica_nome
+    FROM posts_sociais p JOIN clinicas c ON c.id = p.clinica_id ORDER BY p.criado_em DESC`);
+  res.json(r.rows);
+});
+
+app.post('/api/admin/social', superauth, async (req, res) => {
+  const { clinica_id, titulo, legenda, plataforma, data_prevista, cor, imagem, imagem_mime } = req.body || {};
+  if (!clinica_id || !legenda) return res.status(400).json({ erro: 'Informe a clínica e a legenda' });
+  let buf = null;
+  if (imagem) {
+    buf = Buffer.from(imagem, 'base64');
+    if (buf.length > 4 * 1024 * 1024) return res.status(400).json({ erro: 'Imagem maior que 4 MB' });
+  }
+  const r = await pool.query(`
+    INSERT INTO posts_sociais (clinica_id, titulo, legenda, plataforma, data_prevista, cor, imagem, imagem_mime)
+    VALUES ($1,$2,$3,COALESCE($4,'instagram'),$5,COALESCE($6,'#0DA189'),$7,$8)
+    RETURNING id, titulo, status`,
+    [clinica_id, titulo || null, legenda, plataforma, data_prevista || null, cor, buf, buf ? imagem_mime : null]);
+  res.json(r.rows[0]);
+});
+
+app.put('/api/admin/social/:id', superauth, async (req, res) => {
+  const cols = ['titulo', 'legenda', 'plataforma', 'data_prevista', 'cor', 'status', 'comentario']
+    .filter(c => req.body[c] !== undefined);
+  if (!cols.length) return res.status(400).json({ erro: 'Nada a atualizar' });
+  const sets = cols.map((c, i) => `${c}=$${i + 2}`).join(',');
+  const r = await pool.query(`UPDATE posts_sociais SET ${sets} WHERE id=$1 RETURNING id`,
+    [req.params.id, ...cols.map(c => req.body[c])]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Post não encontrado' });
+  res.json({ ok: true });
+});
+
+app.delete('/api/admin/social/:id', superauth, async (req, res) => {
+  const r = await pool.query('DELETE FROM posts_sociais WHERE id=$1', [req.params.id]);
+  res.json({ ok: r.rowCount > 0 });
 });
 
 /* ---------- CRUD GENÉRICO (escopado por clínica) ---------- */

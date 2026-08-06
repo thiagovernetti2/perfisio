@@ -80,12 +80,49 @@
           </table>
         </div>
       </div>
+      <div class="card" style="grid-column:1/-1;">
+        <div class="card-header">
+          <h3>📱 Posts para aprovação das clínicas</h3>
+          <button class="btn btn-primary btn-sm" onclick="App.openModal('mPost')">+ Criar post</button>
+        </div>
+        <div class="table-wrap" style="padding-top:8px;">
+          <table class="data">
+            <thead><tr><th>Clínica</th><th>Post</th><th>Previsto</th><th>Status</th><th>Feedback da clínica</th><th></th></tr></thead>
+            <tbody id="socialRows"><tr><td colspan="6" class="empty">Carregando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="card card-pad">
         <h3 style="font-size:.98rem;margin-bottom:16px;">Novas clínicas por mês</h3>
         <div class="bar-chart" id="chartNovas" style="height:150px;"></div>
         <div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--line);">
           <div style="font-size:.8rem;color:var(--text-soft);line-height:1.7;" id="resumoExtra"></div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CRIAR POST -->
+  <div class="modal-overlay" id="mPost">
+    <div class="modal wide">
+      <div class="modal-head">
+        <h3>Criar post para aprovação</h3>
+        <button class="close" onclick="App.closeModal('mPost')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field"><label>Clínica *</label><select id="psClinica"></select></div>
+          <div class="field"><label>Data prevista de publicação</label><input type="date" id="psData"></div>
+          <div class="field full"><label>Texto da arte (aparece na imagem)</label><input type="text" id="psTitulo" placeholder="Ex.: 5 sinais de que sua dor lombar precisa de fisioterapia"></div>
+          <div class="field full"><label>Legenda *</label><textarea id="psLegenda" style="min-height:110px;" placeholder="Legenda do post com #hashtags..."></textarea></div>
+          <div class="field"><label>Cor da arte</label><input type="color" id="psCor" value="#0DA189" style="height:42px;padding:4px;"></div>
+          <div class="field"><label>Imagem própria (opcional — substitui a arte)</label><input type="file" id="psImg" accept="image/jpeg,image/png,image/webp"></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal('mPost')">Cancelar</button>
+        <button class="btn btn-primary" id="btnPost" onclick="criarPost()">Enviar para aprovação</button>
       </div>
     </div>
   </div>
@@ -134,10 +171,16 @@
       await carregar();
     }
 
+    let CLINICAS = [];
+
     async function carregar() {
       const [m, clinicas] = await Promise.all([
         PF.api('/api/admin/metricas'), PF.api('/api/admin/clinicas'),
       ]);
+      CLINICAS = clinicas;
+      document.getElementById('psClinica').innerHTML =
+        clinicas.filter(c => c.ativa).map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+      carregarSocial();
 
       document.getElementById('mClinicas').textContent = m.clinicas;
       document.getElementById('mClinicasSub').textContent = `${m.clinicas_ativas} ativas · ${m.no_diretorio} no diretório`;
@@ -187,6 +230,81 @@
               : `<button class="btn btn-soft btn-sm" onclick="mudar('${c.id}', true, '${c.nome.replace(/'/g, '')}')">Reativar</button>`}
           </td>
         </tr>`).join('') || '<tr><td colspan="9" class="empty">Nenhuma clínica cadastrada ainda.</td></tr>';
+    }
+
+    /* ---------- Posts sociais ---------- */
+    const ST_POST = {
+      pendente: '<span class="badge amber">⏳ Pendente</span>',
+      aprovado: '<span class="badge green">✓ Aprovado</span>',
+      ajustes: '<span class="badge blue">✎ Ajustes pedidos</span>',
+    };
+
+    async function carregarSocial() {
+      const posts = await PF.api('/api/admin/social');
+      document.getElementById('socialRows').innerHTML = posts.map(p => `
+        <tr>
+          <td style="font-weight:600;">${p.clinica_nome}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:9px;">
+              <span style="width:26px;height:26px;border-radius:6px;background:${p.cor};flex-shrink:0;"></span>
+              <div><div class="p-name">${p.titulo || 'Post'}</div>
+              <div class="p-sub">${p.legenda.slice(0, 60)}${p.legenda.length > 60 ? '…' : ''}</div></div>
+            </div>
+          </td>
+          <td>${p.data_prevista ? PF.fmtData(p.data_prevista.slice(0,10)) : '—'}</td>
+          <td>${ST_POST[p.status] || p.status}</td>
+          <td style="max-width:260px;font-size:.8rem;">${p.status === 'ajustes' && p.comentario ? '💬 ' + p.comentario : '—'}</td>
+          <td style="white-space:nowrap;">
+            ${p.status === 'ajustes' ? `<button class="btn btn-soft btn-sm" onclick="reenviarPost('${p.id}')" title="Marcar como revisado e reenviar">↻ Reenviar</button>` : ''}
+            <button class="btn btn-ghost btn-sm" onclick="excluirPost('${p.id}')" title="Excluir">🗑</button>
+          </td>
+        </tr>`).join('') || '<tr><td colspan="6" class="empty">Nenhum post criado. Use <b>+ Criar post</b>.</td></tr>';
+    }
+
+    async function criarPost() {
+      const legenda = psLegenda.value.trim();
+      if (!psClinica.value || !legenda) { App.toast('Escolha a clínica e escreva a legenda', 'error'); return; }
+      const btn = document.getElementById('btnPost'); btn.disabled = true;
+      try {
+        let imagem = null, imagem_mime = null;
+        const f = psImg.files[0];
+        if (f) {
+          const bmp = await createImageBitmap(f);
+          const esc = Math.min(1, 1080 / Math.max(bmp.width, bmp.height));
+          const cv = document.createElement('canvas');
+          cv.width = Math.round(bmp.width * esc); cv.height = Math.round(bmp.height * esc);
+          cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+          const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.85));
+          imagem = await new Promise((res, rej) => {
+            const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.onerror = rej; r.readAsDataURL(blob);
+          });
+          imagem_mime = 'image/jpeg';
+        }
+        await PF.api('/api/admin/social', { method: 'POST', body: {
+          clinica_id: psClinica.value, titulo: psTitulo.value.trim() || null, legenda,
+          data_prevista: psData.value || null, cor: psCor.value, imagem, imagem_mime,
+        }});
+        App.closeModal('mPost');
+        ['psTitulo', 'psLegenda', 'psData'].forEach(id => document.getElementById(id).value = '');
+        psImg.value = '';
+        App.toast('Post enviado para aprovação da clínica!');
+        carregarSocial();
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false;
+    }
+
+    async function reenviarPost(id) {
+      try {
+        await PF.api('/api/admin/social/' + id, { method: 'PUT', body: { status: 'pendente' } });
+        App.toast('Post reenviado para nova aprovação');
+        carregarSocial();
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    async function excluirPost(id) {
+      if (!confirm('Excluir este post?')) return;
+      try { await PF.api('/api/admin/social/' + id, { method: 'DELETE' }); carregarSocial(); }
+      catch (e) { App.toast(e.message, 'error'); }
     }
 
     async function mudar(id, ativa, nome) {
