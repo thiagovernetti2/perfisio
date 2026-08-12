@@ -180,6 +180,10 @@ ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS stripe_subscription_id text;
 ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS assinatura_status text NOT NULL DEFAULT 'gratuito';
 ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS licencas int NOT NULL DEFAULT 0;
 ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS assinatura_fim timestamptz;
+ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS dominio text;
+ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS dominio_status text NOT NULL DEFAULT 'nenhum';
+ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS dominio_verificado_em timestamptz;
+CREATE UNIQUE INDEX IF NOT EXISTS clinicas_dominio_uk ON clinicas (lower(dominio)) WHERE dominio IS NOT NULL;
 ALTER TABLE evolucoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
 ALTER TABLE prescricoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
 ALTER TABLE sessoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
@@ -277,6 +281,84 @@ async function seedClinica(client, cid) {
     await client.query('INSERT INTO exercicios (clinica_id,nome,cat,nivel,reps,emoji) VALUES ($1,$2,$3,$4,$5,$6)', [cid, nome, cat, nivel, reps, emoji]);
   for (const [nome, descricao, valor, sessoes, tipo] of SEED_PACOTES)
     await client.query('INSERT INTO pacotes (clinica_id,nome,descricao,valor,sessoes,tipo) VALUES ($1,$2,$3,$4,$5,$6)', [cid, nome, descricao, valor, sessoes, tipo]);
+}
+
+/* ============ DOMÍNIO PRÓPRIO DA CLÍNICA ============ */
+const dns = require('node:dns').promises;
+// host onde o PerFisio roda — é para cá que o CNAME da clínica deve apontar
+const HOST_APP = (process.env.APP_HOST || process.env.RAILWAY_PUBLIC_DOMAIN || 'app.perfisio.com.br').toLowerCase();
+const HOSTS_SISTEMA = new Set([HOST_APP, 'localhost', '127.0.0.1', 'perfisio.com.br', 'www.perfisio.com.br']);
+
+const soHost = h => String(h || '').split(':')[0].toLowerCase().replace(/\.$/, '');
+const hostDoSistema = h => HOSTS_SISTEMA.has(soHost(h)) || soHost(h).endsWith('.up.railway.app');
+
+const RE_DOMINIO = /^(?!-)[a-z0-9-]{1,63}(\.[a-z0-9-]{1,63})+$/;
+function normalizarDominio(d) {
+  const limpo = String(d || '').trim().toLowerCase()
+    .replace(/^https?:\/\//, '').replace(/\/.*$/, '').split(':')[0].replace(/\.$/, '');
+  return RE_DOMINIO.test(limpo) && !hostDoSistema(limpo) ? limpo : null;
+}
+
+// cache host → clínica (evita ir ao banco a cada request)
+const cacheHost = new Map();
+const TTL_HOST = 60_000;
+const limparCacheHost = () => cacheHost.clear();
+
+async function clinicaDoHost(host) {
+  const h = soHost(host);
+  if (!h || hostDoSistema(h)) return null;
+  const guardado = cacheHost.get(h);
+  if (guardado && Date.now() - guardado.ts < TTL_HOST) return guardado.id;
+  const r = await pool.query(
+    "SELECT id FROM clinicas WHERE lower(dominio) = $1 AND ativa AND dominio_status = 'ativo'", [h]);
+  const id = r.rowCount ? r.rows[0].id : null;
+  cacheHost.set(h, { id, ts: Date.now() });
+  return id;
+}
+
+// confere se o DNS do domínio já aponta para o PerFisio
+async function dnsAponta(dominio) {
+  try {
+    const cnames = await dns.resolveCname(dominio);
+    const achou = cnames.map(c => soHost(c));
+    if (achou.includes(HOST_APP)) return { ok: true, via: 'CNAME', valor: achou.join(', ') };
+    if (achou.length) return { ok: false, via: 'CNAME', valor: achou.join(', ') };
+  } catch { /* sem CNAME: tenta registro A */ }
+  try {
+    const [ips, nossos] = await Promise.all([dns.resolve4(dominio), dns.resolve4(HOST_APP)]);
+    if (ips.some(i => nossos.includes(i))) return { ok: true, via: 'A', valor: ips.join(', ') };
+    return { ok: false, via: 'A', valor: ips.join(', ') };
+  } catch {
+    return { ok: false, via: null, valor: null, erro: 'O DNS ainda não responde para esse domínio' };
+  }
+}
+
+// registra o domínio no Railway (emissão do certificado TLS) quando há token de API
+async function registrarNoRailway(dominio) {
+  const token = process.env.RAILWAY_API_TOKEN;
+  const { RAILWAY_ENVIRONMENT_ID: amb, RAILWAY_PROJECT_ID: proj, RAILWAY_SERVICE_ID: svc } = process.env;
+  if (!token || !amb || !proj || !svc) return { automatico: false, motivo: 'sem RAILWAY_API_TOKEN' };
+  try {
+    const r = await fetch('https://backboard.railway.com/graphql/v2', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        query: `mutation($input: CustomDomainCreateInput!) {
+          customDomainCreate(input: $input) { id domain status { dnsRecords { hostlabel recordType requiredValue zone } } } }`,
+        variables: { input: { domain: dominio, environmentId: amb, projectId: proj, serviceId: svc } },
+      }),
+    });
+    const j = await r.json();
+    if (j.errors?.length) {
+      const msg = j.errors[0].message || '';
+      // já cadastrado antes não é erro para o nosso fluxo
+      if (/already exists|already in use/i.test(msg)) return { automatico: true, jaExistia: true };
+      return { automatico: false, motivo: msg };
+    }
+    return { automatico: true, registros: j.data?.customDomainCreate?.status?.dnsRecords || [] };
+  } catch (e) {
+    return { automatico: false, motivo: e.message };
+  }
 }
 
 /* ============ PLANOS / STRIPE ============ */
@@ -785,6 +867,54 @@ app.delete('/api/admin/social/:id', superauth, async (req, res) => {
   res.json({ ok: r.rowCount > 0 });
 });
 
+/* ---------- DOMÍNIO PRÓPRIO ---------- */
+app.get('/api/dominio', auth, async (req, res) => {
+  const c = (await pool.query(
+    'SELECT nome, dominio, dominio_status, dominio_verificado_em FROM clinicas WHERE id=$1', [req.auth.cid])).rows[0];
+  res.json({ ...c, alvo: HOST_APP, automatico: !!process.env.RAILWAY_API_TOKEN });
+});
+
+app.put('/api/dominio', auth, async (req, res) => {
+  const u = await gestor(req, res); if (!u) return;
+  const dominio = normalizarDominio(req.body?.dominio);
+  if (!dominio) return res.status(400).json({ erro: 'Domínio inválido. Use algo como clinicamovimente.com.br' });
+  const dup = await pool.query('SELECT 1 FROM clinicas WHERE lower(dominio)=$1 AND id<>$2', [dominio, req.auth.cid]);
+  if (dup.rowCount) return res.status(409).json({ erro: 'Este domínio já está em uso por outra clínica' });
+
+  const railway = await registrarNoRailway(dominio);
+  await pool.query("UPDATE clinicas SET dominio=$2, dominio_status='pendente', dominio_verificado_em=NULL WHERE id=$1",
+    [req.auth.cid, dominio]);
+  limparCacheHost();
+  res.json({ ok: true, dominio, alvo: HOST_APP, status: 'pendente', railway });
+});
+
+app.delete('/api/dominio', auth, async (req, res) => {
+  const u = await gestor(req, res); if (!u) return;
+  await pool.query("UPDATE clinicas SET dominio=NULL, dominio_status='nenhum', dominio_verificado_em=NULL WHERE id=$1",
+    [req.auth.cid]);
+  limparCacheHost();
+  res.json({ ok: true });
+});
+
+// checa o DNS e, se já apontar para o PerFisio, ativa o domínio
+app.post('/api/dominio/verificar', auth, async (req, res) => {
+  const c = (await pool.query('SELECT dominio FROM clinicas WHERE id=$1', [req.auth.cid])).rows[0];
+  if (!c?.dominio) return res.status(400).json({ erro: 'Nenhum domínio configurado' });
+  const dnsOk = await dnsAponta(c.dominio);
+  if (dnsOk.ok) {
+    await pool.query("UPDATE clinicas SET dominio_status='ativo', dominio_verificado_em=now() WHERE id=$1", [req.auth.cid]);
+    limparCacheHost();
+  }
+  res.json({ ...dnsOk, dominio: c.dominio, alvo: HOST_APP, status: dnsOk.ok ? 'ativo' : 'pendente' });
+});
+
+// a página da clínica descobre quem ela é pelo próprio host acessado
+app.get('/api/public/clinica-do-host', async (req, res) => {
+  const id = await clinicaDoHost(req.headers.host);
+  if (!id) return res.status(404).json({ erro: 'Domínio não vinculado a nenhuma clínica' });
+  res.json({ id });
+});
+
 /* ---------- ASSINATURA (Stripe) ---------- */
 const urlBase = req => process.env.APP_URL
   || `${req.headers['x-forwarded-proto'] || req.protocol}://${req.get('host')}`;
@@ -1063,6 +1193,7 @@ app.get('/api/admin/clinicas', superauth, async (req, res) => {
   const r = await pool.query(`
     SELECT c.id, c.nome, c.email, c.endereco, c.ativa, c.plano_social, c.criado_em,
       c.assinatura_status, c.licencas, (c.stripe_subscription_id IS NOT NULL) AS assinante,
+      c.dominio, c.dominio_status,
       (c.perfil->>'visivel')::boolean AS visivel,
       (SELECT count(*)::int FROM usuarios u WHERE u.clinica_id = c.id) AS usuarios,
       (SELECT count(*)::int FROM pacientes p WHERE p.clinica_id = c.id) AS pacientes,
@@ -1124,7 +1255,8 @@ app.post('/api/admin/clinicas', superauth, async (req, res) => {
 // detalhe da clínica: dados + equipe + usuários
 app.get('/api/admin/clinicas/:id', superauth, async (req, res) => {
   const c = await pool.query(`SELECT id, nome, cnpj, email, telefone, endereco, horario, ativa, plano_social, perfil,
-    assinatura_status, licencas, assinatura_fim, (stripe_subscription_id IS NOT NULL) AS assinante, criado_em
+    assinatura_status, licencas, assinatura_fim, (stripe_subscription_id IS NOT NULL) AS assinante,
+    dominio, dominio_status, criado_em
     FROM clinicas WHERE id=$1`, [req.params.id]);
   if (!c.rowCount) return res.status(404).json({ erro: 'Clínica não encontrada' });
   const fisios = await pool.query(`
@@ -1502,8 +1634,29 @@ app.post('/api/public/leads', async (req, res) => {
 
 /* ---------- ESTÁTICO ---------- */
 const ROOT = path.join(__dirname, '..');
+
+/* No domínio próprio de uma clínica, a raiz é a página dela — não o diretório do PerFisio.
+   Os demais caminhos (assets, fisio.html, login, app/) continuam funcionando normalmente. */
+app.use(async (req, res, next) => {
+  if (req.path !== '/' || hostDoSistema(req.headers.host)) return next();
+  try {
+    const id = await clinicaDoHost(req.headers.host);
+    if (id) return res.sendFile(path.join(ROOT, 'clinica.html'));
+  } catch (e) { console.error('erro no roteamento por domínio', e); }
+  next();
+});
+
 app.use(express.static(ROOT, { extensions: ['html'] }));
-app.use((req, res) => res.status(404).sendFile(path.join(ROOT, 'index.html')));
+
+app.use(async (req, res) => {
+  if (!hostDoSistema(req.headers.host)) {
+    try {
+      const id = await clinicaDoHost(req.headers.host);
+      if (id) return res.status(404).sendFile(path.join(ROOT, 'clinica.html'));
+    } catch (e) { /* cai no fallback padrão */ }
+  }
+  res.status(404).sendFile(path.join(ROOT, 'index.html'));
+});
 
 /* ---------- BOOT ---------- */
 async function seedSuperadmin() {

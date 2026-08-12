@@ -12,6 +12,7 @@
   <div class="tabs" data-auto>
     <button class="tab active" data-tab="clinica">Clínica</button>
     <button class="tab" data-tab="perfil">Perfil público no PerFisio</button>
+    <button class="tab" data-tab="dominio">Domínio próprio</button>
     <button class="tab" data-tab="usuarios">Usuários & Permissões</button>
   </div>
 
@@ -58,6 +59,64 @@
           <div class="dl-item"><div class="dl-bar" style="background:var(--primary);"></div><div><div class="dl-title">Perfil no diretório</div><div class="dl-sub">Com o perfil visível, sua clínica aparece na busca pública da página inicial do PerFisio.</div></div></div>
           <div class="dl-item"><div class="dl-bar" style="background:var(--blue);"></div><div><div class="dl-title">Solicitações viram leads</div><div class="dl-sub">Quando um paciente pede avaliação pelo site, o contato entra automaticamente no seu CRM na coluna "Novo contato".</div></div></div>
           <div class="dl-item"><div class="dl-bar" style="background:var(--green);"></div><div><div class="dl-title">Do lead ao prontuário</div><div class="dl-sub">Arraste o lead pelo funil até "Convertido" — o paciente é criado automaticamente no cadastro.</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DOMÍNIO PRÓPRIO -->
+  <div data-tab-panel="dominio" style="display:none;">
+    <div class="grid-2">
+      <div class="card card-pad">
+        <h3 style="font-size:.98rem;margin-bottom:6px;">O endereço da sua clínica na internet</h3>
+        <p style="font-size:.86rem;color:var(--text-soft);line-height:1.65;margin-bottom:18px;">
+          Aponte o seu domínio para o PerFisio e ele passa a abrir a página da sua clínica,
+          com a equipe e o agendamento online. O paciente digita o seu endereço e marca a sessão ali mesmo.
+        </p>
+
+        <div class="field"><label>Seu domínio</label>
+          <input type="text" id="dmCampo" placeholder="clinicamovimente.com.br" autocapitalize="off" spellcheck="false">
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">
+          <button class="btn btn-primary" id="dmSalvar" onclick="salvarDominio()">Usar este domínio</button>
+          <button class="btn btn-soft" id="dmVerificar" onclick="verificarDominio()" style="display:none;">Verificar DNS agora</button>
+          <button class="btn btn-ghost" id="dmAbrir" onclick="abrirDominio()" style="display:none;">Abrir site</button>
+          <button class="btn btn-danger btn-sm" id="dmRemover" onclick="removerDominio()" style="display:none;margin-left:auto;">Remover</button>
+        </div>
+
+        <div id="dmStatus" style="display:none;border-radius:12px;padding:14px 16px;margin-top:18px;font-size:.87rem;line-height:1.65;"></div>
+
+        <div id="dmDns" style="display:none;margin-top:18px;border:1px solid var(--line);border-radius:12px;padding:18px;">
+          <div style="font-size:.8rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-soft);margin-bottom:12px;">
+            Configure no painel do seu domínio
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="data" style="font-size:.85rem;">
+              <thead><tr><th>Tipo</th><th>Nome / Host</th><th>Valor / Aponta para</th></tr></thead>
+              <tbody>
+                <tr><td><b>CNAME</b></td><td id="dnsHost">www</td><td><code id="dnsAlvo">app.perfisio.com.br</code></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="font-size:.82rem;color:var(--text-soft);line-height:1.65;margin-top:12px;">
+            No registro.br, GoDaddy, Hostinger ou onde você comprou o domínio, procure por <b>DNS</b> ou <b>Zona DNS</b>
+            e crie o registro acima. Costuma valer em minutos, mas pode levar até 24h.
+            Depois clique em <b>Verificar DNS agora</b>.
+          </p>
+        </div>
+      </div>
+
+      <div class="card card-pad">
+        <h3 style="font-size:.98rem;margin-bottom:14px;">💡 Como funciona</h3>
+        <div class="day-list">
+          <div class="dl-item"><div class="dl-bar" style="background:var(--primary);"></div><div><div class="dl-title">1. Você informa o domínio</div><div class="dl-sub">Pode ser um domínio que você já tem ou um novo, comprado em qualquer registrador.</div></div></div>
+          <div class="dl-item"><div class="dl-bar" style="background:var(--blue);"></div><div><div class="dl-title">2. Aponta o DNS para o PerFisio</div><div class="dl-sub">Um registro CNAME no painel do seu domínio. Mostramos exatamente o que preencher.</div></div></div>
+          <div class="dl-item"><div class="dl-bar" style="background:var(--green);"></div><div><div class="dl-title">3. O site fica no ar com HTTPS</div><div class="dl-sub">O certificado de segurança é emitido automaticamente — sem custo e sem instalação.</div></div></div>
+          <div class="dl-item"><div class="dl-bar" style="background:var(--amber);"></div><div><div class="dl-title">4. Paciente agenda pelo seu endereço</div><div class="dl-sub">A página abre com a equipe e o calendário de horários. As sessões caem direto na sua agenda.</div></div></div>
+        </div>
+        <div style="background:var(--bg);border-radius:10px;padding:14px;margin-top:16px;font-size:.83rem;color:var(--text);line-height:1.65;">
+          <b>Dica:</b> use <code>www.suaclinica.com.br</code>. Domínio sem o "www" (apex) depende do
+          seu provedor aceitar <i>CNAME flattening</i> ou <i>ALIAS</i> — se não aceitar, redirecione o apex para o www.
         </div>
       </div>
     </div>
@@ -117,7 +176,75 @@
       const p = CLINICA.perfil || {};
       pTitulo.value = p.titulo || ''; pBio.value = p.bio || ''; pEsp.value = p.especialidades || '';
       pPreco.value = p.faixa_preco || ''; pVisivel.checked = !!p.visivel; pAgenda.checked = p.agenda_online !== false;
-      await carregarUsuarios();
+      await Promise.all([carregarUsuarios(), carregarDominio()]);
+    }
+
+    /* ================= DOMÍNIO PRÓPRIO ================= */
+    let DOM = null;
+
+    async function carregarDominio() {
+      DOM = await PF.api('/api/dominio');
+      document.getElementById('dnsAlvo').textContent = DOM.alvo;
+      const campo = document.getElementById('dmCampo');
+      campo.value = DOM.dominio || '';
+      const tem = !!DOM.dominio, ativo = DOM.dominio_status === 'ativo';
+      document.getElementById('dnsHost').textContent = (DOM.dominio || 'www.suaclinica.com.br').split('.')[0] === 'www'
+        ? 'www' : (DOM.dominio ? DOM.dominio.split('.')[0] : 'www');
+      document.getElementById('dmSalvar').textContent = tem ? 'Trocar domínio' : 'Usar este domínio';
+      document.getElementById('dmVerificar').style.display = tem && !ativo ? '' : 'none';
+      document.getElementById('dmAbrir').style.display = ativo ? '' : 'none';
+      document.getElementById('dmRemover').style.display = tem ? '' : 'none';
+      document.getElementById('dmDns').style.display = tem && !ativo ? '' : 'none';
+
+      const st = document.getElementById('dmStatus');
+      if (!tem) { st.style.display = 'none'; return; }
+      st.style.display = '';
+      if (ativo) {
+        st.style.cssText += ';background:var(--green-soft);border:1px solid #BFE5D2;color:var(--green);';
+        st.innerHTML = `✅ <b>${DOM.dominio} está no ar</b> — apontando para a página da sua clínica.
+          ${DOM.dominio_verificado_em ? 'Verificado em ' + new Date(DOM.dominio_verificado_em).toLocaleString('pt-BR') + '.' : ''}`;
+      } else {
+        st.style.cssText += ';background:var(--amber-soft);border:1px solid #EED9B8;color:var(--amber);';
+        st.innerHTML = `⏳ <b>${DOM.dominio} aguardando o DNS.</b> Crie o registro abaixo no painel do seu domínio e clique em "Verificar DNS agora".`;
+      }
+    }
+
+    async function salvarDominio() {
+      const btn = document.getElementById('dmSalvar');
+      const valor = document.getElementById('dmCampo').value.trim();
+      if (!valor) { App.toast('Escreva o domínio', 'error'); return; }
+      btn.disabled = true;
+      try {
+        const r = await PF.api('/api/dominio', { method: 'PUT', body: { dominio: valor } });
+        App.toast('Domínio salvo! Agora configure o DNS.');
+        if (r.railway && !r.railway.automatico && r.railway.motivo)
+          console.warn('registro automático no Railway indisponível:', r.railway.motivo);
+        await carregarDominio();
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false;
+    }
+
+    async function verificarDominio() {
+      const btn = document.getElementById('dmVerificar');
+      btn.disabled = true; btn.textContent = 'Consultando DNS...';
+      try {
+        const r = await PF.api('/api/dominio/verificar', { method: 'POST' });
+        await carregarDominio();
+        if (r.ok) App.toast('Domínio ativo! 🌐');
+        else App.toast(r.erro || `Ainda não aponta para o PerFisio${r.valor ? ' (achamos: ' + r.valor + ')' : ''}`, 'error');
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false; btn.textContent = 'Verificar DNS agora';
+    }
+
+    function abrirDominio() { window.open('https://' + DOM.dominio, '_blank'); }
+
+    async function removerDominio() {
+      if (!confirm(`Remover ${DOM.dominio}? O endereço deixa de abrir a página da clínica.`)) return;
+      try {
+        await PF.api('/api/dominio', { method: 'DELETE' });
+        App.toast('Domínio removido');
+        await carregarDominio();
+      } catch (e) { App.toast(e.message, 'error'); }
     }
 
     async function salvarClinica() {

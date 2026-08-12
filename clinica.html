@@ -49,9 +49,9 @@
 </head>
 <body>
 
-  <header class="lp-header">
-    <a class="logo" href="index.html"><span class="mark">P</span> PerFisio</a>
-    <nav>
+  <header class="lp-header" id="topo">
+    <a class="logo" href="index.html" id="topoLogo"><span class="mark">P</span> PerFisio</a>
+    <nav id="topoNav">
       <a href="index.html#profissionais">← Voltar ao diretório</a>
       <a href="login.html" class="btn btn-ghost btn-sm">Entrar</a>
     </nav>
@@ -90,11 +90,17 @@
       esportiva: '🏃 Esportiva', ortopedia: '🦴 Ortopedia', pilates: '🧘 Pilates', neuro: '🧠 Neuro',
       rpg: '🧍 RPG', respiratoria: '🫁 Respiratória', pelvica: '🌸 Pélvica', geriatrica: '👵 Geriátrica',
     };
-    const clinicaId = new URLSearchParams(location.search).get('id');
-    let CLI = null;
+    let clinicaId = new URLSearchParams(location.search).get('id');
+    let CLI = null, dominioProprio = false;
 
     async function boot() {
-      if (!clinicaId) { location.href = 'index.html'; return; }
+      /* no domínio próprio da clínica não existe ?id= — o servidor resolve pelo host */
+      if (!clinicaId) {
+        try {
+          clinicaId = (await PF.api('/api/public/clinica-do-host')).id;
+          dominioProprio = true;
+        } catch (e) { location.href = 'index.html'; return; }
+      }
       try { CLI = await PF.api('/api/public/clinicas/' + clinicaId); }
       catch (e) {
         document.getElementById('conteudo').innerHTML =
@@ -123,29 +129,37 @@
           </div>
           <div class="pf-cta">
             <span class="pf-preco">${perfil.faixa_preco || ''}</span>
-            <button class="btn btn-primary" style="padding:12px 26px;" onclick="App.openModal('mAvaliacao')">Agendar avaliação</button>
+            <button class="btn btn-primary" style="padding:12px 26px;" onclick="irAgendar()">📅 Agendar horário</button>
+            <button class="btn btn-ghost" style="padding:12px 22px;" onclick="App.openModal('mAvaliacao')">Falar com a clínica</button>
           </div>
         </div>
 
         ${perfil.bio ? `<div class="pf-sec"><h2>Sobre a clínica</h2><p>${perfil.bio.replace(/\n/g, '<br>')}</p></div>` : ''}
 
-        <div class="pf-sec">
-          <h2>Equipe</h2>
+        <div class="pf-sec" id="secAgendar">
+          <h2>Agende sua sessão</h2>
+          <p style="color:var(--text-soft);font-size:.92rem;margin-bottom:18px;">
+            Escolha o profissional e o horário — a confirmação sai na hora, sem precisar ligar.</p>
           <div class="equipe">
             ${c.equipe.map(f => {
               const fi = f.nome.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase();
-              return `<a class="eq-card" href="fisio.html?id=${f.id}">
-                <div class="eq-top" style="background:linear-gradient(135deg,${f.cor},${f.cor}CC);"><span class="eq-av" style="background:${f.cor};">${fi}${f.tem_foto ? `<img src="/api/public/fisio-foto/${f.id}" alt="" loading="lazy" onerror="this.remove()">` : ''}</span></div>
-                <div class="eq-body">
-                  <div class="eq-nome">${f.nome}</div>
-                  <div class="eq-esp">${f.esp || 'Fisioterapeuta'}${f.bairro ? ' · ' + f.bairro : ''}</div>
-                  <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;">
-                    ${f.especialidades.slice(0, 3).map(e => `<span class="badge primary" style="font-size:.64rem;">${LABEL[e] || e}</span>`).join('')}
-                    ${f.domiciliar ? '<span class="badge amber" style="font-size:.64rem;">🏠</span>' : ''}
+              return `<div class="eq-card">
+                <a href="fisio.html?id=${f.id}" style="display:block;color:inherit;">
+                  <div class="eq-top" style="background:linear-gradient(135deg,${f.cor},${f.cor}CC);"><span class="eq-av" style="background:${f.cor};">${fi}${f.tem_foto ? `<img src="/api/public/fisio-foto/${f.id}" alt="" loading="lazy" onerror="this.remove()">` : ''}</span></div>
+                  <div class="eq-body" style="padding-bottom:6px;">
+                    <div class="eq-nome">${f.nome}</div>
+                    <div class="eq-esp">${f.esp || 'Fisioterapeuta'}${f.bairro ? ' · ' + f.bairro : ''}</div>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;">
+                      ${f.especialidades.slice(0, 3).map(e => `<span class="badge primary" style="font-size:.64rem;">${LABEL[e] || e}</span>`).join('')}
+                      ${f.domiciliar ? '<span class="badge amber" style="font-size:.64rem;">🏠</span>' : ''}
+                    </div>
+                    ${f.preco ? `<div style="font-size:.78rem;font-weight:700;color:var(--ink);margin-top:8px;">${f.preco}</div>` : ''}
                   </div>
-                  ${f.preco ? `<div style="font-size:.78rem;font-weight:700;color:var(--ink);margin-top:8px;">${f.preco}</div>` : ''}
+                </a>
+                <div style="padding:0 16px 16px;">
+                  <a class="btn btn-primary btn-sm" style="width:100%;justify-content:center;" href="fisio.html?id=${f.id}#agendar">📅 Agendar horário</a>
                 </div>
-              </a>`;
+              </div>`;
             }).join('') || '<p style="color:var(--text-soft);">Nenhum profissional público ainda.</p>'}
           </div>
         </div>
@@ -155,7 +169,22 @@
           <div id="mapaClinica"></div>
         </div>`;
       document.getElementById('avTitulo').textContent = 'Solicitar avaliação — ' + c.nome;
+
+      /* no domínio próprio, o site é da clínica: o topo vira a marca dela */
+      if (dominioProprio) {
+        const ini2 = c.nome.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase();
+        document.getElementById('topoLogo').innerHTML = `<span class="mark">${ini2}</span> ${c.nome}`;
+        document.getElementById('topoLogo').href = '/';
+        document.getElementById('topoNav').innerHTML = `
+          <a href="#secAgendar">Agendar</a>
+          ${c.telefone ? `<a href="tel:${c.telefone.replace(/\D/g, '')}">${c.telefone}</a>` : ''}
+          <a href="login.html" class="btn btn-ghost btn-sm">Área da equipe</a>`;
+      }
       iniciarMapa();
+    }
+
+    function irAgendar() {
+      document.getElementById('secAgendar').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     async function iniciarMapa() {

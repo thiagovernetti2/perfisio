@@ -391,7 +391,9 @@
       document.getElementById('clinRows').innerHTML = CLINICAS.map((c, i) => `
         <tr onclick="abrirDetalhe('${c.id}')" style="cursor:pointer;">
           <td><div class="cell-person"><span class="avatar-sm" style="background:${CORES[i % 6]};">${App.iniciais(c.nome)}</span>
-            <div><div class="p-name">${c.nome}</div><div class="p-sub">${c.email || ''}</div></div></div></td>
+            <div><div class="p-name">${c.nome}</div><div class="p-sub">${c.dominio
+              ? `🌐 ${c.dominio}${c.dominio_status === 'ativo' ? '' : ' (DNS pendente)'}`
+              : (c.email || '')}</div></div></div></td>
           <td>${c.usuarios}</td>
           <td>${c.pacientes}</td>
           <td>${c.sessoes_30d}</td>
@@ -455,6 +457,15 @@
           <div class="field"><label>Telefone</label><input type="text" id="dcTel" value="${d.telefone || ''}"></div>
           <div class="field"><label>CNPJ</label><input type="text" id="dcCnpj" value="${d.cnpj || ''}"></div>
           <div class="field full"><label>Endereço</label><input type="text" id="dcEnd" value="${d.endereco || ''}"></div>
+          <div class="field full"><label>Domínio próprio</label>
+            <div style="display:flex;align-items:center;gap:10px;font-size:.88rem;padding:10px 0;">
+              ${d.dominio
+                ? `<a href="https://${d.dominio}" target="_blank" style="font-weight:700;color:var(--primary-dark);">🌐 ${d.dominio}</a>
+                   <span class="badge ${d.dominio_status === 'ativo' ? 'green' : 'amber'}">${d.dominio_status === 'ativo' ? 'ativo' : 'DNS pendente'}</span>
+                   <span style="color:var(--text-soft);font-size:.78rem;">Cadastre no Railway (Settings → Networking → Custom Domain) para emitir o certificado.</span>`
+                : '<span style="color:var(--text-soft);">Nenhum — a clínica configura em Configurações → Domínio próprio</span>'}
+            </div>
+          </div>
         </div>
 
         <div style="display:flex;align-items:center;gap:12px;background:${d.assinante ? 'var(--green-soft)' : 'var(--bg)'};border:1px solid ${d.assinante ? '#BFE5D2' : 'var(--line)'};border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:.86rem;">
