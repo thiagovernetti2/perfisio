@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Fisioterapeuta — PerFisio</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="assets/img/simbolo-perfisio.svg">
   <link rel="stylesheet" href="assets/css/app.css">
   <style>
     body { background: var(--bg); }
@@ -14,6 +15,7 @@
       backdrop-filter: blur(8px); z-index: 50;
     }
     .lp-header .logo { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 1.1rem; color: var(--ink); }
+    .lp-header .logo img { height: 30px; width: auto; display: block; }
     .lp-header .logo .mark { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff; display: grid; place-items: center; font-size: .95rem; }
     .lp-header nav { margin-left: auto; display: flex; align-items: center; gap: 16px; font-size: .88rem; font-weight: 600; color: var(--text-soft); }
 
@@ -127,7 +129,7 @@
 <body>
 
   <header class="lp-header">
-    <a class="logo" href="index.html"><span class="mark">P</span> PerFisio</a>
+    <a class="logo" href="index.html"><img src="assets/img/logo-perfisio.svg" alt="PerFisio" width="176" height="30"></a>
     <nav>
       <a href="index.html#profissionais">← Voltar ao diretório</a>
       <a href="login.html" class="btn btn-ghost btn-sm">Entrar</a>

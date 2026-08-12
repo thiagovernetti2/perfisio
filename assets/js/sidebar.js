@@ -41,11 +41,10 @@
   sidebar.className = 'sidebar';
   sidebar.innerHTML = `
     <div class="brand">
-      <div class="logo-mark">P</div>
-      <div>
-        <div class="logo-name">PerFisio</div>
-        <div class="logo-sub">Gestão & CRM</div>
-      </div>
+      <a href="../index.html" style="display:block;">
+        <img class="logo-img" src="../assets/img/logo-perfisio-branco.svg" alt="PerFisio" width="164" height="28">
+      </a>
+      <div class="logo-sub">Gestão &amp; CRM</div>
     </div>
     <nav>${navHtml}</nav>
     <div class="user-box">

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PerFisio — Encontre seu fisioterapeuta · CRM para clínicas</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="assets/img/simbolo-perfisio.svg">
   <link rel="stylesheet" href="assets/css/app.css">
   <style>
     body { background: #fff; }
@@ -14,6 +15,7 @@
       backdrop-filter: blur(8px); z-index: 50;
     }
     .lp-header .logo { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 1.15rem; color: var(--ink); }
+    .lp-header .logo img { height: 30px; width: auto; display: block; }
     .lp-header .logo .mark { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff; display: grid; place-items: center; font-size: 1rem; }
     .lp-header nav { margin-left: auto; display: flex; align-items: center; gap: 22px; font-size: .9rem; font-weight: 600; color: var(--text-soft); }
     .lp-header nav a:hover { color: var(--ink); }
@@ -93,6 +95,7 @@
     .mk-side { width: 128px; flex-shrink: 0; background: var(--ink-2); padding: 10px 8px; display: flex; flex-direction: column; gap: 3px; }
     .mk-logo { display: flex; align-items: center; gap: 6px; color: #fff; font-weight: 800; font-size: .72rem; padding: 2px 4px 10px; }
     .mk-logo span { width: 18px; height: 18px; border-radius: 5px; background: linear-gradient(135deg,var(--primary),var(--primary-dark)); display: grid; place-items: center; font-size: .6rem; }
+    .mk-logo img { height: 14px; width: auto; display: block; }
     .mk-nav { color: #9DB3B0; padding: 5px 8px; border-radius: 6px; font-size: .66rem; }
     .mk-nav.on { background: var(--primary); color: #fff; font-weight: 700; }
     .mk-body { flex: 1; padding: 12px 14px; min-width: 0; }
@@ -167,7 +170,7 @@
 <body>
 
   <header class="lp-header">
-    <div class="logo"><span class="mark">P</span> PerFisio</div>
+    <a class="logo" href="index.html"><img src="assets/img/logo-perfisio.svg" alt="PerFisio" width="176" height="30"></a>
     <nav>
       <a href="#profissionais">Encontrar fisioterapeuta</a>
       <a href="#clinicas">Para clínicas</a>
@@ -304,7 +307,7 @@
       <div class="mk-bar"><i></i><i></i><i></i><em class="mk-url">app.perfisio.com.br</em></div>
       <div class="mk-screen">
         <div class="mk-side">
-          <div class="mk-logo"><span>P</span> PerFisio</div>
+          <div class="mk-logo"><img src="assets/img/logo-perfisio-branco.svg" alt="PerFisio"></div>
           <div class="mk-nav" data-nav="dashboard">📊 Dashboard</div>
           <div class="mk-nav" data-nav="agenda">📅 Agenda</div>
           <div class="mk-nav">👥 Pacientes</div>

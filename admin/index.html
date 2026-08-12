@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Superadmin — PerFisio</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="../assets/img/simbolo-perfisio.svg">
   <link rel="stylesheet" href="../assets/css/app.css">
   <style>
     body { background: var(--bg); }
@@ -19,10 +20,9 @@
 
   <!-- LOGIN -->
   <div class="adm-login" id="loginBox" style="display:none;">
-    <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:22px;">
-      <span style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;display:grid;place-items:center;font-weight:800;font-size:1.1rem;">P</span>
-      <div><div style="font-weight:900;font-size:1.1rem;color:var(--ink);">PerFisio</div>
-      <div style="font-size:.64rem;color:var(--text-soft);text-transform:uppercase;letter-spacing:1.4px;">Painel do Superadmin</div></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:22px;">
+      <img src="../assets/img/logo-perfisio.svg" alt="PerFisio" width="187" height="32" style="height:32px;width:auto;">
+      <div style="font-size:.64rem;color:var(--text-soft);text-transform:uppercase;letter-spacing:1.4px;">Painel do Superadmin</div>
     </div>
     <div class="card card-pad">
       <h2 style="font-size:1.3rem;font-weight:800;color:var(--ink);margin-bottom:4px;">Acesso restrito</h2>
@@ -38,11 +38,8 @@
   <div class="app-shell" id="painel" style="display:none;">
     <aside class="sidebar">
       <div class="brand">
-        <div class="logo-mark">P</div>
-        <div>
-          <div class="logo-name">PerFisio</div>
-          <div class="logo-sub">Superadmin</div>
-        </div>
+        <img class="logo-img" src="../assets/img/logo-perfisio-branco.svg" alt="PerFisio" width="164" height="28">
+        <div class="logo-sub">Superadmin</div>
       </div>
       <nav id="admNav">
         <div class="nav-label">Plataforma</div>
