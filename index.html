@@ -18,7 +18,14 @@
     .lp-header nav { margin-left: auto; display: flex; align-items: center; gap: 22px; font-size: .9rem; font-weight: 600; color: var(--text-soft); }
     .lp-header nav a:hover { color: var(--ink); }
 
-    .hero { padding: 72px 6vw 60px; text-align: center; background: linear-gradient(180deg, #F0FAF7 0%, #fff 100%); }
+    /* fundo animado (mesmo efeito do site perfisio.com.br): orbs de gradiente sobre canvas */
+    .hero { position: relative; overflow: hidden; padding: 72px 6vw 60px; text-align: center; background: #f8f6ff; }
+    .hero > #bgCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .hero > *:not(#bgCanvas) { position: relative; }
+    .hero::after {
+      content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 140px;
+      background: linear-gradient(180deg, rgba(255,255,255,0) 0%, #fff 100%); pointer-events: none;
+    }
     .hero h1 { font-size: clamp(1.9rem, 4.5vw, 3.1rem); font-weight: 900; color: var(--ink); letter-spacing: -1px; line-height: 1.15; }
     .hero h1 em { color: var(--primary); font-style: normal; }
     .hero p { color: var(--text-soft); font-size: 1.05rem; margin: 16px auto 0; max-width: 560px; }
@@ -129,7 +136,25 @@
     .faq details[open] summary::after { content: '−'; }
     .faq p { font-size: .89rem; color: var(--text-soft); line-height: 1.7; margin-top: 10px; }
 
+    /* ===== COMUNIDADE (página do profissional) ===== */
+    .com-grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; align-items: center; max-width: 1080px; margin: 0 auto; }
+    .com-grid h2 { text-align: left; }
+    .com-lead { font-size: 1.02rem; color: var(--text); line-height: 1.75; margin-top: 14px; }
+    .com-publico { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+    .com-lista { list-style: none; margin: 26px 0 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+    .com-lista li { display: flex; gap: 13px; align-items: flex-start; font-size: .96rem; color: var(--ink); font-weight: 600; line-height: 1.5; }
+    .com-lista li .ck { flex: none; width: 26px; height: 26px; border-radius: 8px; background: var(--primary-soft); color: var(--primary-dark); display: grid; place-items: center; font-size: .82rem; }
+    .com-lista li span.txt { font-weight: 600; }
+    .com-lista li small { display: block; font-weight: 500; font-size: .84rem; color: var(--text-soft); margin-top: 3px; line-height: 1.55; }
+    .com-art { position: relative; }
+    .com-art::before {
+      content: ''; position: absolute; inset: 8% -4% 4% -4%; border-radius: 24px;
+      background: radial-gradient(60% 60% at 50% 45%, rgba(13,161,137,.16), transparent 70%);
+    }
+    .com-art img { position: relative; width: 100%; height: auto; display: block; border-radius: 14px; }
+
     @media (max-width: 900px) { .passos { grid-template-columns: repeat(2,1fr); } }
+    @media (max-width: 860px) { .com-grid { grid-template-columns: 1fr; gap: 32px; } .com-art { order: -1; } .com-grid h2 { text-align: center; } }
     @media (max-width: 860px) { .preco-grid { grid-template-columns: 1fr !important; } }
     @media (max-width: 720px) {
       .lp-header nav { display: none; }
@@ -155,6 +180,7 @@
 
   <!-- HERO -->
   <section class="hero">
+    <canvas id="bgCanvas" aria-hidden="true"></canvas>
     <div class="kicker">Seu bem estar em movimento</div>
     <h1>Encontre o <em>fisioterapeuta certo</em><br>perto de você</h1>
     <p>Profissionais verificados, autônomos ou de clínica, com especialidade, preço e a distância de onde você está.</p>
@@ -206,6 +232,41 @@
         <div class="f-ico" style="background:#14383C;">🗂</div>
         <h3 style="color:#fff;">Um sistema no lugar de cinco</h3>
         <p style="color:#9DB3B0;">Agenda no caderno, prontuário no Word, cobrança na planilha e exercícios no WhatsApp viram um só lugar — com histórico de verdade.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMUNIDADE / PÁGINA DO PROFISSIONAL -->
+  <section class="section" id="comunidade">
+    <div class="com-grid">
+      <div>
+        <div class="kicker" style="color:var(--primary-dark);font-size:.78rem;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;">Comunidade PerFisio</div>
+        <h2 style="margin-top:12px;">Uma comunidade de fisioterapeutas de todo o Brasil</h2>
+        <p class="com-lead">
+          O PerFisio foi desenvolvido <b>para fisioterapeutas e clínicas de fisioterapia</b> — gente que cuida
+          de gente e precisa ser encontrada por quem está com dor agora, no bairro ao lado.
+        </p>
+        <div class="com-publico">
+          <span class="badge primary">🏥 Clínicas de fisioterapia</span>
+          <span class="badge blue">🧘 Profissionais de pilates</span>
+          <span class="badge green">🦵 Reabilitação física e motora</span>
+        </div>
+        <ul class="com-lista">
+          <li><span class="ck">✓</span><div><span class="txt">Divulgue sua página nas redes sociais</span>
+            <small>Um link só, com sua bio, especialidades, fotos e o botão de agendar — no lugar daquele "chama no direct".</small></div></li>
+          <li><span class="ck">✓</span><div><span class="txt">Seja encontrado em sites de pesquisa</span>
+            <small>Sua página tem endereço próprio e aparece para quem procura fisioterapia na sua cidade.</small></div></li>
+          <li><span class="ck">✓</span><div><span class="txt">Use como landing page em campanhas de marketing</span>
+            <small>Anunciou no Instagram ou no Google? Mande o tráfego para uma página que já agenda a consulta.</small></div></li>
+        </ul>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:28px;">
+          <a href="login.html#registro" class="btn btn-primary">Criar minha página grátis →</a>
+          <a href="#profissionais" class="btn btn-ghost">Ver profissionais na comunidade</a>
+        </div>
+      </div>
+      <div class="com-art">
+        <img src="assets/img/mockup-perfisio.png" width="720" height="528" loading="lazy"
+             alt="Página de um fisioterapeuta no PerFisio vista no computador e no celular">
       </div>
     </div>
   </section>
@@ -729,6 +790,68 @@
     }
     document.querySelectorAll('#mkTabs .mk-tab').forEach(t => t.addEventListener('click', () => mostrarMock(t.dataset.mk)));
     mostrarMock('dashboard');
+
+    /* ---------- Fundo animado do hero (mesmo efeito e cores de perfisio.com.br) ---------- */
+    (function () {
+      const hero = document.querySelector('.hero');
+      const canvas = document.getElementById('bgCanvas');
+      if (!hero || !canvas) return;
+      const ctx = canvas.getContext('2d');
+      let W, H, last = 0;
+      const resize = () => {
+        const r = hero.getBoundingClientRect();
+        W = canvas.width = r.width; H = canvas.height = r.height;
+      };
+      resize();
+      new ResizeObserver(resize).observe(hero);
+
+      const orbs = [
+        { x: 0.20, y: 0.30, r: 0.55, h: 210, s: 70, l: 62, vx:  0.00018, vy:  0.00012, vh: 0.040 },
+        { x: 0.70, y: 0.20, r: 0.50, h: 280, s: 65, l: 65, vx: -0.00015, vy:  0.00020, vh: 0.030 },
+        { x: 0.50, y: 0.80, r: 0.60, h: 160, s: 60, l: 60, vx:  0.00020, vy: -0.00014, vh: 0.050 },
+        { x: 0.85, y: 0.65, r: 0.45, h: 340, s: 68, l: 63, vx: -0.00013, vy: -0.00010, vh: 0.035 },
+        { x: 0.10, y: 0.75, r: 0.48, h:  50, s: 65, l: 65, vx:  0.00016, vy:  0.00008, vh: 0.045 },
+        { x: 0.55, y: 0.45, r: 0.42, h: 120, s: 62, l: 64, vx: -0.00019, vy:  0.00015, vh: 0.038 },
+      ];
+
+      function desenhar(dt) {
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = '#f8f6ff';
+        ctx.fillRect(0, 0, W, H);
+        orbs.forEach(o => {
+          o.x += o.vx * dt; o.y += o.vy * dt;
+          o.h = (o.h + o.vh * dt * 0.06 + 360) % 360;
+          if (o.x < -0.15 || o.x > 1.15) o.vx *= -1;
+          if (o.y < -0.15 || o.y > 1.15) o.vy *= -1;
+          const cx = o.x * W, cy = o.y * H, rad = o.r * Math.max(W, H);
+          const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
+          g.addColorStop(0, `hsla(${o.h | 0},${o.s}%,${o.l}%,0.75)`);
+          g.addColorStop(0.45, `hsla(${o.h | 0},${o.s}%,${o.l}%,0.30)`);
+          g.addColorStop(1, `hsla(${o.h | 0},${o.s}%,${o.l}%,0)`);
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, W, H);
+        });
+        ctx.fillStyle = 'rgba(255,255,255,0.10)';
+        ctx.fillRect(0, 0, W, H);
+      }
+
+      // quem pediu menos movimento vê o mesmo degradê, parado
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { desenhar(0); return; }
+
+      let visivel = true, rodando = false;
+      const frame = ts => {
+        if (!visivel) { rodando = false; return; }
+        requestAnimationFrame(frame);
+        const dt = Math.min(ts - last, 64);
+        last = ts;
+        desenhar(dt);
+      };
+      const ligar = () => { if (!rodando) { rodando = true; last = performance.now(); requestAnimationFrame(frame); } };
+      // fora da tela não gasta bateria à toa
+      new IntersectionObserver(([e]) => { visivel = e.isIntersecting; if (visivel) ligar(); })
+        .observe(hero);
+      ligar();
+    })();
 
     /* ---------- Calculadora: R$ 40 por profissional ---------- */
     const PRECO_FISIO = 40;
