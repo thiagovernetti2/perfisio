@@ -210,6 +210,9 @@
           <div style="grid-column:1/-1;text-align:center;color:var(--text-soft);padding:30px;">Carregando profissionais...</div>
         </div>
       </div>
+      <div id="dirMais" style="display:none;text-align:center;margin-top:22px;">
+        <button class="btn btn-soft" id="btnVerTodos" onclick="alternarTodos()">Ver todos os profissionais</button>
+      </div>
     </div>
   </section>
 
@@ -551,10 +554,21 @@
       });
     }
 
+    /* na home mostramos 4 em destaque; o resto abre no "ver todos" */
+    const DESTAQUES = 4;
+    let verTodos = false;
+
+    function alternarTodos() {
+      verTodos = !verTodos;
+      renderProfissionais();
+      if (!verTodos) document.getElementById('profissionais').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
     function renderProfissionais() {
       const grid = document.getElementById('perfilGrid');
       const lista = filtrados();
       const sub = document.getElementById('dirSub');
+      const caixaMais = document.getElementById('dirMais');
       sub.innerHTML = minhaPos
         ? `${lista.length} profissional(is) ${Number(document.getElementById('raioSel').value) ? 'no raio selecionado' : 'encontrados'} · ordenados por distância de você`
         : 'Profissionais verificados — autônomos ou vinculados a clínicas.';
@@ -566,13 +580,24 @@
           <div style="font-size:.86rem;margin-top:5px;">${PROS.length ? 'Tente outra especialidade ou aumente a distância.' : 'Crie sua conta, ative o perfil público e apareça para os pacientes da sua região.'}</div>
           ${PROS.length ? '' : '<a href="login.html#registro" class="btn btn-primary btn-sm" style="margin-top:14px;">Criar perfil grátis</a>'}
         </div>`;
+        caixaMais.style.display = 'none';
         atualizarMapa(lista);
         return;
       }
 
+      const visiveis = verTodos ? lista : lista.slice(0, DESTAQUES);
+      if (lista.length > DESTAQUES) {
+        caixaMais.style.display = '';
+        document.getElementById('btnVerTodos').textContent = verTodos
+          ? '↑ Ver menos'
+          : `Ver todos os ${lista.length} profissionais →`;
+      } else {
+        caixaMais.style.display = 'none';
+      }
+
       const GRADS = [['#0DA189','#0A8270'],['#2D7DD2','#1F5FA8'],['#7C5CBF','#5D3FA0'],['#D9820B','#B26505']];
       const LABEL = Object.fromEntries(ESPS);
-      grid.innerHTML = lista.map((p, i) => {
+      grid.innerHTML = visiveis.map((p, i) => {
         const [g1, g2] = GRADS[i % 4];
         const ini = p.nome.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase();
         const tags = p.especialidades.map(e => LABEL[e] || e).slice(0, 3);
