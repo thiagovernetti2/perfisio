@@ -28,9 +28,18 @@
       content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 140px;
       background: linear-gradient(180deg, rgba(255,255,255,0) 0%, #fff 100%); pointer-events: none;
     }
-    .hero h1 { font-size: clamp(1.9rem, 4.5vw, 3.1rem); font-weight: 900; color: var(--ink); letter-spacing: -1px; line-height: 1.15; }
-    .hero h1 em { color: var(--primary); font-style: normal; }
-    .hero p { color: var(--text-soft); font-size: 1.05rem; margin: 16px auto 0; max-width: 560px; }
+    /* contorno branco + sombra: o título precisa se destacar do fundo colorido */
+    .hero h1 {
+      font-size: clamp(1.9rem, 4.5vw, 3.1rem); font-weight: 900; color: var(--ink);
+      letter-spacing: -.2px; line-height: 1.2;
+      -webkit-text-stroke: .11em #fff; paint-order: stroke fill;
+      text-shadow: 0 3px 14px rgba(15,42,46,.20), 0 1px 3px rgba(15,42,46,.14);
+    }
+    .hero h1 em { color: var(--primary-dark); font-style: normal; }
+    /* halo branco suave: mesma razão do contorno do título */
+    .hero p { color: var(--text); font-size: 1.05rem; margin: 16px auto 0; max-width: 560px;
+      text-shadow: 0 1px 6px #fff, 0 0 14px rgba(255,255,255,.9); }
+    .hero .kicker, .hero #dirSub { text-shadow: 0 1px 6px #fff, 0 0 14px rgba(255,255,255,.9); }
     .search-bar {
       display: flex; gap: 8px; background: #fff; border: 1px solid var(--line); border-radius: 14px;
       padding: 8px; max-width: 640px; margin: 30px auto 0; box-shadow: var(--shadow-lg); flex-wrap: wrap;
