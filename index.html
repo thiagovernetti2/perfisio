@@ -841,6 +841,8 @@
       resize();
       new ResizeObserver(resize).observe(hero);
 
+      const VEU_BRANCO = 0.45; // 0 = cores cheias · 1 = branco total
+
       const orbs = [
         { x: 0.20, y: 0.30, r: 0.55, h: 210, s: 70, l: 62, vx:  0.00018, vy:  0.00012, vh: 0.040 },
         { x: 0.70, y: 0.20, r: 0.50, h: 280, s: 65, l: 65, vx: -0.00015, vy:  0.00020, vh: 0.030 },
@@ -867,7 +869,8 @@
           ctx.fillStyle = g;
           ctx.fillRect(0, 0, W, H);
         });
-        ctx.fillStyle = 'rgba(255,255,255,0.10)';
+        // véu branco por cima dos orbs: quanto maior, mais suaves as cores
+        ctx.fillStyle = `rgba(255,255,255,${VEU_BRANCO})`;
         ctx.fillRect(0, 0, W, H);
       }
 
