@@ -287,7 +287,14 @@ async function seedClinica(client, cid) {
 const dns = require('node:dns').promises;
 // host onde o PerFisio roda — é para cá que o CNAME da clínica deve apontar
 const HOST_APP = (process.env.APP_HOST || process.env.RAILWAY_PUBLIC_DOMAIN || 'app.perfisio.com.br').toLowerCase();
-const HOSTS_SISTEMA = new Set([HOST_APP, 'localhost', '127.0.0.1', 'perfisio.com.br', 'www.perfisio.com.br']);
+// site público (marketing + diretório) e sistema (login/app) em hosts separados.
+// A separação só entra em ação com SITE_HOST definido — antes disso tudo roda no mesmo host.
+const HOST_SITE = (process.env.SITE_HOST || '').toLowerCase();
+const HOST_APEX = HOST_SITE.startsWith('www.') ? HOST_SITE.slice(4) : '';
+const HOSTS_SISTEMA = new Set(
+  [HOST_APP, HOST_SITE, HOST_APEX, 'localhost', '127.0.0.1', 'perfisio.com.br', 'www.perfisio.com.br'].filter(Boolean));
+// para onde o CNAME das clínicas aponta: a página delas é conteúdo do site público
+const ALVO_CNAME = HOST_SITE || HOST_APP;
 
 const soHost = h => String(h || '').split(':')[0].toLowerCase().replace(/\.$/, '');
 const hostDoSistema = h => HOSTS_SISTEMA.has(soHost(h)) || soHost(h).endsWith('.up.railway.app');
@@ -321,11 +328,11 @@ async function dnsAponta(dominio) {
   try {
     const cnames = await dns.resolveCname(dominio);
     const achou = cnames.map(c => soHost(c));
-    if (achou.includes(HOST_APP)) return { ok: true, via: 'CNAME', valor: achou.join(', ') };
+    if (achou.includes(ALVO_CNAME)) return { ok: true, via: 'CNAME', valor: achou.join(', ') };
     if (achou.length) return { ok: false, via: 'CNAME', valor: achou.join(', ') };
   } catch { /* sem CNAME: tenta registro A */ }
   try {
-    const [ips, nossos] = await Promise.all([dns.resolve4(dominio), dns.resolve4(HOST_APP)]);
+    const [ips, nossos] = await Promise.all([dns.resolve4(dominio), dns.resolve4(ALVO_CNAME)]);
     if (ips.some(i => nossos.includes(i))) return { ok: true, via: 'A', valor: ips.join(', ') };
     return { ok: false, via: 'A', valor: ips.join(', ') };
   } catch {
@@ -871,7 +878,7 @@ app.delete('/api/admin/social/:id', superauth, async (req, res) => {
 app.get('/api/dominio', auth, async (req, res) => {
   const c = (await pool.query(
     'SELECT nome, dominio, dominio_status, dominio_verificado_em FROM clinicas WHERE id=$1', [req.auth.cid])).rows[0];
-  res.json({ ...c, alvo: HOST_APP, automatico: !!process.env.RAILWAY_API_TOKEN });
+  res.json({ ...c, alvo: ALVO_CNAME, automatico: !!process.env.RAILWAY_API_TOKEN });
 });
 
 app.put('/api/dominio', auth, async (req, res) => {
@@ -885,7 +892,7 @@ app.put('/api/dominio', auth, async (req, res) => {
   await pool.query("UPDATE clinicas SET dominio=$2, dominio_status='pendente', dominio_verificado_em=NULL WHERE id=$1",
     [req.auth.cid, dominio]);
   limparCacheHost();
-  res.json({ ok: true, dominio, alvo: HOST_APP, status: 'pendente', railway });
+  res.json({ ok: true, dominio, alvo: ALVO_CNAME, status: 'pendente', railway });
 });
 
 app.delete('/api/dominio', auth, async (req, res) => {
@@ -905,7 +912,7 @@ app.post('/api/dominio/verificar', auth, async (req, res) => {
     await pool.query("UPDATE clinicas SET dominio_status='ativo', dominio_verificado_em=now() WHERE id=$1", [req.auth.cid]);
     limparCacheHost();
   }
-  res.json({ ...dnsOk, dominio: c.dominio, alvo: HOST_APP, status: dnsOk.ok ? 'ativo' : 'pendente' });
+  res.json({ ...dnsOk, dominio: c.dominio, alvo: ALVO_CNAME, status: dnsOk.ok ? 'ativo' : 'pendente' });
 });
 
 // a página da clínica descobre quem ela é pelo próprio host acessado
@@ -1634,6 +1641,32 @@ app.post('/api/public/leads', async (req, res) => {
 
 /* ---------- ESTÁTICO ---------- */
 const ROOT = path.join(__dirname, '..');
+
+/* ---- SITE (www) x SISTEMA (app) ----
+   www.perfisio.com.br  → páginas públicas (home, planos, perfis, clínicas)
+   app.perfisio.com.br  → login, painel da clínica e superadmin
+   Como os links entre as páginas continuam relativos, é aqui que cada host manda
+   o visitante para o lugar certo. Sem SITE_HOST definido nada disso roda. */
+const ehDoSistema = p => p === '/login.html' || p.startsWith('/app/') || p.startsWith('/admin');
+const passaDireto = p => p.startsWith('/api/') || p.startsWith('/assets/') || p.startsWith('/.well-known');
+
+if (HOST_SITE) {
+  app.use((req, res, next) => {
+    const h = soHost(req.headers.host);
+    if (passaDireto(req.path)) return next();
+    const destino = alvo => res.redirect(301, `https://${alvo}${req.originalUrl}`);
+
+    if (h === HOST_APEX) return destino(HOST_SITE);            // perfisio.com.br → www
+    if (h === HOST_SITE) return ehDoSistema(req.path) ? destino(HOST_APP) : next();
+    if (h === HOST_APP) {
+      if (req.path === '/') return res.redirect(302, '/login.html');  // o app abre no login
+      return ehDoSistema(req.path) ? next() : destino(HOST_SITE);
+    }
+    // domínio próprio de clínica: login e painel ficam sempre no app
+    if (ehDoSistema(req.path) && !hostDoSistema(h)) return destino(HOST_APP);
+    next();
+  });
+}
 
 /* No domínio próprio de uma clínica, a raiz é a página dela — não o diretório do PerFisio.
    Os demais caminhos (assets, fisio.html, login, app/) continuam funcionando normalmente. */
