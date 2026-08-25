@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Fisioterapeuta — PerFisio</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="icon" type="image/svg+xml" href="assets/img/simbolo-perfisio.svg">
-  <link rel="stylesheet" href="assets/css/app.css">
+  <link rel="icon" type="image/svg+xml" href="/assets/img/simbolo-perfisio.svg">
+  <link rel="stylesheet" href="/assets/css/app.css">
   <style>
     body { background: var(--bg); }
     .lp-header {
@@ -129,10 +129,10 @@
 <body>
 
   <header class="lp-header">
-    <a class="logo" href="index.html"><img src="assets/img/logo-perfisio.svg" alt="PerFisio" width="176" height="30"></a>
+    <a class="logo" href="/"><img src="/assets/img/logo-perfisio.svg" alt="PerFisio" width="176" height="30"></a>
     <nav>
-      <a href="index.html#profissionais">← Voltar ao diretório</a>
-      <a href="login.html" class="btn btn-ghost btn-sm">Entrar</a>
+      <a href="/#profissionais">← Voltar ao diretório</a>
+      <a href="/login.html" class="btn btn-ghost btn-sm">Entrar</a>
     </nav>
   </header>
 
@@ -166,8 +166,8 @@
     </div>
   </div>
 
-  <script src="assets/js/app.js"></script>
-  <script src="assets/js/api.js"></script>
+  <script src="/assets/js/app.js"></script>
+  <script src="/assets/js/api.js"></script>
   <script>
     const LABEL = {
       esportiva: '🏃 Esportiva', ortopedia: '🦴 Ortopedia', pilates: '🧘 Pilates', neuro: '🧠 Neuro',
@@ -175,7 +175,10 @@
     };
     const NOME_ESP = { esportiva: 'Esportiva', ortopedia: 'Ortopedia', pilates: 'Pilates', neuro: 'Neuro', rpg: 'RPG', respiratoria: 'Respiratória', pelvica: 'Pélvica', geriatrica: 'Geriátrica' };
     const TRAT_PADRAO = ['Articulares', 'Lesões do esporte', 'Musculares', 'Reabilitação funcional', 'Dores em geral'];
-    const fisioId = new URLSearchParams(location.search).get('id');
+    /* aceita /fisioterapeuta/{slug} (URL amigável) ou ?id= (link antigo) */
+    const fisioId = location.pathname.startsWith('/fisioterapeuta/')
+      ? decodeURIComponent(location.pathname.split('/')[2] || '')
+      : new URLSearchParams(location.search).get('id');
     let PRO = null;
 
     const escurecer = hex => {
@@ -187,11 +190,11 @@
     const wpp = (num, msg) => `https://wa.me/55${soDigitos(num)}?text=${encodeURIComponent(msg)}`;
 
     async function boot() {
-      if (!fisioId) { location.href = 'index.html'; return; }
+      if (!fisioId) { location.href = '/'; return; }
       try { PRO = await PF.api('/api/public/profissionais/' + fisioId); }
       catch (e) {
         document.getElementById('conteudo').innerHTML =
-          `<div style="text-align:center;padding:60px 0;color:var(--text-soft);">Perfil não encontrado ou não está mais público.<br><br><a class="btn btn-primary" href="index.html#profissionais">← Voltar ao diretório</a></div>`;
+          `<div style="text-align:center;padding:60px 0;color:var(--text-soft);">Perfil não encontrado ou não está mais público.<br><br><a class="btn btn-primary" href="/#profissionais">← Voltar ao diretório</a></div>`;
         return;
       }
       const p = PRO;
@@ -318,7 +321,7 @@
               <div style="font-size:.8rem;color:var(--text-soft);margin-top:2px;">${p.clinica_endereco || ''}</div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <a class="btn btn-ghost btn-sm" href="clinica.html?id=${p.clinica_id}">Ver clínica</a>
+              <a class="btn btn-ghost btn-sm" href="${p.clinica_slug ? '/clinica/' + p.clinica_slug : '/clinica.html?id=' + p.clinica_id}">Ver clínica</a>
               ${p.clinica_telefone ? `<a class="btn btn-soft btn-sm" href="${wpp(p.clinica_telefone, 'Olá! Vim pelo PerFisio e gostaria de informações sobre a ' + p.clinica_nome + '.')}" target="_blank" rel="noopener">💬 Enviar mensagem</a>` : ''}
             </div>
           </div>
@@ -337,7 +340,7 @@
           <h2>Também na ${p.clinica_nome}</h2>
           <div class="colegas">
             ${p.colegas.map(c => `
-              <a class="colega" href="fisio.html?id=${c.id}">
+              <a class="colega" href="${c.slug ? '/fisioterapeuta/' + c.slug : '/fisio.html?id=' + c.id}">
                 <span class="av" style="background:${c.cor};">${c.nome.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase()}${c.tem_foto ? `<img src="/api/public/fisio-foto/${c.id}" alt="" loading="lazy" onerror="this.remove()">` : ''}</span>
                 <span><span class="n">${c.nome}</span><br><span class="s">${c.esp || ''}</span></span>
               </a>`).join('')}

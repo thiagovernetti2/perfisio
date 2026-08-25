@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fisioterapeutas na sua cidade — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="/assets/img/simbolo-perfisio.svg">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <style>
+    body { background: #fff; }
+    .lp-header {
+      display: flex; align-items: center; gap: 12px; padding: 18px 6vw;
+      border-bottom: 1px solid var(--line); position: sticky; top: 0; background: rgba(255,255,255,.94);
+      backdrop-filter: blur(8px); z-index: 50;
+    }
+    .lp-header .logo img { height: 30px; width: auto; display: block; }
+    .lp-header nav { margin-left: auto; display: flex; align-items: center; gap: 20px; font-size: .9rem; font-weight: 600; color: var(--text-soft); }
+
+    .cid-hero { padding: 54px 6vw 34px; text-align: center; background: linear-gradient(180deg, #F0FAF7 0%, #fff 100%); }
+    .cid-hero .crumbs { font-size: .8rem; color: var(--text-soft); margin-bottom: 14px; }
+    .cid-hero .crumbs a { color: var(--primary-dark); font-weight: 600; }
+    .cid-hero h1 { font-size: clamp(1.8rem, 4.2vw, 2.8rem); font-weight: 900; color: var(--ink); letter-spacing: -1px; }
+    .cid-hero h1 em { color: var(--primary-dark); font-style: normal; }
+    .cid-hero p { color: var(--text-soft); font-size: 1.02rem; margin: 14px auto 0; max-width: 620px; line-height: 1.7; }
+    .filtros { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 24px; }
+    .filtros .f-chip { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 999px; border: 1.5px solid var(--line); background: #fff; font-size: .88rem; font-weight: 600; color: var(--text-soft); cursor: pointer; }
+    .filtros .f-chip.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+    .lista { max-width: 1180px; margin: 0 auto; padding: 32px 6vw 10px; }
+    .perfil-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; }
+    .perfil-card { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); transition: transform .15s, box-shadow .15s; cursor: pointer; background: #fff; }
+    .perfil-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(15,42,46,.13); }
+    .perfil-card .pc-top { height: 88px; position: relative; }
+    .perfil-card .pc-avatar {
+      width: 62px; height: 62px; border-radius: 50%; border: 3px solid #fff; position: absolute;
+      bottom: -26px; left: 18px; display: grid; place-items: center; font-weight: 800; font-size: 1.1rem; color: #fff;
+      overflow: hidden;
+    }
+    .perfil-card .pc-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .perfil-card .pc-body { padding: 34px 18px 18px; }
+    .perfil-card .pc-nome { font-weight: 800; color: var(--ink); font-size: .98rem; }
+    .perfil-card .pc-esp { font-size: .78rem; color: var(--text-soft); margin-top: 2px; }
+    .perfil-card .pc-meta { display: flex; gap: 10px; margin-top: 10px; font-size: .76rem; color: var(--text-soft); flex-wrap: wrap; }
+    .perfil-card .pc-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; padding-top: 12px; border-top: 1px solid #EDF1F0; }
+    .perfil-card .pc-preco { font-size: .82rem; font-weight: 700; color: var(--ink); }
+    .perfil-card .pc-dist { color: var(--primary-dark); font-weight: 700; }
+
+
+    .sec { max-width: 900px; margin: 0 auto; padding: 40px 6vw; }
+    .sec h2 { font-size: 1.3rem; font-weight: 800; color: var(--ink); letter-spacing: -.4px; margin-bottom: 12px; }
+    .sec p { color: var(--text); font-size: .95rem; line-height: 1.75; margin-bottom: 12px; }
+    .outras { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .outras a { font-size: .84rem; font-weight: 600; color: var(--primary-dark); background: var(--primary-soft); padding: 7px 14px; border-radius: 999px; }
+
+    .cta-final { margin-top: 30px; padding: 52px 6vw; background: var(--ink); color: #fff; text-align: center; }
+    .cta-final h2 { font-size: 1.6rem; font-weight: 900; letter-spacing: -.5px; }
+    .cta-final p { color: #9DB3B0; margin: 12px auto 20px; max-width: 540px; line-height: 1.7; }
+    .lp-footer { padding: 26px 6vw; text-align: center; color: var(--text-soft); font-size: .84rem; }
+    @media (max-width: 720px) { .lp-header nav a:not(.btn) { display: none; } }
+  </style>
+</head>
+<body>
+  <header class="lp-header">
+    <a class="logo" href="/"><img src="/assets/img/logo-perfisio.svg" alt="PerFisio" width="176" height="30"></a>
+    <nav>
+      <a href="/#profissionais">Encontrar fisioterapeuta</a>
+      <a href="/planos.html">Planos e preços</a>
+      <a href="/login.html" class="btn btn-ghost btn-sm">Entrar</a>
+      <a href="/login.html#registro" class="btn btn-primary btn-sm">Criar perfil grátis</a>
+    </nav>
+  </header>
+
+  <section class="cid-hero">
+    <div class="crumbs"><a href="/">PerFisio</a> › <span id="crumbCidade">Cidade</span></div>
+    <h1>Fisioterapeutas em <em id="hCidade">…</em></h1>
+    <p id="hSub">Profissionais com CREFITO verificado, especialidade, preço e agendamento online.</p>
+    <div class="filtros" id="filtroEsp"></div>
+  </section>
+
+  <div class="lista">
+    <div class="perfil-grid" id="grid">
+      <div style="grid-column:1/-1;text-align:center;color:var(--text-soft);padding:30px;">Carregando profissionais...</div>
+    </div>
+  </div>
+
+  <section class="sec">
+    <h2 id="tTexto">Como escolher um fisioterapeuta</h2>
+    <p id="pTexto1"></p>
+    <p id="pTexto2">No PerFisio você vê a especialidade de cada profissional, a região onde ele atende, a faixa de preço
+      e se ele faz atendimento em domicílio — e agenda a sessão pelo próprio perfil, sem precisar ligar.</p>
+    <div id="boxOutras" style="display:none;margin-top:22px;">
+      <h2 style="font-size:1.05rem;">Fisioterapeutas em outras cidades</h2>
+      <div class="outras" id="outras"></div>
+    </div>
+  </section>
+
+  <section class="cta-final">
+    <h2>É fisioterapeuta nesta cidade?</h2>
+    <p>Crie seu perfil no PerFisio e apareça para os pacientes que procuram atendimento aqui perto.</p>
+    <a href="/login.html#registro" class="btn btn-primary">Criar perfil grátis →</a>
+  </section>
+
+  <footer class="lp-footer">© 2026 PerFisio · <a href="/" style="color:var(--primary-dark);font-weight:600;">Página inicial</a></footer>
+
+  <script src="/assets/js/app.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script>
+    const ESPS = [['esportiva','🏃 Esportiva'],['ortopedia','🦴 Ortopedia'],['pilates','🧘 Pilates'],['neuro','🧠 Neuro'],['domiciliar','🏠 Domiciliar']];
+    const LABEL = Object.fromEntries(ESPS);
+    const slugCidade = decodeURIComponent(location.pathname.replace(/^\/fisioterapeutas-em-/, '').replace(/\/$/, ''));
+    let PROS = [], filtro = null, NOME = '';
+
+    const fmtDist = m => m == null ? '' : (m < 1000 ? `${m} m` : `${(m / 1000).toFixed(1).replace('.', ',')} km`);
+
+    async function boot() {
+      const [cidades, pros] = await Promise.all([
+        PF.api('/api/public/cidades').catch(() => []),
+        PF.api('/api/public/profissionais?cidade=' + encodeURIComponent(slugCidade)).catch(() => []),
+      ]);
+      const atual = cidades.find(c => c.slug === slugCidade);
+      NOME = atual ? atual.cidade : slugCidade.replace(/-/g, ' ');
+      PROS = pros;
+
+      document.getElementById('hCidade').textContent = NOME;
+      document.getElementById('crumbCidade').textContent = 'Fisioterapeutas em ' + NOME;
+      document.getElementById('hSub').textContent =
+        `${PROS.length} profissional(is) em ${NOME} com CREFITO verificado, especialidade, preço e agendamento online.`;
+      document.getElementById('tTexto').textContent = `Fisioterapia em ${NOME}`;
+      document.getElementById('pTexto1').textContent =
+        `Procurar “fisioterapeuta perto de mim” em ${NOME} costuma terminar em ligações sem resposta. ` +
+        `Aqui estão os profissionais que atendem na cidade, com o perfil completo e a agenda aberta: você escolhe pela ` +
+        `especialidade que precisa e marca o horário na hora.`;
+
+      renderFiltros();
+      render();
+
+      const outras = cidades.filter(c => c.slug !== slugCidade).slice(0, 12);
+      if (outras.length) {
+        document.getElementById('boxOutras').style.display = '';
+        document.getElementById('outras').innerHTML = outras
+          .map(c => `<a href="/fisioterapeutas-em-${c.slug}">${c.cidade} (${c.total})</a>`).join('');
+      }
+    }
+
+    function renderFiltros() {
+      document.getElementById('filtroEsp').innerHTML = ESPS
+        .map(([k, l]) => `<span class="f-chip${filtro === k ? ' on' : ''}" onclick="setFiltro('${k}')">${l}</span>`).join('')
+        + `<span class="f-chip${filtro ? '' : ' on'}" onclick="setFiltro(null)">Todas</span>`;
+    }
+    function setFiltro(k) { filtro = filtro === k ? null : k; renderFiltros(); render(); }
+
+    function render() {
+      const lista = !filtro ? PROS : PROS.filter(p =>
+        filtro === 'domiciliar' ? p.domiciliar : (p.especialidades || []).includes(filtro));
+      const GRADS = [['#0DA189','#0A8270'],['#2D7DD2','#1F5FA8'],['#7C5CBF','#5D3FA0'],['#D9820B','#B26505']];
+      const grid = document.getElementById('grid');
+      if (!lista.length) {
+        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--text-soft);padding:40px 20px;border:1.5px dashed var(--line);border-radius:14px;">
+          <div style="font-size:2rem;">🔍</div>
+          <div style="font-weight:700;color:var(--ink);margin-top:8px;">Nenhum profissional ${filtro ? 'nesse filtro' : 'cadastrado em ' + NOME} ainda</div>
+          <div style="font-size:.86rem;margin-top:5px;">Seja o primeiro — o perfil no diretório é grátis.</div>
+          <a href="/login.html#registro" class="btn btn-primary btn-sm" style="margin-top:14px;">Criar perfil grátis</a>
+        </div>`;
+        return;
+      }
+      grid.innerHTML = lista.map((p, i) => {
+        const [g1, g2] = GRADS[i % 4];
+        const ini = p.nome.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase();
+        const tags = (p.especialidades || []).map(e => LABEL[e] || e).slice(0, 3);
+        if (p.domiciliar) tags.push('🏠 Domiciliar');
+        const url = p.slug ? `/fisioterapeuta/${p.slug}` : `/fisio.html?id=${p.id}`;
+        return `<div class="perfil-card" onclick="location.href='${url}'">
+          <div class="pc-top" style="background:linear-gradient(135deg,${g1},${g2});"><span class="pc-avatar" style="background:${g2};">${ini}${p.tem_foto ? `<img src="/api/public/fisio-foto/${p.id}" alt="" loading="lazy" onerror="this.remove()">` : ''}</span></div>
+          <div class="pc-body">
+            <div class="pc-nome"><a href="${url}" style="color:inherit;" onclick="event.stopPropagation()">${p.nome}</a></div>
+            <div class="pc-esp">${p.esp || 'Fisioterapeuta'}${p.clinica_nome ? ` · <a href="${p.clinica_slug ? '/clinica/' + p.clinica_slug : '/clinica.html?id=' + p.clinica_id}" onclick="event.stopPropagation()" style="color:var(--primary-dark);font-weight:700;">${p.clinica_nome}</a>` : ' · autônomo(a)'}</div>
+            <div class="pc-meta">
+              ${p.bairro ? `<span>📍 ${p.bairro}${p.cidade ? ', ' + p.cidade : ''}</span>` : ''}
+              ${p.crefito ? '<span>✅ CREFITO verificado</span>' : ''}
+            </div>
+            ${tags.length ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;">${tags.map(t => `<span class="badge primary" style="font-size:.68rem;">${t}</span>`).join('')}</div>` : ''}
+            ${p.bio ? `<div style="font-size:.78rem;color:var(--text-soft);margin-top:8px;line-height:1.5;">${p.bio.slice(0, 110)}${p.bio.length > 110 ? '…' : ''}</div>` : ''}
+            <div class="pc-foot">
+              <span class="pc-preco">${p.preco || ''}</span>
+              <a class="btn btn-soft btn-sm" href="${url}#agendar" onclick="event.stopPropagation()">Agendar</a>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    boot();
+  </script>
+</body>
+</html>

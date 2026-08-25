@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Clínica — PerFisio</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="icon" type="image/svg+xml" href="assets/img/simbolo-perfisio.svg">
-  <link rel="stylesheet" href="assets/css/app.css">
+  <link rel="icon" type="image/svg+xml" href="/assets/img/simbolo-perfisio.svg">
+  <link rel="stylesheet" href="/assets/css/app.css">
   <style>
     body { background: var(--bg); }
     .lp-header {
@@ -52,10 +52,10 @@
 <body>
 
   <header class="lp-header" id="topo">
-    <a class="logo" href="index.html" id="topoLogo"><img src="assets/img/logo-perfisio.svg" alt="PerFisio" width="176" height="30"></a>
+    <a class="logo" href="/" id="topoLogo"><img src="/assets/img/logo-perfisio.svg" alt="PerFisio" width="176" height="30"></a>
     <nav id="topoNav">
-      <a href="index.html#profissionais">← Voltar ao diretório</a>
-      <a href="login.html" class="btn btn-ghost btn-sm">Entrar</a>
+      <a href="/#profissionais">← Voltar ao diretório</a>
+      <a href="/login.html" class="btn btn-ghost btn-sm">Entrar</a>
     </nav>
   </header>
 
@@ -85,14 +85,17 @@
     </div>
   </div>
 
-  <script src="assets/js/app.js"></script>
-  <script src="assets/js/api.js"></script>
+  <script src="/assets/js/app.js"></script>
+  <script src="/assets/js/api.js"></script>
   <script>
     const LABEL = {
       esportiva: '🏃 Esportiva', ortopedia: '🦴 Ortopedia', pilates: '🧘 Pilates', neuro: '🧠 Neuro',
       rpg: '🧍 RPG', respiratoria: '🫁 Respiratória', pelvica: '🌸 Pélvica', geriatrica: '👵 Geriátrica',
     };
-    let clinicaId = new URLSearchParams(location.search).get('id');
+    /* aceita /clinica/{slug}, ?id= ou o domínio próprio da clínica */
+    let clinicaId = location.pathname.startsWith('/clinica/')
+      ? decodeURIComponent(location.pathname.split('/')[2] || '')
+      : new URLSearchParams(location.search).get('id');
     let CLI = null, dominioProprio = false;
 
     async function boot() {
@@ -101,12 +104,12 @@
         try {
           clinicaId = (await PF.api('/api/public/clinica-do-host')).id;
           dominioProprio = true;
-        } catch (e) { location.href = 'index.html'; return; }
+        } catch (e) { location.href = '/'; return; }
       }
       try { CLI = await PF.api('/api/public/clinicas/' + clinicaId); }
       catch (e) {
         document.getElementById('conteudo').innerHTML =
-          `<div style="text-align:center;padding:60px 0;color:var(--text-soft);">Clínica não encontrada.<br><br><a class="btn btn-primary" href="index.html#profissionais">← Voltar ao diretório</a></div>`;
+          `<div style="text-align:center;padding:60px 0;color:var(--text-soft);">Clínica não encontrada.<br><br><a class="btn btn-primary" href="/#profissionais">← Voltar ao diretório</a></div>`;
         return;
       }
       const c = CLI;
@@ -146,7 +149,7 @@
             ${c.equipe.map(f => {
               const fi = f.nome.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase();
               return `<div class="eq-card">
-                <a href="fisio.html?id=${f.id}" style="display:block;color:inherit;">
+                <a href="${f.slug ? '/fisioterapeuta/' + f.slug : '/fisio.html?id=' + f.id}" style="display:block;color:inherit;">
                   <div class="eq-top" style="background:linear-gradient(135deg,${f.cor},${f.cor}CC);"><span class="eq-av" style="background:${f.cor};">${fi}${f.tem_foto ? `<img src="/api/public/fisio-foto/${f.id}" alt="" loading="lazy" onerror="this.remove()">` : ''}</span></div>
                   <div class="eq-body" style="padding-bottom:6px;">
                     <div class="eq-nome">${f.nome}</div>
@@ -159,7 +162,7 @@
                   </div>
                 </a>
                 <div style="padding:0 16px 16px;">
-                  <a class="btn btn-primary btn-sm" style="width:100%;justify-content:center;" href="fisio.html?id=${f.id}#agendar">📅 Agendar horário</a>
+                  <a class="btn btn-primary btn-sm" style="width:100%;justify-content:center;" href="${f.slug ? '/fisioterapeuta/' + f.slug : '/fisio.html?id=' + f.id}#agendar">📅 Agendar horário</a>
                 </div>
               </div>`;
             }).join('') || '<p style="color:var(--text-soft);">Nenhum profissional público ainda.</p>'}
@@ -180,7 +183,7 @@
         document.getElementById('topoNav').innerHTML = `
           <a href="#secAgendar">Agendar</a>
           ${c.telefone ? `<a href="tel:${c.telefone.replace(/\D/g, '')}">${c.telefone}</a>` : ''}
-          <a href="login.html" class="btn btn-ghost btn-sm">Área da equipe</a>`;
+          <a href="/login.html" class="btn btn-ghost btn-sm">Área da equipe</a>`;
       }
       iniciarMapa();
     }

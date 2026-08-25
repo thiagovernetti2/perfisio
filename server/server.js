@@ -184,6 +184,10 @@ ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS dominio text;
 ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS dominio_status text NOT NULL DEFAULT 'nenhum';
 ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS dominio_verificado_em timestamptz;
 CREATE UNIQUE INDEX IF NOT EXISTS clinicas_dominio_uk ON clinicas (lower(dominio)) WHERE dominio IS NOT NULL;
+ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS slug text;
+ALTER TABLE fisios ADD COLUMN IF NOT EXISTS slug text;
+CREATE UNIQUE INDEX IF NOT EXISTS clinicas_slug_uk ON clinicas (slug) WHERE slug IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS fisios_slug_uk ON fisios (slug) WHERE slug IS NOT NULL;
 ALTER TABLE evolucoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
 ALTER TABLE prescricoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
 ALTER TABLE sessoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
@@ -230,6 +234,33 @@ CREATE TABLE IF NOT EXISTS fisio_fotos (
 `;
 
 /* migração de dados: pacientes com histórico ganham um tratamento inicial */
+/* ============ SLUGS (URLs amigáveis) ============ */
+const slugificar = t => String(t || '')
+  .normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .toLowerCase().replace(/&/g, ' e ')
+  .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 70);
+
+const TABELAS_SLUG = { clinicas: 1, fisios: 1 };
+
+async function slugUnico(tabela, nome, id) {
+  if (!TABELAS_SLUG[tabela]) throw new Error('tabela inválida');
+  const base = slugificar(nome) || tabela;
+  let slug = base, n = 1;
+  // acrescenta -2, -3... até achar um livre
+  while ((await pool.query(`SELECT 1 FROM ${tabela} WHERE slug=$1 AND id<>$2`, [slug, id])).rowCount)
+    slug = `${base}-${++n}`;
+  return slug;
+}
+
+// gera slug para quem ainda não tem (roda no boot e depois de cada cadastro)
+async function preencherSlugs() {
+  for (const tabela of Object.keys(TABELAS_SLUG)) {
+    const faltam = await pool.query(`SELECT id, nome FROM ${tabela} WHERE coalesce(slug,'') = ''`);
+    for (const r of faltam.rows)
+      await pool.query(`UPDATE ${tabela} SET slug=$2 WHERE id=$1`, [r.id, await slugUnico(tabela, r.nome, r.id)]);
+  }
+}
+
 async function migrarTratamentos() {
   await pool.query(`
     INSERT INTO tratamentos (clinica_id, paciente_id, titulo, fisio_id, avaliacao)
@@ -484,6 +515,7 @@ app.post('/api/auth/register', async (req, res) => {
       [c.id, nome, email.toLowerCase(), hash, 'gestor', f.id])).rows[0];
     await seedClinica(client, c.id);
     await client.query('COMMIT');
+    await preencherSlugs();
     res.json({ token: sign(u), usuario: { ...u, clinica_nome: clinica } });
   } catch (e) {
     await client.query('ROLLBACK');
@@ -1131,6 +1163,7 @@ app.post('/api/:table', auth, tableGuard, async (req, res) => {
     const r = await pool.query(
       `INSERT INTO ${t} (clinica_id, ${cols.join(',')}) VALUES ($1, ${cols.map((_, i) => `$${i + 2}`).join(',')}) RETURNING ${SELECT_COLS[t] || '*'}`,
       [req.auth.cid, ...vals]);
+    if (t === 'fisios') await preencherSlugs();
     res.json(r.rows[0]);
   } catch (e) { console.error(e); res.status(400).json({ erro: 'Dados inválidos' }); }
 });
@@ -1251,6 +1284,7 @@ app.post('/api/admin/clinicas', superauth, async (req, res) => {
       [c.id, gestor_nome, email.toLowerCase(), bcrypt.hashSync(senha, 10), 'gestor', f.id]);
     await seedClinica(client, c.id);
     await client.query('COMMIT');
+    await preencherSlugs();
     res.json({ id: c.id, nome, email: email.toLowerCase() });
   } catch (e) {
     await client.query('ROLLBACK');
@@ -1307,6 +1341,7 @@ app.post('/api/admin/fisios', superauth, async (req, res) => {
   const r = await pool.query(
     `INSERT INTO fisios (clinica_id, ${cols.join(',')}) VALUES ($1, ${cols.map((_, i) => `$${i + 2}`).join(',')}) RETURNING id, nome`,
     [clinica_id, ...vals]);
+  await preencherSlugs();
   res.json(r.rows[0]);
 });
 
@@ -1423,15 +1458,27 @@ app.get('/api/public/config', (req, res) => {
 });
 
 // diretório de PROFISSIONAIS (vinculados ou não a uma clínica)
+// cidades com profissionais públicos — alimenta as páginas /fisioterapeutas-em-...
+app.get('/api/public/cidades', async (req, res) => {
+  res.json(await cidadesPublicas());
+});
+
 app.get('/api/public/profissionais', async (req, res) => {
   const lat = req.query.lat ? Number(req.query.lat) : null;
   const lng = req.query.lng ? Number(req.query.lng) : null;
   const temGeo = Number.isFinite(lat) && Number.isFinite(lng);
+  // ?cidade=slug filtra pela cidade da URL amigável
+  let cidade = null;
+  if (req.query.cidade) {
+    const achada = (await cidadesPublicas()).find(c => c.slug === slugificar(req.query.cidade));
+    if (!achada) return res.json([]);
+    cidade = achada.cidade;
+  }
   const r = await pool.query(`
-    SELECT f.id, f.nome, f.crefito, f.esp, f.cor, f.especialidades, f.domiciliar,
+    SELECT f.id, f.slug, f.nome, f.crefito, f.esp, f.cor, f.especialidades, f.domiciliar,
            f.bairro, f.cidade, f.preco, f.bio, f.lat, f.lng,
            (f.foto IS NOT NULL) AS tem_foto,
-           c.id AS clinica_id, c.nome AS clinica_nome, c.endereco AS clinica_endereco,
+           c.id AS clinica_id, c.slug AS clinica_slug, c.nome AS clinica_nome, c.endereco AS clinica_endereco,
            (c.perfil->>'agenda_online') AS agenda_online,
            CASE WHEN $1::boolean AND f.lat IS NOT NULL AND f.lng IS NOT NULL THEN
              6371000 * acos(LEAST(1, GREATEST(-1,
@@ -1440,9 +1487,9 @@ app.get('/api/public/profissionais', async (req, res) => {
            END AS distancia
     FROM fisios f
     JOIN clinicas c ON c.id = f.clinica_id
-    WHERE f.publico AND f.ativo AND c.ativa
+    WHERE f.publico AND f.ativo AND c.ativa AND ($4::text IS NULL OR f.cidade = $4)
     ORDER BY distancia NULLS LAST, f.nome
-    LIMIT 60`, [temGeo, temGeo ? lat : 0, temGeo ? lng : 0]);
+    LIMIT 60`, [temGeo, temGeo ? lat : 0, temGeo ? lng : 0, cidade]);
   res.json(r.rows.map(p => ({
     ...p,
     lat: p.lat === null ? null : Number(p.lat),
@@ -1455,18 +1502,19 @@ app.get('/api/public/profissionais', async (req, res) => {
 // página interna do profissional
 app.get('/api/public/profissionais/:id', async (req, res) => {
   const r = await pool.query(`
-    SELECT f.id, f.nome, f.crefito, f.esp, f.cor, f.especialidades, f.domiciliar,
+    SELECT f.id, f.slug, f.nome, f.crefito, f.esp, f.cor, f.especialidades, f.domiciliar,
            f.bairro, f.cidade, f.preco, f.bio, f.lat, f.lng,
            f.whatsapp, f.tratamentos, f.regioes, f.instagram,
            (f.foto IS NOT NULL) AS tem_foto,
-           c.id AS clinica_id, c.nome AS clinica_nome, c.endereco AS clinica_endereco,
+           c.id AS clinica_id, c.slug AS clinica_slug, c.nome AS clinica_nome, c.endereco AS clinica_endereco,
            c.telefone AS clinica_telefone, c.horario AS clinica_horario
     FROM fisios f JOIN clinicas c ON c.id = f.clinica_id
-    WHERE f.id = $1 AND f.publico AND f.ativo AND c.ativa`, [req.params.id]);
+    WHERE (f.slug = $1 OR ($2::boolean AND f.id::text = $1)) AND f.publico AND f.ativo AND c.ativa`,
+    [req.params.id, UUID.test(req.params.id)]);
   if (!r.rowCount) return res.status(404).json({ erro: 'Profissional não encontrado' });
   const p = r.rows[0];
   const colegas = await pool.query(`
-    SELECT id, nome, esp, cor, especialidades, bairro, preco, domiciliar, (foto IS NOT NULL) AS tem_foto
+    SELECT id, slug, nome, esp, cor, especialidades, bairro, preco, domiciliar, (foto IS NOT NULL) AS tem_foto
     FROM fisios WHERE clinica_id = $1 AND id <> $2 AND publico AND ativo ORDER BY nome LIMIT 6`,
     [p.clinica_id, p.id]);
   const pacotes = await pool.query(
@@ -1488,11 +1536,13 @@ app.get('/api/public/profissionais/:id', async (req, res) => {
 // página interna da clínica
 app.get('/api/public/clinicas/:id', async (req, res) => {
   const c = await pool.query(
-    'SELECT id, nome, endereco, telefone, horario, perfil FROM clinicas WHERE id = $1 AND ativa', [req.params.id]);
+    `SELECT id, slug, nome, endereco, telefone, horario, perfil FROM clinicas
+     WHERE (slug = $1 OR ($2::boolean AND id::text = $1)) AND ativa`,
+    [req.params.id, UUID.test(req.params.id)]);
   if (!c.rowCount) return res.status(404).json({ erro: 'Clínica não encontrada' });
   const equipe = await pool.query(`
-    SELECT id, nome, crefito, esp, cor, especialidades, domiciliar, bairro, cidade, preco, bio, lat, lng, (foto IS NOT NULL) AS tem_foto
-    FROM fisios WHERE clinica_id = $1 AND publico AND ativo ORDER BY nome`, [req.params.id]);
+    SELECT id, slug, nome, crefito, esp, cor, especialidades, domiciliar, bairro, cidade, preco, bio, lat, lng, (foto IS NOT NULL) AS tem_foto
+    FROM fisios WHERE clinica_id = $1 AND publico AND ativo ORDER BY nome`, [c.rows[0].id]);
   res.json({
     ...c.rows[0],
     equipe: equipe.rows.map(f => ({
@@ -1679,6 +1729,202 @@ app.use(async (req, res, next) => {
   next();
 });
 
+/* ---- URLs amigáveis + SEO ----
+   /fisioterapeutas-em-{cidade}  · listagem da cidade
+   /fisioterapeuta/{slug}        · perfil do profissional
+   /clinica/{slug}               · página da clínica
+   As páginas continuam sendo renderizadas no navegador; aqui injetamos title,
+   description, canonical, Open Graph e JSON-LD no HTML antes de servir. */
+const fsp = require('node:fs/promises');
+const HOST_CANONICO = HOST_SITE || HOST_APP;
+const paginasCache = new Map();
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// cacheia o HTML, mas relê quando o arquivo muda (evita reiniciar em dev)
+async function lerPagina(arq) {
+  const caminho = path.join(ROOT, arq);
+  const { mtimeMs } = await fsp.stat(caminho);
+  const guardado = paginasCache.get(arq);
+  if (guardado && guardado.mtimeMs === mtimeMs) return guardado.html;
+  const html = await fsp.readFile(caminho, 'utf8');
+  paginasCache.set(arq, { mtimeMs, html });
+  return html;
+}
+const esc = s => String(s == null ? '' : s)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const resumir = (t, n = 155) => {
+  const s = String(t || '').replace(/\s+/g, ' ').trim();
+  return s.length <= n ? s : s.slice(0, n - 1).replace(/\s\S*$/, '') + '…';
+};
+
+async function servirSeo(res, arq, seo) {
+  const html = await lerPagina(arq);
+  const jsonld = seo.jsonld
+    ? `<script type="application/ld+json">${JSON.stringify(seo.jsonld).replace(/</g, '\\u003c')}</script>` : '';
+  const tags = `
+  <meta name="description" content="${esc(seo.descricao)}">
+  <link rel="canonical" href="${esc(seo.url)}">
+  <meta property="og:type" content="${seo.tipo || 'website'}">
+  <meta property="og:site_name" content="PerFisio">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:title" content="${esc(seo.titulo)}">
+  <meta property="og:description" content="${esc(seo.descricao)}">
+  <meta property="og:url" content="${esc(seo.url)}">
+  ${seo.imagem ? `<meta property="og:image" content="${esc(seo.imagem)}">` : ''}
+  <meta name="twitter:card" content="summary_large_image">
+  ${jsonld}
+`;
+  res.type('html').send(html
+    .replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(seo.titulo)}</title>`)
+    .replace('</head>', tags + '</head>'));
+}
+
+const urlPublica = (req, caminho) => `https://${HOST_CANONICO}${caminho}`;
+
+async function cidadesPublicas() {
+  const r = await pool.query(`
+    SELECT f.cidade, count(*)::int AS n FROM fisios f JOIN clinicas c ON c.id = f.clinica_id
+    WHERE f.publico AND f.ativo AND c.ativa AND coalesce(f.cidade, '') <> ''
+    GROUP BY f.cidade ORDER BY n DESC, f.cidade`);
+  return r.rows.map(x => ({ cidade: x.cidade, slug: slugificar(x.cidade), total: x.n }));
+}
+
+// home e planos também ganham title/description/canonical de verdade
+app.get('/', async (req, res, next) => {
+  try {
+    await servirSeo(res, 'index.html', {
+      titulo: 'PerFisio — encontre fisioterapeutas perto de você e agende online',
+      descricao: 'Diretório de fisioterapeutas com CREFITO verificado: veja especialidade, preço, distância e agende online. Para clínicas, um CRM completo por R$ 40 por profissional/mês.',
+      url: urlPublica(req, '/'),
+      jsonld: {
+        '@context': 'https://schema.org', '@type': 'WebSite', name: 'PerFisio',
+        url: urlPublica(req, '/'), inLanguage: 'pt-BR',
+      },
+    });
+  } catch (e) { next(e); }
+});
+
+app.get('/planos.html', async (req, res, next) => {
+  try {
+    await servirSeo(res, 'planos.html', {
+      titulo: 'Planos e preços — R$ 40 por profissional/mês | PerFisio',
+      descricao: 'Comece grátis até 10 consultas por mês. Depois, R$ 40 por fisioterapeuta: agenda, prontuário eletrônico, CRM, financeiro e perfil no diretório. Sem fidelidade.',
+      url: urlPublica(req, '/planos.html'),
+    });
+  } catch (e) { next(e); }
+});
+
+// listagem por cidade — a página que queremos ranqueando no Google
+app.get('/fisioterapeutas-em-:cidade', async (req, res, next) => {
+  try {
+    const alvo = slugificar(req.params.cidade);
+    const cidade = (await cidadesPublicas()).find(c => c.slug === alvo);
+    if (!cidade) return next();
+    const nome = cidade.cidade;
+    await servirSeo(res, 'cidade.html', {
+      titulo: `Fisioterapeutas em ${nome} — agende online | PerFisio`,
+      descricao: `${cidade.total} fisioterapeuta(s) em ${nome} com CREFITO verificado: especialidade, preço, região de atendimento e agendamento online direto pelo PerFisio.`,
+      url: urlPublica(req, `/fisioterapeutas-em-${alvo}`),
+      jsonld: {
+        '@context': 'https://schema.org', '@type': 'CollectionPage',
+        name: `Fisioterapeutas em ${nome}`, url: urlPublica(req, `/fisioterapeutas-em-${alvo}`),
+        about: { '@type': 'Place', name: nome },
+      },
+    });
+  } catch (e) { next(e); }
+});
+
+// perfil do profissional
+app.get('/fisioterapeuta/:slug', async (req, res, next) => {
+  try {
+    const r = await pool.query(`
+      SELECT f.nome, f.esp, f.bio, f.cidade, f.bairro, f.preco, f.especialidades, f.slug, f.id,
+             (f.foto IS NOT NULL) AS tem_foto, c.nome AS clinica_nome
+      FROM fisios f JOIN clinicas c ON c.id = f.clinica_id
+      WHERE f.slug = $1 AND f.publico AND f.ativo AND c.ativa`, [req.params.slug]);
+    if (!r.rowCount) return next();
+    const f = r.rows[0];
+    const onde = [f.bairro, f.cidade].filter(Boolean).join(', ');
+    await servirSeo(res, 'fisio.html', {
+      titulo: `${f.nome} — ${f.esp || 'Fisioterapeuta'}${onde ? ' em ' + onde : ''} | PerFisio`,
+      descricao: resumir(f.bio || `${f.nome}, ${f.esp || 'fisioterapeuta'}${onde ? ' em ' + onde : ''}. ${f.preco || ''} Agende sua sessão online pelo PerFisio.`),
+      url: urlPublica(req, `/fisioterapeuta/${f.slug}`),
+      tipo: 'profile',
+      imagem: f.tem_foto ? urlPublica(req, `/api/public/fisio-foto/${f.id}`) : null,
+      jsonld: {
+        '@context': 'https://schema.org', '@type': 'Physician',
+        name: f.nome, medicalSpecialty: 'Physiotherapy',
+        url: urlPublica(req, `/fisioterapeuta/${f.slug}`),
+        ...(f.clinica_nome ? { worksFor: { '@type': 'Organization', name: f.clinica_nome } } : {}),
+        ...(onde ? { address: { '@type': 'PostalAddress', addressLocality: f.cidade || onde } } : {}),
+      },
+    });
+  } catch (e) { next(e); }
+});
+
+// página da clínica
+app.get('/clinica/:slug', async (req, res, next) => {
+  try {
+    const r = await pool.query(`
+      SELECT c.id, c.nome, c.slug, c.endereco, c.telefone, c.horario, c.perfil,
+             (SELECT count(*)::int FROM fisios f WHERE f.clinica_id = c.id AND f.publico AND f.ativo) AS equipe
+      FROM clinicas c WHERE c.slug = $1 AND c.ativa`, [req.params.slug]);
+    if (!r.rowCount) return next();
+    const c = r.rows[0], perfil = c.perfil || {};
+    await servirSeo(res, 'clinica.html', {
+      titulo: `${c.nome} — Fisioterapia${c.endereco ? ' · ' + String(c.endereco).split('·').pop().trim() : ''} | PerFisio`,
+      descricao: resumir(perfil.bio || `${c.nome}: ${c.equipe} fisioterapeuta(s), agendamento online e prontuário digital. ${c.endereco || ''}`),
+      url: urlPublica(req, `/clinica/${c.slug}`),
+      jsonld: {
+        '@context': 'https://schema.org', '@type': 'MedicalClinic',
+        name: c.nome, url: urlPublica(req, `/clinica/${c.slug}`),
+        ...(c.telefone ? { telephone: c.telefone } : {}),
+        ...(c.endereco ? { address: { '@type': 'PostalAddress', streetAddress: c.endereco } } : {}),
+        ...(c.horario ? { openingHours: c.horario } : {}),
+      },
+    });
+  } catch (e) { next(e); }
+});
+
+// URLs antigas com ?id= continuam funcionando, mas mandam 301 para a nova
+const redirLegado = (tabela, prefixo) => async (req, res, next) => {
+  const id = req.query.id;
+  if (!id || !UUID.test(id)) return next();
+  const r = await pool.query(`SELECT slug FROM ${tabela} WHERE id = $1`, [id]);
+  if (!r.rowCount || !r.rows[0].slug) return next();
+  res.redirect(301, `${prefixo}/${r.rows[0].slug}`);
+};
+app.get('/fisio.html', redirLegado('fisios', '/fisioterapeuta'));
+app.get('/clinica.html', redirLegado('clinicas', '/clinica'));
+
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain').send(
+    `User-agent: *\nAllow: /\nDisallow: /app/\nDisallow: /admin/\nDisallow: /api/\n\nSitemap: https://${HOST_CANONICO}/sitemap.xml\n`);
+});
+
+app.get('/sitemap.xml', async (req, res) => {
+  try {
+    const [cidades, fisios, clinicas] = await Promise.all([
+      cidadesPublicas(),
+      pool.query(`SELECT f.slug FROM fisios f JOIN clinicas c ON c.id = f.clinica_id
+                  WHERE f.publico AND f.ativo AND c.ativa AND coalesce(f.slug,'') <> ''`),
+      pool.query(`SELECT slug FROM clinicas WHERE ativa AND coalesce(slug,'') <> ''
+                  AND (perfil->>'visivel')::boolean IS TRUE`),
+    ]);
+    const urls = [
+      { loc: '/', prio: '1.0' },
+      { loc: '/planos.html', prio: '0.8' },
+      ...cidades.map(c => ({ loc: `/fisioterapeutas-em-${c.slug}`, prio: '0.9' })),
+      ...fisios.rows.map(f => ({ loc: `/fisioterapeuta/${f.slug}`, prio: '0.8' })),
+      ...clinicas.rows.map(c => ({ loc: `/clinica/${c.slug}`, prio: '0.7' })),
+    ];
+    res.type('application/xml').send(
+      `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+      urls.map(u => `  <url><loc>https://${HOST_CANONICO}${u.loc}</loc><priority>${u.prio}</priority></url>`).join('\n') +
+      `\n</urlset>\n`);
+  } catch (e) { res.status(500).type('text/plain').send('erro ao gerar sitemap'); }
+});
+
 app.use(express.static(ROOT, { extensions: ['html'] }));
 
 app.use(async (req, res) => {
@@ -1713,6 +1959,7 @@ async function seedSuperadmin() {
   else {
     await pool.query(SCHEMA);
     await migrarTratamentos();
+    await preencherSlugs();
     await seedSuperadmin();
     console.log('✅ Schema verificado/migrado');
   }
