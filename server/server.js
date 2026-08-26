@@ -184,6 +184,11 @@ ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS dominio text;
 ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS dominio_status text NOT NULL DEFAULT 'nenhum';
 ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS dominio_verificado_em timestamptz;
 CREATE UNIQUE INDEX IF NOT EXISTS clinicas_dominio_uk ON clinicas (lower(dominio)) WHERE dominio IS NOT NULL;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email_verificado boolean NOT NULL DEFAULT false;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS token_verificacao text;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS token_expira timestamptz;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS verificado_em timestamptz;
+CREATE INDEX IF NOT EXISTS usuarios_token_idx ON usuarios (token_verificacao) WHERE token_verificacao IS NOT NULL;
 ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS slug text;
 ALTER TABLE fisios ADD COLUMN IF NOT EXISTS slug text;
 CREATE UNIQUE INDEX IF NOT EXISTS clinicas_slug_uk ON clinicas (slug) WHERE slug IS NOT NULL;
@@ -259,6 +264,13 @@ async function preencherSlugs() {
     for (const r of faltam.rows)
       await pool.query(`UPDATE ${tabela} SET slug=$2 WHERE id=$1`, [r.id, await slugUnico(tabela, r.nome, r.id)]);
   }
+}
+
+// contas anteriores à verificação entram como já verificadas (nunca receberam token)
+const CORTE_VERIFICACAO = '2026-08-27'; // data em que a verificação entrou no ar
+async function grandfatherVerificacao() {
+  await pool.query(`UPDATE usuarios SET email_verificado = true, verificado_em = coalesce(verificado_em, criado_em)
+    WHERE NOT email_verificado AND token_verificacao IS NULL AND criado_em < $1`, [CORTE_VERIFICACAO]);
 }
 
 async function migrarTratamentos() {
@@ -497,6 +509,40 @@ function auth(req, res, next) {
   catch { return res.status(401).json({ erro: 'Sessão expirada' }); }
 }
 
+/* ---------- VERIFICAÇÃO DE E-MAIL ---------- */
+const crypto = require('node:crypto');
+const HORAS_TOKEN = 48;
+
+function htmlVerificacao(nome, link) {
+  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;color:#0F2A2E;">
+    <p style="font-size:15px;">Olá, ${esc(String(nome).split(' ')[0])}!</p>
+    <p style="font-size:15px;line-height:1.6;">Sua conta no <b>PerFisio</b> foi criada. Confirme seu e-mail para
+      garantir o acesso e receber os avisos da sua agenda:</p>
+    <p style="margin:26px 0;">
+      <a href="${link}" style="background:#0DA189;color:#fff;text-decoration:none;font-weight:bold;
+        padding:13px 26px;border-radius:8px;display:inline-block;font-size:15px;">Confirmar meu e-mail</a>
+    </p>
+    <p style="font-size:13px;color:#64737A;line-height:1.6;">Ou copie e cole este endereço no navegador:<br>
+      <span style="color:#0A8270;">${link}</span></p>
+    <p style="font-size:13px;color:#64737A;line-height:1.6;">O link vale por ${HORAS_TOKEN} horas.
+      Se não foi você quem criou a conta, pode ignorar esta mensagem.</p>
+    <p style="font-size:12px;color:#93A5A3;margin-top:26px;">PerFisio · gestão e captação para fisioterapeutas</p>
+  </div>`;
+}
+
+async function criarEnvioVerificacao(uid, email, nome, base) {
+  const token = crypto.randomBytes(32).toString('hex');
+  await pool.query(
+    `UPDATE usuarios SET token_verificacao=$2, token_expira = now() + interval '${HORAS_TOKEN} hours' WHERE id=$1`,
+    [uid, token]);
+  const link = `${base}/verificar-email?t=${token}`;
+  const r = await enviarEmail({
+    para: email, assunto: 'Confirme seu e-mail no PerFisio', html: htmlVerificacao(nome, link),
+  });
+  if (!r.enviado) console.log('[verificação] link para', email, '→', link);
+  return { ...r, link };
+}
+
 /* ---------- AUTH ---------- */
 app.post('/api/auth/register', async (req, res) => {
   const { clinica, nome, email, senha } = req.body || {};
@@ -516,12 +562,65 @@ app.post('/api/auth/register', async (req, res) => {
     await seedClinica(client, c.id);
     await client.query('COMMIT');
     await preencherSlugs();
-    res.json({ token: sign(u), usuario: { ...u, clinica_nome: clinica } });
+    // manda o e-mail de confirmação (a conta já entra, mas fica pendente de verificação)
+    const envio = await criarEnvioVerificacao(u.id, u.email, u.nome, urlBase(req)).catch(e => {
+      console.error('falha ao enviar verificação', e); return { enviado: false };
+    });
+    res.json({
+      token: sign(u),
+      usuario: { ...u, clinica_nome: clinica, email_verificado: false },
+      verificacao: { enviado: envio.enviado, para: u.email },
+    });
   } catch (e) {
     await client.query('ROLLBACK');
     console.error(e);
     res.status(500).json({ erro: 'Erro ao criar conta' });
   } finally { client.release(); }
+});
+
+// confirma o e-mail pelo link recebido
+app.get('/verificar-email', async (req, res, next) => {
+  const token = String(req.query.t || '');
+  let estado = 'invalido';
+  if (token) {
+    const r = await pool.query(
+      `UPDATE usuarios SET email_verificado = true, verificado_em = now(), token_verificacao = NULL, token_expira = NULL
+       WHERE token_verificacao = $1 AND token_expira > now() RETURNING nome, email`, [token]);
+    if (r.rowCount) estado = 'ok';
+    else {
+      const expirado = await pool.query('SELECT 1 FROM usuarios WHERE token_verificacao = $1', [token]);
+      estado = expirado.rowCount ? 'expirado' : 'invalido';
+      // já verificado antes: o token some, então tratamos como sucesso silencioso
+    }
+  }
+  try {
+    await servirSeo(res, 'verificar-email.html', {
+      titulo: estado === 'ok' ? 'E-mail confirmado — PerFisio' : 'Confirmação de e-mail — PerFisio',
+      descricao: 'Confirmação de e-mail da sua conta PerFisio.',
+      url: urlPublica(req, '/verificar-email'),
+      dados: { estado },
+    });
+  } catch (e) { next(e); }
+});
+
+// estado da verificação + reenvio do link
+app.get('/api/auth/verificacao', auth, async (req, res) => {
+  const r = await pool.query('SELECT email, email_verificado, verificado_em FROM usuarios WHERE id=$1', [req.auth.uid]);
+  res.json({ ...r.rows[0], smtp: smtpConfigurado() });
+});
+
+const reenvios = new Map(); // uid → timestamp do último envio
+app.post('/api/auth/reenviar-verificacao', auth, async (req, res) => {
+  const r = await pool.query('SELECT nome, email, email_verificado FROM usuarios WHERE id=$1', [req.auth.uid]);
+  const u = r.rows[0];
+  if (!u) return res.status(404).json({ erro: 'Usuário não encontrado' });
+  if (u.email_verificado) return res.json({ ok: true, jaVerificado: true });
+  const ultimo = reenvios.get(req.auth.uid) || 0;
+  if (Date.now() - ultimo < 60_000)
+    return res.status(429).json({ erro: 'Aguarde um minuto para pedir outro e-mail' });
+  reenvios.set(req.auth.uid, Date.now());
+  const envio = await criarEnvioVerificacao(req.auth.uid, u.email, u.nome, urlBase(req));
+  res.json({ ok: true, enviado: envio.enviado, para: u.email });
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -533,12 +632,12 @@ app.post('/api/auth/login', async (req, res) => {
   if (!u || !bcrypt.compareSync(senha || '', u.senha_hash)) return res.status(401).json({ erro: 'E-mail ou senha inválidos' });
   if (!u.superadmin && u.clinica_ativa === false) return res.status(403).json({ erro: 'Clínica desativada. Fale com o suporte do PerFisio.' });
   pool.query('UPDATE usuarios SET ultimo_acesso=now() WHERE id=$1', [u.id]).catch(() => {});
-  res.json({ token: sign(u), usuario: { id: u.id, clinica_id: u.clinica_id, nome: u.nome, email: u.email, perfil: u.perfil, clinica_nome: u.clinica_nome, superadmin: u.superadmin } });
+  res.json({ token: sign(u), usuario: { id: u.id, clinica_id: u.clinica_id, nome: u.nome, email: u.email, perfil: u.perfil, clinica_nome: u.clinica_nome, superadmin: u.superadmin, email_verificado: u.email_verificado } });
 });
 
 app.get('/api/me', auth, async (req, res) => {
   const r = await pool.query(
-    `SELECT u.id, u.clinica_id, u.nome, u.email, u.perfil, u.superadmin, c.nome AS clinica_nome FROM usuarios u LEFT JOIN clinicas c ON c.id=u.clinica_id WHERE u.id=$1`,
+    `SELECT u.id, u.clinica_id, u.nome, u.email, u.perfil, u.superadmin, u.email_verificado, c.nome AS clinica_nome FROM usuarios u LEFT JOIN clinicas c ON c.id=u.clinica_id WHERE u.id=$1`,
     [req.auth.uid]);
   if (!r.rowCount) return res.status(401).json({ erro: 'Usuário não encontrado' });
   res.json(r.rows[0]);
@@ -764,6 +863,25 @@ app.post('/api/financeiro/comissoes/gerar', auth, async (req, res) => {
 
 /* ---------- MARKETING (campanhas de e-mail) ---------- */
 const smtpConfigurado = () => !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+
+// envio avulso do próprio PerFisio (verificação de conta, avisos)
+async function enviarEmail({ para, assunto, html }) {
+  if (!smtpConfigurado()) {
+    console.log(`[e-mail simulado] para=${para} assunto="${assunto}"`);
+    return { enviado: false, motivo: 'SMTP não configurado' };
+  }
+  const nodemailer = require('nodemailer');
+  const porta = Number(process.env.SMTP_PORT || 587);
+  const transporte = nodemailer.createTransport({
+    host: process.env.SMTP_HOST, port: porta, secure: porta === 465,
+    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+  });
+  await transporte.sendMail({
+    from: process.env.SMTP_FROM || `"PerFisio" <${process.env.SMTP_USER}>`,
+    to: para, subject: assunto, html,
+  });
+  return { enviado: true };
+}
 
 app.get('/api/marketing/status', auth, (req, res) => {
   res.json({ smtp: smtpConfigurado(), from: process.env.SMTP_FROM || process.env.SMTP_USER || null });
@@ -1761,6 +1879,8 @@ async function servirSeo(res, arq, seo) {
   const html = await lerPagina(arq);
   const jsonld = seo.jsonld
     ? `<script type="application/ld+json">${JSON.stringify(seo.jsonld).replace(/</g, '\\u003c')}</script>` : '';
+  const dados = seo.dados
+    ? `<script>window.__PF = ${JSON.stringify(seo.dados).replace(/</g, '\\u003c')};</script>` : '';
   const tags = `
   <meta name="description" content="${esc(seo.descricao)}">
   <link rel="canonical" href="${esc(seo.url)}">
@@ -1772,7 +1892,7 @@ async function servirSeo(res, arq, seo) {
   <meta property="og:url" content="${esc(seo.url)}">
   ${seo.imagem ? `<meta property="og:image" content="${esc(seo.imagem)}">` : ''}
   <meta name="twitter:card" content="summary_large_image">
-  ${jsonld}
+  ${jsonld}${dados}
 `;
   res.type('html').send(html
     .replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(seo.titulo)}</title>`)
@@ -1960,6 +2080,7 @@ async function seedSuperadmin() {
     await pool.query(SCHEMA);
     await migrarTratamentos();
     await preencherSlugs();
+    await grandfatherVerificacao();
     await seedSuperadmin();
     console.log('✅ Schema verificado/migrado');
   }

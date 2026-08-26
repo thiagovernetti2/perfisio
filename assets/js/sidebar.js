@@ -84,6 +84,30 @@
 
   sidebar.querySelector('#pfLogout').addEventListener('click', PF.logout);
 
+  /* aviso de e-mail não confirmado (some sozinho quando o usuário confirma) */
+  (async function avisoVerificacao() {
+    let v;
+    try { v = await PF.api('/api/auth/verificacao'); } catch (e) { return; }
+    if (!v || v.email_verificado) return;
+    const barra = document.createElement('div');
+    barra.style.cssText = 'background:var(--amber-soft);border-bottom:1px solid #EED9B8;color:var(--amber);' +
+      'padding:11px 20px;font-size:.85rem;font-weight:600;display:flex;gap:12px;align-items:center;flex-wrap:wrap;';
+    barra.innerHTML = `✉️ <span style="flex:1;min-width:220px;">Confirme seu e-mail — enviamos um link para <b>${v.email}</b>.</span>
+      <button class="btn btn-soft btn-sm" type="button">Reenviar e-mail</button>`;
+    const botao = barra.querySelector('button');
+    botao.addEventListener('click', async () => {
+      botao.disabled = true; botao.textContent = 'Enviando...';
+      try {
+        const r = await PF.api('/api/auth/reenviar-verificacao', { method: 'POST' });
+        if (r.jaVerificado) { barra.remove(); App.toast('E-mail já confirmado!'); return; }
+        App.toast(r.enviado ? 'Link reenviado — confira sua caixa de entrada' : 'Envio de e-mail ainda não configurado no servidor',
+          r.enviado ? 'success' : 'error');
+      } catch (e) { App.toast(e.message, 'error'); }
+      botao.disabled = false; botao.textContent = 'Reenviar e-mail';
+    });
+    main.insertBefore(barra, content);
+  })();
+
   // modo superadmin (impersonation): faixa fixa para voltar ao painel
   if (localStorage.getItem('pf_admin_token')) {
     const faixa = document.createElement('div');

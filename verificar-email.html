@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Confirmação de e-mail — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="/assets/img/simbolo-perfisio.svg">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <style>
+    body { background: var(--bg); display: grid; place-items: center; min-height: 100vh; padding: 24px; }
+    .box { background: #fff; border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow-lg);
+      max-width: 470px; width: 100%; padding: 40px 36px; text-align: center; }
+    .box img.logo { height: 30px; width: auto; margin-bottom: 26px; }
+    .ico { font-size: 2.8rem; line-height: 1; }
+    .box h1 { font-size: 1.4rem; font-weight: 900; color: var(--ink); letter-spacing: -.5px; margin: 14px 0 8px; }
+    .box p { font-size: .93rem; color: var(--text); line-height: 1.7; }
+    .box .btn { margin-top: 24px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <img class="logo" src="/assets/img/logo-perfisio.svg" alt="PerFisio">
+    <div class="ico" id="ico">⏳</div>
+    <h1 id="titulo">Confirmando…</h1>
+    <p id="texto"></p>
+    <a class="btn btn-primary" id="acao" href="/login.html">Entrar no PerFisio</a>
+  </div>
+
+  <script>
+    const estado = (window.__PF && window.__PF.estado) || 'invalido';
+    const TELAS = {
+      ok: ['✅', 'E-mail confirmado!',
+        'Tudo certo — sua conta está verificada. Agora é só entrar e começar a usar o PerFisio.',
+        'Entrar no PerFisio', '/login.html'],
+      expirado: ['⌛', 'Este link expirou',
+        'Por segurança, o link de confirmação vale 48 horas. Entre na sua conta e clique em "reenviar" no aviso do topo para receber um novo.',
+        'Ir para o login', '/login.html'],
+      invalido: ['🔍', 'Link inválido',
+        'Não encontramos essa confirmação. O link pode ter sido usado, cortado pelo aplicativo de e-mail ou já confirmado antes — tente entrar normalmente.',
+        'Ir para o login', '/login.html'],
+    };
+    const [ico, titulo, texto, rotulo, href] = TELAS[estado] || TELAS.invalido;
+    document.getElementById('ico').textContent = ico;
+    document.getElementById('titulo').textContent = titulo;
+    document.getElementById('texto').textContent = texto;
+    document.getElementById('acao').textContent = rotulo;
+    document.getElementById('acao').href = href;
+    document.title = titulo + ' — PerFisio';
+  </script>
+</body>
+</html>
