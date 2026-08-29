@@ -52,6 +52,19 @@
           <div style="font-size:.85rem;font-weight:800;color:var(--primary-dark);margin-bottom:4px;">🌐 Perfil público no diretório PerFisio</div>
           <div style="font-size:.75rem;color:var(--text-soft);margin-bottom:12px;">Pacientes encontram este profissional na busca por especialidade e por proximidade.</div>
           <div class="check-row" style="padding-top:0;"><input type="checkbox" id="prPublico"><label for="prPublico" style="margin:0;font-weight:600;">Exibir este profissional no diretório público</label></div>
+
+          <!-- link curto para bio do Instagram, WhatsApp, cartão... -->
+          <div id="boxLinkCurto" style="display:none;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:12px 0;">
+            <div style="font-size:.78rem;font-weight:700;color:var(--ink);margin-bottom:6px;">🔗 Link curto para divulgar</div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <code id="linkCurto" style="flex:1;min-width:180px;background:var(--bg);padding:8px 11px;border-radius:8px;font-size:.84rem;font-weight:700;color:var(--primary-dark);"></code>
+              <button type="button" class="btn btn-soft btn-sm" onclick="copiarLinkCurto()">Copiar</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="abrirLinkCurto()">Abrir</button>
+            </div>
+            <div style="font-size:.72rem;color:var(--text-soft);margin-top:8px;line-height:1.5;">
+              Abre um perfil enxuto com a agenda — ideal para a bio do Instagram, o WhatsApp e o cartão de visita.
+            </div>
+          </div>
           <div style="display:flex;gap:14px;align-items:center;margin:12px 0;padding:12px;background:#fff;border-radius:10px;border:1px solid var(--line);flex-wrap:wrap;">
             <div id="prFotoPrev" style="width:56px;height:56px;border-radius:50%;background:var(--line);display:grid;place-items:center;font-size:1.3rem;overflow:hidden;flex-shrink:0;background-size:cover;background-position:center;">📷</div>
             <div style="flex:1;min-width:160px;">
@@ -282,8 +295,25 @@
       catch (e) { App.toast(e.message, 'error'); }
     }
 
+    /* link curto perfis.io/{slug} */
+    let LINK_CURTO = '';
+    function mostrarLinkCurto(f) {
+      const box = document.getElementById('boxLinkCurto');
+      if (!f || !f.slug || !f.publico) { box.style.display = 'none'; LINK_CURTO = ''; return; }
+      LINK_CURTO = `perfis.io/${f.slug}`;
+      document.getElementById('linkCurto').textContent = LINK_CURTO;
+      box.style.display = '';
+    }
+    function copiarLinkCurto() {
+      navigator.clipboard.writeText('https://' + LINK_CURTO)
+        .then(() => App.toast('Link copiado!'))
+        .catch(() => App.toast('Copie manualmente: ' + LINK_CURTO, 'error'));
+    }
+    function abrirLinkCurto() { window.open('https://' + LINK_CURTO, '_blank'); }
+
     function preencherPublico(f) {
       const vazio = !f;
+      mostrarLinkCurto(f);
       prPublico.checked = vazio ? false : !!f.publico;
       espSel = new Set(vazio ? [] : (f.especialidades || '').split(',').map(s => s.trim()).filter(Boolean));
       renderEspChips();

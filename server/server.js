@@ -334,8 +334,12 @@ const HOST_APP = (process.env.APP_HOST || process.env.RAILWAY_PUBLIC_DOMAIN || '
 // A separação só entra em ação com SITE_HOST definido — antes disso tudo roda no mesmo host.
 const HOST_SITE = (process.env.SITE_HOST || '').toLowerCase();
 const HOST_APEX = HOST_SITE.startsWith('www.') ? HOST_SITE.slice(4) : '';
+// domínio curto do perfil do profissional (perfis.io/nome-do-fisio)
+const HOST_CURTO = (process.env.SHORT_HOST || 'perfis.io').toLowerCase();
 const HOSTS_SISTEMA = new Set(
-  [HOST_APP, HOST_SITE, HOST_APEX, 'localhost', '127.0.0.1', 'perfisio.com.br', 'www.perfisio.com.br'].filter(Boolean));
+  [HOST_APP, HOST_SITE, HOST_APEX, HOST_CURTO, `www.${HOST_CURTO}`,
+   'localhost', '127.0.0.1', 'perfisio.com.br', 'www.perfisio.com.br'].filter(Boolean));
+const ehHostCurto = h => soHost(h) === HOST_CURTO || soHost(h) === `www.${HOST_CURTO}`;
 // para onde o CNAME das clínicas aponta: a página delas é conteúdo do site público
 const ALVO_CNAME = HOST_SITE || HOST_APP;
 
@@ -1247,7 +1251,7 @@ const ORDER = {
 };
 
 const SELECT_COLS = {
-  fisios: `id, clinica_id, nome, crefito, esp, cor, comissao, ativo, publico, especialidades,
+  fisios: `id, clinica_id, slug, nome, crefito, esp, cor, comissao, ativo, publico, especialidades,
     domiciliar, bairro, cidade, lat, lng, preco, bio, whatsapp, tratamentos, regioes, instagram,
     (foto IS NOT NULL) AS tem_foto, foto_mime, criado_em`,
 };
@@ -1908,6 +1912,35 @@ async function cidadesPublicas() {
     GROUP BY f.cidade ORDER BY n DESC, f.cidade`);
   return r.rows.map(x => ({ cidade: x.cidade, slug: slugificar(x.cidade), total: x.n }));
 }
+
+/* ---- perfis.io: link curto do profissional ----
+   perfis.io/{slug} abre o perfil resumido com a agenda compacta.
+   O canonical aponta para o perfil completo, para não competir no Google. */
+app.use(async (req, res, next) => {
+  if (!ehHostCurto(req.headers.host)) return next();
+  if (passaDireto(req.path)) return next();
+  const destinoSite = `https://${HOST_CANONICO}`;
+  if (req.path === '/') return res.redirect(302, destinoSite);
+  const slug = decodeURIComponent(req.path.slice(1).replace(/\/$/, ''));
+  if (!/^[a-z0-9-]{2,70}$/.test(slug)) return res.redirect(302, destinoSite);
+  try {
+    const r = await pool.query(`
+      SELECT f.id, f.slug, f.nome, f.esp, f.bio, f.cidade, f.bairro, f.preco, (f.foto IS NOT NULL) AS tem_foto
+      FROM fisios f JOIN clinicas c ON c.id = f.clinica_id
+      WHERE f.slug = $1 AND f.publico AND f.ativo AND c.ativa`, [slug]);
+    if (!r.rowCount) return res.redirect(302, destinoSite);
+    const f = r.rows[0];
+    const onde = [f.bairro, f.cidade].filter(Boolean).join(', ');
+    return await servirSeo(res, 'perfil-curto.html', {
+      titulo: `${f.nome} — agende sua sessão | PerFisio`,
+      descricao: resumir(f.bio || `Agende online com ${f.nome}${onde ? ', ' + onde : ''}. ${f.preco || ''}`),
+      url: `https://${HOST_CANONICO}/fisioterapeuta/${f.slug}`, // canonical = perfil completo
+      tipo: 'profile',
+      imagem: f.tem_foto ? `https://${HOST_CANONICO}/api/public/fisio-foto/${f.id}` : null,
+      dados: { slug: f.slug, curto: true },
+    });
+  } catch (e) { next(e); }
+});
 
 // home e planos também ganham title/description/canonical de verdade
 app.get('/', async (req, res, next) => {
