@@ -123,6 +123,9 @@
     .link-curto code { flex: 1; font-size: .76rem; font-weight: 700; color: var(--primary-dark);
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
     .link-curto .btn { padding: 4px 8px; }
+    .pro-acoes { display: flex; gap: 6px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+    .pro-acoes .btn { padding: 6px 10px; font-size: .76rem; }
+    .pro-acoes .btn[disabled] { opacity: .45; cursor: not-allowed; }
     .link-curto.off code { color: var(--text-soft); text-decoration: line-through; opacity: .7; }
     .link-curto.off .btn { white-space: nowrap; }
   </style>
@@ -192,14 +195,20 @@
           <div class="link-curto">
             <code>perfis.io/${f.slug}</code>
             <button class="btn btn-ghost btn-sm" title="Copiar link" onclick="copiarLink('${f.slug}', this)">📋</button>
-            <a class="btn btn-ghost btn-sm" title="Cartaz A4 com QR code para avaliação" href="cartaz.html?p=${f.slug}" target="_blank">🖨 QR</a>
           </div>` : `
           <div class="link-curto off" title="O link curto e o QR só funcionam com o perfil público ativo">
             <code>perfis.io/${f.slug || '...'}</code>
             <button class="btn btn-soft btn-sm" onclick="abrirEditar('${f.id}')">Ativar perfil</button>
           </div>`}
-          <div style="display:flex;gap:8px;justify-content:center;margin-top:15px;flex-wrap:wrap;">
-            <a class="btn btn-ghost btn-sm" href="cartao.html?p=${f.slug || f.id}" target="_blank" title="Cartão de visita A4">💳 Cartão</a>
+          <div class="pro-acoes">
+            <a class="btn btn-ghost btn-sm" href="cartao.html?p=${f.slug || f.id}" target="_blank"
+               title="Cartão de visita · folha A4 com 10 unidades">💳 Cartão</a>
+            ${f.publico && f.slug
+              ? `<a class="btn btn-ghost btn-sm" href="cartaz.html?p=${f.slug}" target="_blank"
+                   title="Cartaz A4 com QR code para o paciente avaliar">🏷 Cartaz</a>`
+              : `<button class="btn btn-ghost btn-sm" disabled
+                   title="Ative o perfil público para gerar o cartaz de avaliação">🏷 Cartaz</button>`}
+            <button class="btn btn-ghost btn-sm" onclick="location.href='agenda.html'">📅 Agenda</button>
             <button class="btn btn-soft btn-sm" onclick="abrirEditar('${f.id}')">Editar</button>
           </div>
         </div>`;
