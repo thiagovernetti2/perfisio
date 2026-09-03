@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Cartão de visita — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="../assets/img/simbolo-perfisio.svg">
+  <style>
+    :root { color-scheme: light only; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { background: #EEF2F1 !important; font-family: Inter, Arial, sans-serif; color: #0F2A2E; }
+
+    .barra {
+      position: sticky; top: 0; background: #fff; border-bottom: 1px solid #E4EBEA; padding: 12px 20px;
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap; z-index: 5;
+    }
+    .barra .tit { font-weight: 800; font-size: .95rem; margin-right: auto; }
+    .barra button, .barra a, .barra select {
+      border: 1px solid #DDE6E4; background: #fff; color: #0F2A2E; border-radius: 9px; padding: 9px 14px;
+      font-size: .86rem; font-weight: 700; font-family: inherit; cursor: pointer; text-decoration: none;
+    }
+    .barra .primario { background: #0DA189; border-color: #0DA189; color: #fff; }
+    .dica { font-size: .78rem; color: #64737A; padding: 8px 20px; background: #fff; border-bottom: 1px solid #E4EBEA; }
+
+    /* folha A4 com 10 cartões de 90x50mm */
+    .folha {
+      width: 210mm; min-height: 297mm; margin: 20px auto; background: #fff; padding: 13.5mm 15mm;
+      box-shadow: 0 10px 40px rgba(15,42,46,.18);
+      display: grid; grid-template-columns: 90mm 90mm; grid-auto-rows: 50mm;
+      gap: 4mm 0; justify-content: space-between; align-content: start;
+    }
+    .cartao {
+      width: 90mm; height: 50mm; border: .2mm dashed #C7D6D3; overflow: hidden;
+      display: flex; flex-direction: column; justify-content: space-between; padding: 5mm 5.5mm; position: relative;
+    }
+    .cartao.escuro { background: #0F2A2E; color: #fff; border-color: #24454a; }
+
+    .c-topo { display: flex; align-items: center; gap: 3mm; }
+    .c-logo { height: 9mm; max-width: 34mm; object-fit: contain; }
+    .c-marca { font-size: 10.5pt; font-weight: 800; letter-spacing: -.2px; line-height: 1.1; }
+    .c-marca small { display: block; font-size: 6.5pt; font-weight: 600; color: #64737A; letter-spacing: .06em; text-transform: uppercase; margin-top: .6mm; }
+    .escuro .c-marca small { color: #8FA6A3; }
+
+    .c-meio { display: flex; align-items: flex-end; justify-content: space-between; gap: 3mm; }
+    .c-nome { font-size: 13pt; font-weight: 800; letter-spacing: -.3px; line-height: 1.15; }
+    .c-cargo { font-size: 7.5pt; color: #4A5C5F; margin-top: .8mm; }
+    .escuro .c-cargo { color: #9DB3B0; }
+    .c-qr { width: 17mm; height: 17mm; flex: none; background: #fff; padding: .8mm; border-radius: 1mm; }
+    .c-qr img { width: 100%; height: 100%; display: block; }
+
+    .c-base { font-size: 7pt; line-height: 1.5; color: #26343A; }
+    .escuro .c-base { color: #C6D6D4; }
+    .c-base b { color: #0A8270; }
+    .escuro .c-base b { color: #5AD0BB; }
+    .c-linha { display: flex; gap: 2mm; align-items: center; }
+
+    @media print {
+      @page { size: A4; margin: 0; }
+      .barra, .dica { display: none !important; }
+      html, body { background: #fff !important; }
+      .folha { margin: 0; box-shadow: none; }
+      .cartao { border-color: #E6EDEB; }
+    }
+  </style>
+</head>
+<body>
+  <div class="barra">
+    <span class="tit" id="tituloBarra">Cartão de visita · A4 com 10 unidades</span>
+    <select id="selModelo" onchange="trocarModelo()">
+      <option value="claro">Modelo claro</option>
+      <option value="escuro">Modelo escuro</option>
+    </select>
+    <a href="equipe.html">← Voltar</a>
+    <button class="primario" onclick="window.print()">🖨 Imprimir</button>
+  </div>
+  <div class="dica">Papel A4 · 10 cartões de 90 × 50 mm · imprima em papel couché 250g e corte pelas linhas tracejadas. Nas opções de impressão, deixe "Gráficos de fundo" ligado.</div>
+
+  <div class="folha" id="folha"></div>
+
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/api.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const slugFisio = params.get('p');
+    let modelo = 'claro', CARTAO = '';
+
+    const esc = t => String(t == null ? '' : t).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+
+    async function boot() {
+      const clinica = await PF.api('/api/clinica');
+      const logo = clinica.tem_logo
+        ? `<img class="c-logo" src="/api/public/clinica-logo/${clinica.slug || clinica.id}" alt="${esc(clinica.nome)}">`
+        : '';
+      // no cartão do profissional a marca é a clínica; no da clínica, só o logo (o nome vem em destaque abaixo)
+      const marcaFisio = `<div class="c-topo">${logo}<div class="c-marca">${esc(clinica.nome)}<small>Fisioterapia</small></div></div>`;
+      const marcaClinica = logo ? `<div class="c-topo">${logo}</div>` : '<div class="c-topo"></div>';
+
+      if (slugFisio) {
+        const f = (await PF.api('/api/fisios')).find(x => x.slug === slugFisio || x.id === slugFisio);
+        if (!f) { document.getElementById('folha').innerHTML = '<p style="padding:20mm;">Profissional não encontrado.</p>'; return; }
+        document.getElementById('tituloBarra').textContent = `Cartão de ${f.nome} · A4 com 10 unidades`;
+        document.title = `Cartão de visita — ${f.nome}`;
+        const podeQr = f.publico && f.slug;
+        CARTAO = `
+          ${marcaFisio}
+          <div class="c-meio">
+            <div>
+              <div class="c-nome">${esc(f.nome)}</div>
+              <div class="c-cargo">${esc(f.esp || 'Fisioterapeuta')}${f.crefito ? ' · CREFITO ' + esc(f.crefito) : ''}</div>
+            </div>
+            ${podeQr ? `<div class="c-qr"><img src="/api/public/qrcode/${f.slug}.svg" alt="QR do perfil"></div>` : ''}
+          </div>
+          <div class="c-base">
+            ${f.whatsapp ? `<div class="c-linha">📱 ${esc(f.whatsapp)}</div>` : (clinica.telefone ? `<div class="c-linha">📞 ${esc(clinica.telefone)}</div>` : '')}
+            ${podeQr ? `<div class="c-linha">🌐 <b>perfis.io/${f.slug}</b></div>` : ''}
+            ${clinica.endereco ? `<div class="c-linha">📍 ${esc(clinica.endereco)}</div>` : ''}
+          </div>`;
+      } else {
+        document.getElementById('tituloBarra').textContent = `Cartão da clínica · A4 com 10 unidades`;
+        document.title = `Cartão de visita — ${clinica.nome}`;
+        const site = clinica.dominio && clinica.dominio_status === 'ativo'
+          ? clinica.dominio : `perfisio.com.br/clinica/${clinica.slug}`;
+        CARTAO = `
+          ${marcaClinica}
+          <div class="c-meio">
+            <div>
+              <div class="c-nome">${esc(clinica.nome)}</div>
+              <div class="c-cargo">${clinica.resp_tecnico ? 'Resp. técnico: ' + esc(clinica.resp_tecnico) : 'Fisioterapia e reabilitação'}</div>
+            </div>
+            <div class="c-qr"><img src="/api/public/qrcode-clinica/${clinica.slug || clinica.id}.svg" alt="QR da clínica"></div>
+          </div>
+          <div class="c-base">
+            ${clinica.telefone ? `<div class="c-linha">📞 ${esc(clinica.telefone)}</div>` : ''}
+            <div class="c-linha">🌐 <b>${esc(site)}</b></div>
+            ${clinica.endereco ? `<div class="c-linha">📍 ${esc(clinica.endereco)}</div>` : ''}
+            ${clinica.horario ? `<div class="c-linha">🕐 ${esc(clinica.horario)}</div>` : ''}
+          </div>`;
+      }
+      render();
+      if (params.get('imprimir')) setTimeout(() => window.print(), 800);
+    }
+
+    function render() {
+      document.getElementById('folha').innerHTML =
+        Array.from({ length: 10 }, () => `<div class="cartao ${modelo === 'escuro' ? 'escuro' : ''}">${CARTAO}</div>`).join('');
+    }
+    function trocarModelo() { modelo = document.getElementById('selModelo').value; render(); }
+
+    boot().catch(e => {
+      document.getElementById('folha').innerHTML = `<p style="padding:20mm;">${e.message}</p>`;
+    });
+  </script>
+</body>
+</html>

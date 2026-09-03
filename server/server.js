@@ -218,6 +218,8 @@ CREATE TABLE IF NOT EXISTS avaliacoes (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS avaliacoes_fisio_conta_uk ON avaliacoes (fisio_id, conta_id);
 ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS slug text;
+ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS logo bytea;
+ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS logo_mime text;
 ALTER TABLE fisios ADD COLUMN IF NOT EXISTS slug text;
 CREATE UNIQUE INDEX IF NOT EXISTS clinicas_slug_uk ON clinicas (slug) WHERE slug IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS fisios_slug_uk ON fisios (slug) WHERE slug IS NOT NULL;
@@ -659,6 +661,23 @@ app.get('/api/public/qrcode/:slug.svg', async (req, res) => {
   res.type('image/svg+xml').set('Cache-Control', 'public, max-age=86400').send(svg);
 });
 
+// QR da clínica: usa o domínio próprio quando ele está ativo
+app.get('/api/public/qrcode-clinica/:slug.svg', async (req, res) => {
+  const r = await pool.query(
+    `SELECT slug, dominio, dominio_status FROM clinicas
+     WHERE (slug=$1 OR ($2::boolean AND id::text=$1)) AND ativa`,
+    [req.params.slug, UUID.test(req.params.slug)]);
+  if (!r.rowCount) return res.status(404).send('<svg xmlns="http://www.w3.org/2000/svg"/>');
+  const c = r.rows[0];
+  const alvo = c.dominio && c.dominio_status === 'ativo'
+    ? `https://${c.dominio}`
+    : `https://${HOST_CANONICO}/clinica/${c.slug}`;
+  const svg = await require('qrcode').toString(alvo, {
+    type: 'svg', margin: 1, errorCorrectionLevel: 'M', color: { dark: '#0F2A2E', light: '#FFFFFF' },
+  });
+  res.type('image/svg+xml').set('Cache-Control', 'public, max-age=86400').send(svg);
+});
+
 /* ---------- AVALIAÇÕES DO PROFISSIONAL ---------- */
 // públicas: média, distribuição e comentários
 app.get('/api/public/avaliacoes/:fisio', async (req, res) => {
@@ -865,7 +884,10 @@ app.get('/api/me', auth, async (req, res) => {
 
 /* ---------- CLÍNICA (config + perfil público) ---------- */
 app.get('/api/clinica', auth, async (req, res) => {
-  const r = await pool.query('SELECT * FROM clinicas WHERE id=$1', [req.auth.cid]);
+  // nunca devolver o bytea do logo no JSON
+  const r = await pool.query(`SELECT id, nome, slug, cnpj, telefone, email, endereco, horario, resp_tecnico, perfil, ativa,
+     plano_social, dominio, dominio_status, assinatura_status, licencas, criado_em,
+     (logo IS NOT NULL) AS tem_logo FROM clinicas WHERE id=$1`, [req.auth.cid]);
   res.json(r.rows[0]);
 });
 app.put('/api/clinica', auth, async (req, res) => {
@@ -873,7 +895,10 @@ app.put('/api/clinica', auth, async (req, res) => {
   const r = await pool.query(
     `UPDATE clinicas SET nome=COALESCE($2,nome), cnpj=COALESCE($3,cnpj), telefone=COALESCE($4,telefone),
      email=COALESCE($5,email), endereco=COALESCE($6,endereco), horario=COALESCE($7,horario),
-     resp_tecnico=COALESCE($8,resp_tecnico), perfil=COALESCE($9,perfil) WHERE id=$1 RETURNING *`,
+     resp_tecnico=COALESCE($8,resp_tecnico), perfil=COALESCE($9,perfil) WHERE id=$1
+     RETURNING id, nome, slug, cnpj, telefone, email, endereco, horario, resp_tecnico, perfil, ativa,
+     plano_social, dominio, dominio_status, assinatura_status, licencas, criado_em,
+     (logo IS NOT NULL) AS tem_logo`,
     [req.auth.cid, nome, cnpj, telefone, email, endereco, horario, resp_tecnico, perfil ? JSON.stringify(perfil) : null]);
   res.json(r.rows[0]);
 });
@@ -953,6 +978,33 @@ app.post('/api/fisios/:id/foto', auth, async (req, res) => {
     [req.params.id, req.auth.cid, buf, mime]);
   if (!r.rowCount) return res.status(404).json({ erro: 'Profissional não encontrado' });
   res.json({ ok: true });
+});
+
+/* logo da clínica — usado nos cartões de visita e no cartaz */
+app.post('/api/clinica/logo', auth, async (req, res) => {
+  const { dados, mime } = req.body || {};
+  if (!dados || !MIMES_IMG.includes(mime)) return res.status(400).json({ erro: 'Envie uma imagem JPG, PNG ou WebP' });
+  const buf = Buffer.from(dados, 'base64');
+  if (!buf.length || buf.length > 4 * 1024 * 1024) return res.status(400).json({ erro: 'Imagem vazia ou maior que 4 MB' });
+  await pool.query('UPDATE clinicas SET logo=$2, logo_mime=$3 WHERE id=$1', [req.auth.cid, buf, mime]);
+  res.json({ ok: true });
+});
+
+app.delete('/api/clinica/logo', auth, async (req, res) => {
+  await pool.query('UPDATE clinicas SET logo=NULL, logo_mime=NULL WHERE id=$1', [req.auth.cid]);
+  res.json({ ok: true });
+});
+
+app.get('/api/public/clinica-logo/:id', async (req, res) => {
+  const chave = req.params.id;
+  const r = await pool.query(
+    `SELECT logo, logo_mime FROM clinicas
+     WHERE (slug=$1 OR ($2::boolean AND id::text=$1)) AND ativa AND logo IS NOT NULL`,
+    [chave, UUID.test(chave)]);
+  if (!r.rowCount) return res.status(404).end();
+  res.set('Content-Type', r.rows[0].logo_mime);
+  res.set('Cache-Control', 'public, max-age=3600');
+  res.send(r.rows[0].logo);
 });
 
 app.delete('/api/fisios/:id/foto', auth, async (req, res) => {

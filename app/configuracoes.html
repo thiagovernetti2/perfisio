@@ -34,6 +34,34 @@
         <button class="btn btn-primary" onclick="salvarClinica()">Salvar alterações</button>
       </div>
     </div>
+
+    <!-- LOGO + CARTÃO DE VISITA -->
+    <div class="card card-pad" style="max-width:760px;margin-top:20px;">
+      <h3 style="font-size:.98rem;margin-bottom:6px;">Logo e cartão de visita</h3>
+      <p style="font-size:.84rem;color:var(--text-soft);line-height:1.6;margin-bottom:16px;">
+        O logo aparece nos cartões de visita da clínica e de cada fisioterapeuta.
+      </p>
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+        <div id="logoPrev" style="width:120px;height:70px;border:1px dashed var(--line);border-radius:10px;
+             display:grid;place-items:center;background:#fff;background-size:contain;background-repeat:no-repeat;
+             background-position:center;font-size:1.4rem;color:var(--text-soft);">🏥</div>
+        <div style="flex:1;min-width:200px;">
+          <div style="font-size:.82rem;font-weight:700;color:var(--ink);">Logo da clínica</div>
+          <div style="font-size:.74rem;color:var(--text-soft);line-height:1.5;margin-top:2px;">
+            PNG com fundo transparente fica melhor. Até 4 MB.
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+            <label class="btn btn-soft btn-sm" style="cursor:pointer;">📤 Enviar logo
+              <input type="file" id="logoInput" accept="image/jpeg,image/png,image/webp" style="display:none;"></label>
+            <button class="btn btn-ghost btn-sm" id="logoDel" onclick="removerLogo()" style="display:none;">Remover</button>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);">
+        <a class="btn btn-primary btn-sm" href="cartao.html" target="_blank">💳 Cartão da clínica</a>
+        <a class="btn btn-soft btn-sm" href="equipe.html">Cartão dos fisioterapeutas →</a>
+      </div>
+    </div>
   </div>
 
   <!-- PERFIL PÚBLICO -->
@@ -177,6 +205,7 @@
       const p = CLINICA.perfil || {};
       pTitulo.value = p.titulo || ''; pBio.value = p.bio || ''; pEsp.value = p.especialidades || '';
       pPreco.value = p.faixa_preco || ''; pVisivel.checked = !!p.visivel; pAgenda.checked = p.agenda_online !== false;
+      pintarLogo(!!CLINICA.tem_logo);
       await Promise.all([carregarUsuarios(), carregarDominio()]);
     }
 
@@ -245,6 +274,44 @@
         await PF.api('/api/dominio', { method: 'DELETE' });
         App.toast('Domínio removido');
         await carregarDominio();
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    /* ---------- logo da clínica ---------- */
+    function pintarLogo(tem) {
+      const el = document.getElementById('logoPrev');
+      el.style.backgroundImage = tem ? `url(/api/public/clinica-logo/${CLINICA.slug || CLINICA.id}?v=${Date.now()})` : '';
+      el.textContent = tem ? '' : '🏥';
+      document.getElementById('logoDel').style.display = tem ? '' : 'none';
+    }
+
+    async function comprimirImagem(file, max = 700) {
+      const bitmap = await createImageBitmap(file);
+      const escala = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(bitmap.width * escala); c.height = Math.round(bitmap.height * escala);
+      c.getContext('2d').drawImage(bitmap, 0, 0, c.width, c.height);
+      // PNG preserva a transparência do logo
+      const png = file.type === 'image/png';
+      return { dados: c.toDataURL(png ? 'image/png' : 'image/jpeg', .9).split(',')[1], mime: png ? 'image/png' : 'image/jpeg' };
+    }
+
+    document.getElementById('logoInput').addEventListener('change', async e => {
+      const f = e.target.files[0]; if (!f) return;
+      try {
+        const img = await comprimirImagem(f);
+        await PF.api('/api/clinica/logo', { method: 'POST', body: img });
+        CLINICA.tem_logo = true; pintarLogo(true);
+        App.toast('Logo atualizado!');
+      } catch (err) { App.toast(err.message, 'error'); }
+      e.target.value = '';
+    });
+
+    async function removerLogo() {
+      try {
+        await PF.api('/api/clinica/logo', { method: 'DELETE' });
+        CLINICA.tem_logo = false; pintarLogo(false);
+        App.toast('Logo removido');
       } catch (e) { App.toast(e.message, 'error'); }
     }
 

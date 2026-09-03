@@ -198,8 +198,8 @@
             <code>perfis.io/${f.slug || '...'}</code>
             <button class="btn btn-soft btn-sm" onclick="abrirEditar('${f.id}')">Ativar perfil</button>
           </div>`}
-          <div style="display:flex;gap:8px;justify-content:center;margin-top:15px;">
-            <button class="btn btn-ghost btn-sm" onclick="location.href='agenda.html'">Ver agenda</button>
+          <div style="display:flex;gap:8px;justify-content:center;margin-top:15px;flex-wrap:wrap;">
+            <a class="btn btn-ghost btn-sm" href="cartao.html?p=${f.slug || f.id}" target="_blank" title="Cartão de visita A4">💳 Cartão</a>
             <button class="btn btn-soft btn-sm" onclick="abrirEditar('${f.id}')">Editar</button>
           </div>
         </div>`;
