@@ -166,6 +166,7 @@
 
   <script src="/assets/js/app.js"></script>
   <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/conta.js"></script>
   <script>
     const LABEL = {
       esportiva: '🏃 Esportiva', ortopedia: '🦴 Ortopedia', pilates: '🧘 Pilates', neuro: '🧠 Neuro',
@@ -379,7 +380,7 @@
 
     async function bkCarregarOcupados() {
       try {
-        const r = await PF.api(`/api/public/agenda/${fisioId}?from=${isoDia(0)}&to=${isoDia(90)}`);
+        const r = await PF.api(`/api/public/agenda/${PRO.id}?from=${isoDia(0)}&to=${isoDia(90)}`);
         bkOcupados = new Set(r.map(s => s.data + '|' + s.hora));
       } catch (e) { bkOcupados = new Set(); }
     }
@@ -437,9 +438,8 @@
         } else {
           rodape = `
             <div class="bk-form">
-              <div class="field"><label>Seu nome *</label><input type="text" id="bkNome"></div>
-              <div class="field"><label>WhatsApp *</label><input type="tel" id="bkTel" placeholder="(11) 9 0000-0000"></div>
               <div class="field full"><label>O que você está sentindo? (opcional)</label><input type="text" id="bkObs" placeholder="Ex.: dor no joelho ao subir escadas"></div>
+              <div class="full" id="bkQuem" style="font-size:.8rem;color:var(--text-soft);"></div>
               <div class="full" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
                 <button class="btn btn-primary" style="padding:12px 26px;" id="bkBtn" onclick="bkConfirmar()">
                   Confirmar agendamento · ${fmtBR(bkData)} às ${bkHora}
@@ -461,18 +461,28 @@
 
     function bkNav(d) { bkInicio = Math.min(Math.max(bkInicio + d, 0), 84); bkRender(); }
     function bkSelDia(iso) { bkData = iso; bkHora = null; bkRender(); }
-    function bkSelHora(h) { if (bkData && bkLivre(bkData, h)) { bkHora = h; bkRender(); const f = document.getElementById('bkNome'); } }
+    function mostrarQuem() {
+      const el = document.getElementById('bkQuem');
+      const c = Conta.atual();
+      if (!el) return;
+      el.innerHTML = c
+        ? `Agendando como <b style="color:var(--ink);">${c.nome}</b> · <a href="#" onclick="event.preventDefault();Conta.sair();mostrarQuem();" style="color:var(--primary-dark);font-weight:700;">trocar de conta</a>`
+        : 'Ao confirmar, você entra na sua conta ou cria uma em 30 segundos.';
+    }
+
+    function bkSelHora(h) { if (bkData && bkLivre(bkData, h)) { bkHora = h; bkRender(); mostrarQuem(); } }
 
     async function bkConfirmar() {
-      const nome = document.getElementById('bkNome').value.trim();
-      const tel = document.getElementById('bkTel').value.trim();
-      if (!nome || !tel) { App.toast('Informe seu nome e WhatsApp', 'error'); return; }
+      const obs = document.getElementById('bkObs').value.trim() || null;
+      // sem conta, abre a modal de entrar/criar conta e só então agenda
+      const conta = await Conta.exigir();
+      if (!conta) { App.toast('Entre na sua conta para confirmar o agendamento', 'error'); return; }
+      mostrarQuem();
       const btn = document.getElementById('bkBtn'); btn.disabled = true; btn.textContent = 'Agendando…';
       try {
-        const r = await PF.api('/api/public/agendar', { method: 'POST', body: {
-          fisio_id: fisioId, nome, telefone: tel, data: bkData, hora: bkHora,
-          semanas: 1, obs: document.getElementById('bkObs').value.trim() || null,
-        }});
+        const r = await Conta.api('/api/public/agendar', {
+          fisio_id: PRO.id, data: bkData, hora: bkHora, semanas: 1, obs,
+        });
         document.getElementById('bkComponente').innerHTML = `
           <div class="bk-ok">
             <div style="font-size:2.2rem;">✅</div>
@@ -596,7 +606,7 @@
       const btn = document.getElementById('btnAv'); btn.disabled = true;
       try {
         await PF.api('/api/public/leads-profissional', { method: 'POST', body: {
-          fisio_id: fisioId, nome: avNome.value.trim(), telefone: avTel.value.trim() || null, obs: avObs.value.trim() || null,
+          fisio_id: PRO.id, nome: avNome.value.trim(), telefone: avTel.value.trim() || null, obs: avObs.value.trim() || null,
         }});
         App.closeModal('mAvaliacao');
         App.toast('Solicitação enviada! ' + PRO.nome.split(' ')[0] + ' entrará em contato. ✅');

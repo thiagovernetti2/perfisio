@@ -189,6 +189,17 @@ ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS token_verificacao text;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS token_expira timestamptz;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS verificado_em timestamptz;
 CREATE INDEX IF NOT EXISTS usuarios_token_idx ON usuarios (token_verificacao) WHERE token_verificacao IS NOT NULL;
+-- contas de PACIENTE (globais, não pertencem a uma clínica)
+CREATE TABLE IF NOT EXISTS contas (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  nome text NOT NULL,
+  email text NOT NULL UNIQUE,
+  senha_hash text NOT NULL,
+  telefone text,
+  ultimo_acesso timestamptz,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS conta_id uuid REFERENCES contas(id) ON DELETE SET NULL;
 ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS slug text;
 ALTER TABLE fisios ADD COLUMN IF NOT EXISTS slug text;
 CREATE UNIQUE INDEX IF NOT EXISTS clinicas_slug_uk ON clinicas (slug) WHERE slug IS NOT NULL;
@@ -509,9 +520,77 @@ function auth(req, res, next) {
   const h = req.headers.authorization || '';
   const token = h.startsWith('Bearer ') ? h.slice(7) : null;
   if (!token) return res.status(401).json({ erro: 'Não autenticado' });
-  try { req.auth = jwt.verify(token, JWT_SECRET); next(); }
-  catch { return res.status(401).json({ erro: 'Sessão expirada' }); }
+  try {
+    const p = jwt.verify(token, JWT_SECRET);
+    // conta de paciente não acessa o sistema da clínica
+    if (p.tipo === 'conta') return res.status(403).json({ erro: 'Esta conta é de paciente' });
+    req.auth = p; next();
+  } catch { return res.status(401).json({ erro: 'Sessão expirada' }); }
 }
+
+/* ---------- CONTA DO PACIENTE (agendamento online) ---------- */
+const assinarConta = c => jwt.sign({ conta: c.id, tipo: 'conta' }, JWT_SECRET, { expiresIn: '90d' });
+
+function authConta(req, res, next) {
+  const h = req.headers.authorization || '';
+  const token = h.startsWith('Bearer ') ? h.slice(7) : null;
+  if (!token) return res.status(401).json({ erro: 'Entre na sua conta para agendar' });
+  try {
+    const p = jwt.verify(token, JWT_SECRET);
+    if (p.tipo !== 'conta') return res.status(403).json({ erro: 'Token inválido para esta ação' });
+    req.conta = p.conta; next();
+  } catch { return res.status(401).json({ erro: 'Sessão expirada — entre de novo' }); }
+}
+
+const respostaConta = (c, token) => ({ token, conta: { id: c.id, nome: c.nome, email: c.email, telefone: c.telefone } });
+
+app.post('/api/conta/registrar', async (req, res) => {
+  const { nome, email, telefone, senha } = req.body || {};
+  if (!nome || !email || !senha) return res.status(400).json({ erro: 'Preencha nome, e-mail e senha' });
+  if (String(senha).length < 6) return res.status(400).json({ erro: 'A senha precisa de ao menos 6 caracteres' });
+  const mail = String(email).trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) return res.status(400).json({ erro: 'E-mail inválido' });
+  try {
+    const r = await pool.query(
+      'INSERT INTO contas (nome, email, telefone, senha_hash) VALUES ($1,$2,$3,$4) RETURNING id, nome, email, telefone',
+      [String(nome).trim(), mail, telefone || null, bcrypt.hashSync(senha, 10)]);
+    const c = r.rows[0];
+    res.json(respostaConta(c, assinarConta(c)));
+  } catch (e) {
+    if (e.code === '23505') return res.status(409).json({ erro: 'Já existe uma conta com este e-mail — faça login' });
+    console.error(e); res.status(500).json({ erro: 'Erro ao criar conta' });
+  }
+});
+
+app.post('/api/conta/login', async (req, res) => {
+  const { email, senha } = req.body || {};
+  const r = await pool.query('SELECT * FROM contas WHERE email=$1', [String(email || '').trim().toLowerCase()]);
+  const c = r.rows[0];
+  if (!c || !bcrypt.compareSync(senha || '', c.senha_hash))
+    return res.status(401).json({ erro: 'E-mail ou senha inválidos' });
+  pool.query('UPDATE contas SET ultimo_acesso=now() WHERE id=$1', [c.id]).catch(() => {});
+  res.json(respostaConta(c, assinarConta(c)));
+});
+
+app.get('/api/conta/me', authConta, async (req, res) => {
+  const r = await pool.query('SELECT id, nome, email, telefone FROM contas WHERE id=$1', [req.conta]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Conta não encontrada' });
+  res.json({ conta: r.rows[0] });
+});
+
+// agendamentos da conta, em todas as clínicas
+app.get('/api/conta/agendamentos', authConta, async (req, res) => {
+  const r = await pool.query(`
+    SELECT to_char(s.data, 'YYYY-MM-DD') AS data, s.hora, s.tipo, s.status, s.reserva,
+           f.nome AS fisio_nome, f.slug AS fisio_slug, c.nome AS clinica_nome
+    FROM sessoes s
+    JOIN pacientes p ON p.id = s.paciente_id
+    JOIN fisios f ON f.id = s.fisio_id
+    JOIN clinicas c ON c.id = s.clinica_id
+    WHERE p.conta_id = $1 AND s.data >= CURRENT_DATE - 30
+    ORDER BY s.data DESC, s.hora`, [req.conta]);
+  res.json(r.rows);
+});
 
 /* ---------- VERIFICAÇÃO DE E-MAIL ---------- */
 const crypto = require('node:crypto');
@@ -1676,43 +1755,60 @@ app.get('/api/public/clinicas/:id', async (req, res) => {
 
 /* ---------- AGENDAMENTO ONLINE (público) ---------- */
 // horários ocupados do profissional (sem nenhum dado de paciente)
+// as URLs amigáveis passam o slug; as antigas passam o uuid — as rotas públicas aceitam os dois
+async function acharFisioPublico(valor) {
+  if (!valor) return null;
+  const r = await pool.query(
+    `SELECT f.id, f.nome, f.clinica_id FROM fisios f JOIN clinicas c ON c.id = f.clinica_id
+     WHERE (f.slug = $1 OR ($2::boolean AND f.id::text = $1)) AND f.publico AND f.ativo AND c.ativa`,
+    [String(valor), UUID.test(String(valor))]);
+  return r.rowCount ? r.rows[0] : null;
+}
+
 app.get('/api/public/agenda/:fisioId', async (req, res) => {
-  const f = await pool.query('SELECT 1 FROM fisios WHERE id=$1 AND publico AND ativo', [req.params.fisioId]);
-  if (!f.rowCount) return res.status(404).json({ erro: 'Profissional não encontrado' });
+  const f = await acharFisioPublico(req.params.fisioId);
+  if (!f) return res.status(404).json({ erro: 'Profissional não encontrado' });
   const r = await pool.query(
     `SELECT to_char(data, 'YYYY-MM-DD') AS data, hora FROM sessoes
      WHERE fisio_id=$1 AND status <> 'cancelada' AND data >= $2::date AND data <= $3::date`,
-    [req.params.fisioId, req.query.from, req.query.to]);
+    [f.id, req.query.from, req.query.to]);
   res.json(r.rows.map(s => ({ data: s.data, hora: s.hora.slice(0, 5) })));
 });
 
 const gerarCodigo = () => 'PF-' + Math.random().toString(36).slice(2, 8).toUpperCase();
 
 // cria o agendamento (único ou recorrente semanal)
-app.post('/api/public/agendar', async (req, res) => {
-  const { fisio_id, nome, telefone, data, hora, semanas, obs } = req.body || {};
-  if (!fisio_id || !nome || !data || !hora) return res.status(400).json({ erro: 'Preencha nome, data e horário' });
+app.post('/api/public/agendar', authConta, async (req, res) => {
+  const { fisio_id, data, hora, semanas, obs } = req.body || {};
+  if (!fisio_id || !data || !hora) return res.status(400).json({ erro: 'Escolha data e horário' });
   if (data < new Date().toISOString().slice(0, 10)) return res.status(400).json({ erro: 'Escolha uma data futura' });
-  const fq = await pool.query(`
-    SELECT f.id, f.nome, f.clinica_id FROM fisios f JOIN clinicas c ON c.id = f.clinica_id
-    WHERE f.id=$1 AND f.publico AND f.ativo AND c.ativa`, [fisio_id]);
-  if (!fq.rowCount) return res.status(404).json({ erro: 'Profissional não encontrado' });
-  const fisio = fq.rows[0];
+  // nome e telefone vêm da conta, não do formulário
+  const cq = await pool.query('SELECT id, nome, telefone FROM contas WHERE id=$1', [req.conta]);
+  if (!cq.rowCount) return res.status(401).json({ erro: 'Conta não encontrada' });
+  const conta = cq.rows[0];
+  const nome = conta.nome, telefone = req.body?.telefone || conta.telefone;
+  const fisio = await acharFisioPublico(fisio_id);
+  if (!fisio) return res.status(404).json({ erro: 'Profissional não encontrado' });
 
-  // reutiliza paciente pelo telefone; senão cria
+  // acha o paciente desta clínica pela conta; senão pelo telefone; senão cria
   let pacienteId = null;
+  const jaVinculado = await pool.query(
+    'SELECT id FROM pacientes WHERE clinica_id=$1 AND conta_id=$2 LIMIT 1', [fisio.clinica_id, conta.id]);
+  if (jaVinculado.rowCount) pacienteId = jaVinculado.rows[0].id;
   const telLimpo = (telefone || '').replace(/\D/g, '');
-  if (telLimpo) {
+  if (!pacienteId && telLimpo) {
     const ex = await pool.query(
       `SELECT id FROM pacientes WHERE clinica_id=$1 AND regexp_replace(COALESCE(telefone,''), '\\D', '', 'g') = $2 LIMIT 1`,
       [fisio.clinica_id, telLimpo]);
     if (ex.rowCount) pacienteId = ex.rows[0].id;
   }
-  if (!pacienteId) {
+  if (pacienteId) {
+    await pool.query('UPDATE pacientes SET conta_id=$2 WHERE id=$1 AND conta_id IS NULL', [pacienteId, conta.id]);
+  } else {
     const novo = await pool.query(
-      `INSERT INTO pacientes (clinica_id, nome, telefone, fisio_id, status, queixa)
-       VALUES ($1,$2,$3,$4,'avaliacao',$5) RETURNING id`,
-      [fisio.clinica_id, nome, telefone || null, fisio_id, obs || null]);
+      `INSERT INTO pacientes (clinica_id, nome, telefone, fisio_id, status, queixa, conta_id)
+       VALUES ($1,$2,$3,$4,'avaliacao',$5,$6) RETURNING id`,
+      [fisio.clinica_id, nome, telefone || null, fisio.id, obs || null, conta.id]);
     pacienteId = novo.rows[0].id;
   }
 
@@ -1730,12 +1826,12 @@ app.post('/api/public/agendar', async (req, res) => {
     const dt = datas[i];
     const ocupado = await pool.query(
       `SELECT 1 FROM sessoes WHERE fisio_id=$1 AND data=$2::date AND hora=$3 AND status <> 'cancelada'`,
-      [fisio_id, dt, hora]);
+      [fisio.id, dt, hora]);
     if (ocupado.rowCount) { conflitos.push(dt); continue; }
     await pool.query(
       `INSERT INTO sessoes (clinica_id, paciente_id, fisio_id, tipo, data, hora, status, obs, reserva)
        VALUES ($1,$2,$3,$4,$5::date,$6,'agendada',$7,$8)`,
-      [fisio.clinica_id, pacienteId, fisio_id,
+      [fisio.clinica_id, pacienteId, fisio.id,
        i === 0 ? 'Avaliação inicial' : 'Sessão de tratamento', dt, hora,
        'Agendado pelo site' + (obs ? ' · ' + obs.slice(0, 140) : ''), codigo]);
     criadas.push(dt);
@@ -1786,12 +1882,12 @@ app.post('/api/public/reserva/:codigo/cancelar', async (req, res) => {
 app.post('/api/public/leads-profissional', async (req, res) => {
   const { fisio_id, nome, telefone, obs } = req.body || {};
   if (!fisio_id || !nome) return res.status(400).json({ erro: 'Informe seu nome' });
-  const f = await pool.query('SELECT clinica_id, nome FROM fisios WHERE id=$1 AND publico', [fisio_id]);
-  if (!f.rowCount) return res.status(404).json({ erro: 'Profissional não encontrado' });
+  const f = await acharFisioPublico(fisio_id);
+  if (!f) return res.status(404).json({ erro: 'Profissional não encontrado' });
   await pool.query(
     `INSERT INTO leads (clinica_id, nome, telefone, origem, interesse, obs, fisio_id)
      VALUES ($1,$2,$3,'Site PerFisio',$4,$5,$6)`,
-    [f.rows[0].clinica_id, nome, telefone || null, 'Avaliação fisioterapêutica', obs || null, fisio_id]);
+    [f.clinica_id, nome, telefone || null, 'Avaliação fisioterapêutica', obs || null, f.id]);
   res.json({ ok: true });
 });
 
@@ -2119,3 +2215,8 @@ async function seedSuperadmin() {
   }
   app.listen(PORT, () => console.log(`PerFisio rodando na porta ${PORT}`));
 })().catch(e => { console.error('Falha ao iniciar:', e); process.exit(1); });
+
+/* Uma requisição malformada não pode derrubar o servidor de todo mundo:
+   loga e segue. (Já aconteceu: slug onde a query esperava uuid.) */
+process.on('unhandledRejection', e => console.error('⚠️  promessa não tratada:', e));
+process.on('uncaughtException', e => console.error('⚠️  exceção não tratada:', e));
