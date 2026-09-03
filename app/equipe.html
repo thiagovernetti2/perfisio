@@ -117,6 +117,14 @@
     </div>
   </div>
 
+  <style>
+    .link-curto { display: flex; align-items: center; gap: 4px; margin-top: 14px;
+      background: var(--bg); border-radius: 9px; padding: 5px 6px 5px 10px; }
+    .link-curto code { flex: 1; font-size: .76rem; font-weight: 700; color: var(--primary-dark);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+    .link-curto .btn { padding: 4px 8px; }
+  </style>
+
   <script src="../assets/js/app.js"></script>
   <script src="../assets/js/api.js"></script>
   <script src="../assets/js/sidebar.js"></script>
@@ -178,6 +186,12 @@
             <div><div class="n">${d.realizadas}</div><div class="l">Sessões/mês</div></div>
             <div><div class="n">${d.faltas}</div><div class="l">Faltas</div></div>
           </div>
+          ${f.publico && f.slug ? `
+          <div class="link-curto">
+            <code>perfis.io/${f.slug}</code>
+            <button class="btn btn-ghost btn-sm" title="Copiar link" onclick="copiarLink('${f.slug}', this)">📋</button>
+            <a class="btn btn-ghost btn-sm" title="Cartaz A4 com QR code para avaliação" href="cartaz.html?p=${f.slug}" target="_blank">🖨 QR</a>
+          </div>` : ''}
           <div style="display:flex;gap:8px;justify-content:center;margin-top:15px;">
             <button class="btn btn-ghost btn-sm" onclick="location.href='agenda.html'">Ver agenda</button>
             <button class="btn btn-soft btn-sm" onclick="abrirEditar('${f.id}')">Editar</button>
@@ -298,6 +312,15 @@
     async function removerGaleria(id) {
       try { await PF.api(`/api/fisio-galeria/${id}`, { method: 'DELETE' }); carregarGaleria(); }
       catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    /* copiar o link curto direto do card da lista */
+    function copiarLink(slug, botao) {
+      const url = 'https://perfis.io/' + slug;
+      navigator.clipboard.writeText(url).then(() => {
+        App.toast('Link copiado: ' + url.replace('https://', ''));
+        if (botao) { const antes = botao.textContent; botao.textContent = '✓'; setTimeout(() => botao.textContent = antes, 1600); }
+      }).catch(() => App.toast('Copie manualmente: ' + url, 'error'));
     }
 
     /* link curto perfis.io/{slug} */

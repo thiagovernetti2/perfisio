@@ -79,6 +79,18 @@
     .rodape { text-align: center; margin-top: 18px; font-size: .78rem; color: var(--text-soft); }
     .rodape img { height: 16px; vertical-align: -3px; opacity: .85; }
 
+    .aval-cartao { display: block; margin-top: 16px; padding: 22px 26px; }
+    .aval-topo { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .aval-nota { font-size: 2rem; font-weight: 900; color: var(--ink); line-height: 1; }
+    .estrelas { color: #E8B317; letter-spacing: 1px; }
+    .aval-topo .btn { margin-left: auto; }
+    .aval-item { border-top: 1px solid #F0F4F3; padding-top: 12px; margin-top: 12px; }
+    .aval-item .cab { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: .82rem; }
+    .aval-item .cab b { color: var(--ink); }
+    .aval-item p { font-size: .85rem; color: var(--text); line-height: 1.55; margin-top: 6px; }
+    .estrela-btn { background: none; border: none; font-size: 1.8rem; line-height: 1; cursor: pointer; color: #DCE5E3; padding: 0 2px; font-family: inherit; }
+    .estrela-btn.on { color: #E8B317; }
+
     @media (max-width: 820px) {
       .cartao { grid-template-columns: 1fr; }
       .perfil { border-right: none; border-bottom: 1px solid var(--line); }
@@ -93,6 +105,9 @@
     <div class="cartao" id="cartao">
       <div class="perfil" id="perfil"></div>
       <div id="painel"></div>
+    </div>
+    <div class="cartao aval-cartao" id="cartaoAval" style="display:none;">
+      <div class="aval-conteudo" id="avalConteudo"></div>
     </div>
     <div class="rodape">
       Agendamento por <a href="https://www.perfisio.com.br" style="font-weight:700;color:var(--primary-dark);">PerFisio</a>
@@ -123,6 +138,91 @@
       renderPerfil();
       await carregarOcupados();
       renderAgenda();
+      await carregarAvaliacoes();
+      // quem chega pelo QR do cartaz cai direto no formulário
+      if (location.hash === '#avaliar') abrirFormAvaliacao();
+    }
+
+    /* ================= AVALIAÇÕES ================= */
+    const estrelas = n => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n);
+    const ROTULO = { 5: 'Excelente', 4: 'Muito bom', 3: 'Bom', 2: 'Regular', 1: 'Ruim' };
+    let MINHA = null, notaSel = 0;
+
+    async function carregarAvaliacoes() {
+      let d;
+      try { d = await PF.api('/api/public/avaliacoes/' + P.id); } catch (e) { return; }
+      if (Conta.token()) { try { MINHA = await Conta.api('/api/avaliacoes/' + P.id + '/minha'); } catch (e) {} }
+      const primeiro = P.nome.split(' ')[0];
+      document.getElementById('cartaoAval').style.display = '';
+      document.getElementById('avalConteudo').innerHTML = `
+        <div class="aval-topo">
+          ${d.total ? `
+            <div class="aval-nota">${String(d.media).replace('.', ',')}</div>
+            <div>
+              <div class="estrelas">${estrelas(Math.round(d.media))}</div>
+              <div style="font-size:.78rem;color:var(--text-soft);">${d.total} avaliação(ões) de pacientes</div>
+            </div>`
+            : `<div style="font-size:.88rem;color:var(--text-soft);line-height:1.5;">
+                 ${primeiro} ainda não tem avaliações.<br>Foi atendido por ${primeiro.toLowerCase() === primeiro ? primeiro : primeiro}? Conte como foi.
+               </div>`}
+          <button class="btn btn-soft btn-sm" onclick="abrirFormAvaliacao()">
+            ${MINHA ? '✏️ Editar minha avaliação' : '⭐ Avaliar'}</button>
+        </div>
+        ${d.avaliacoes.slice(0, 4).map(a => `
+          <div class="aval-item">
+            <div class="cab"><b>${a.primeiro_nome}</b>
+              ${a.paciente ? '<span class="badge green" style="font-size:.62rem;">✓ paciente</span>' : ''}
+              <span class="estrelas">${estrelas(a.nota)}</span>
+              <span style="color:var(--text-soft);margin-left:auto;">${PF.fmtData(String(a.criado_em).slice(0, 10))}</span>
+            </div>
+            ${a.comentario ? `<p>${a.comentario.replace(/</g, '&lt;')}</p>` : ''}
+          </div>`).join('')}
+        <div id="formAval" style="display:none;border-top:1px solid #F0F4F3;margin-top:14px;padding-top:14px;">
+          <div style="font-size:.85rem;font-weight:700;color:var(--ink);margin-bottom:6px;">Sua nota para ${primeiro}</div>
+          <div id="estrelasSel" style="margin-bottom:10px;"></div>
+          <div class="field"><label>Comentário (opcional)</label>
+            <textarea id="avalTexto" style="min-height:70px;" placeholder="Como foi o atendimento?"></textarea></div>
+          <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" id="btnAval" onclick="enviarAvaliacao()">Publicar</button>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('formAval').style.display='none'">Cancelar</button>
+          </div>
+        </div>`;
+    }
+
+    function renderEstrelas() {
+      document.getElementById('estrelasSel').innerHTML = [1, 2, 3, 4, 5]
+        .map(n => `<button type="button" class="estrela-btn${n <= notaSel ? ' on' : ''}" onclick="setNota(${n})">★</button>`).join('')
+        + `<span style="font-size:.8rem;color:var(--text-soft);margin-left:8px;">${notaSel ? ROTULO[notaSel] : ''}</span>`;
+    }
+    function setNota(n) { notaSel = n; renderEstrelas(); }
+
+    async function abrirFormAvaliacao() {
+      const conta = await Conta.exigir({
+        titulo: 'Entre para avaliar',
+        texto: 'Avaliações vêm de contas reais — é assim que o próximo paciente confia no que lê aqui.',
+      });
+      if (!conta) return;
+      try { MINHA = await Conta.api('/api/avaliacoes/' + P.id + '/minha'); } catch (e) { MINHA = null; }
+      notaSel = MINHA ? MINHA.nota : 0;
+      const form = document.getElementById('formAval');
+      form.style.display = '';
+      renderEstrelas();
+      document.getElementById('avalTexto').value = MINHA ? (MINHA.comentario || '') : '';
+      form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    async function enviarAvaliacao() {
+      if (!notaSel) { App.toast('Escolha de 1 a 5 estrelas', 'error'); return; }
+      const btn = document.getElementById('btnAval');
+      btn.disabled = true; btn.textContent = 'Publicando...';
+      try {
+        await Conta.api('/api/avaliacoes', { fisio: P.id, nota: notaSel, comentario: document.getElementById('avalTexto').value.trim() });
+        App.toast('Avaliação publicada. Obrigado!');
+        await carregarAvaliacoes();
+      } catch (e) {
+        App.toast(e.message, 'error');
+        btn.disabled = false; btn.textContent = 'Publicar';
+      }
     }
 
     function renderPerfil() {

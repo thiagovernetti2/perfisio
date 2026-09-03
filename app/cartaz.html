@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Cartaz de avaliação — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="../assets/img/simbolo-perfisio.svg">
+  <style>
+    /* o cartaz é um documento próprio: nada de tema escuro herdado */
+    :root { color-scheme: light only; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { background: #EEF2F1 !important; font-family: Inter, Arial, sans-serif; color: #0F2A2E; }
+
+    .barra {
+      position: sticky; top: 0; background: #fff; border-bottom: 1px solid #E4EBEA;
+      padding: 12px 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; z-index: 5;
+    }
+    .barra .tit { font-weight: 800; font-size: .95rem; margin-right: auto; }
+    .barra button, .barra a {
+      border: 1px solid #DDE6E4; background: #fff; color: #0F2A2E; border-radius: 9px;
+      padding: 9px 16px; font-size: .86rem; font-weight: 700; font-family: inherit; cursor: pointer; text-decoration: none;
+    }
+    .barra .primario { background: #0DA189; border-color: #0DA189; color: #fff; }
+
+    /* folha A4 */
+    .folha {
+      width: 210mm; min-height: 297mm; margin: 22px auto; background: #fff; padding: 22mm 18mm;
+      box-shadow: 0 10px 40px rgba(15,42,46,.18); display: flex; flex-direction: column; text-align: center;
+    }
+    .logo { height: 12mm; width: auto; margin: 0 auto; }
+    .chamada { font-size: 30pt; font-weight: 900; letter-spacing: -1px; line-height: 1.15; margin-top: 14mm; }
+    .chamada em { color: #0A8270; font-style: normal; }
+    .sub { font-size: 13pt; color: #4A5C5F; line-height: 1.5; margin-top: 6mm; }
+
+    .qr-box { margin: 12mm auto 0; border: 2px solid #0F2A2E; border-radius: 6mm; padding: 6mm; width: 92mm; }
+    .qr-box svg, .qr-box img { width: 100%; height: auto; display: block; }
+    .endereco { font-size: 15pt; font-weight: 800; margin-top: 7mm; letter-spacing: .3px; }
+    .endereco span { color: #0A8270; }
+
+    .passos { margin-top: 12mm; display: flex; gap: 6mm; justify-content: center; }
+    .passo { flex: 1; max-width: 45mm; }
+    .passo .n {
+      width: 11mm; height: 11mm; border-radius: 50%; background: #E3F5EF; color: #0A8270;
+      font-weight: 900; font-size: 13pt; display: grid; place-items: center; margin: 0 auto 3mm;
+    }
+    .passo p { font-size: 10pt; color: #4A5C5F; line-height: 1.45; }
+
+    .prof { margin-top: auto; padding-top: 10mm; border-top: 1px solid #E4EBEA; }
+    .prof .nome { font-size: 15pt; font-weight: 800; }
+    .prof .esp { font-size: 11pt; color: #64737A; margin-top: 1mm; }
+    .rodape { font-size: 8.5pt; color: #93A5A3; margin-top: 5mm; }
+
+    @media print {
+      @page { size: A4; margin: 0; }
+      .barra { display: none !important; }
+      html, body { background: #fff !important; }
+      .folha { margin: 0; box-shadow: none; width: 210mm; min-height: 297mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="barra">
+    <span class="tit">Cartaz de avaliação · A4</span>
+    <a href="equipe.html">← Voltar para Equipe</a>
+    <button class="primario" onclick="window.print()">🖨 Imprimir</button>
+  </div>
+
+  <div class="folha" id="folha">
+    <div style="color:#64737A;font-size:11pt;">Carregando...</div>
+  </div>
+
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/api.js"></script>
+  <script>
+    const slug = new URLSearchParams(location.search).get('p');
+
+    async function boot() {
+      if (!slug) { document.getElementById('folha').innerHTML = '<p>Profissional não informado.</p>'; return; }
+      let p;
+      try { p = await PF.api('/api/public/profissionais/' + slug); }
+      catch (e) {
+        document.getElementById('folha').innerHTML =
+          '<p style="padding:20mm;">Este profissional não está com o perfil público — ative o perfil em Equipe para gerar o cartaz.</p>';
+        return;
+      }
+      const endereco = 'perfis.io/' + (p.slug || slug);
+      document.title = `Cartaz de avaliação — ${p.nome}`;
+      document.getElementById('folha').innerHTML = `
+        <img class="logo" src="../assets/img/logo-perfisio.svg" alt="PerFisio">
+        <div class="chamada">Como foi o seu<br><em>atendimento de hoje?</em></div>
+        <div class="sub">Sua avaliação ajuda outros pacientes a encontrarem<br>o fisioterapeuta certo perto de casa.</div>
+
+        <div class="qr-box"><img src="/api/public/qrcode/${encodeURIComponent(p.slug || slug)}.svg" alt="QR code do perfil"></div>
+        <div class="endereco">ou acesse <span>${endereco}</span></div>
+
+        <div class="passos">
+          <div class="passo"><div class="n">1</div><p>Aponte a câmera do celular para o código</p></div>
+          <div class="passo"><div class="n">2</div><p>Toque em <b>Avaliar</b> e escolha de 1 a 5 estrelas</p></div>
+          <div class="passo"><div class="n">3</div><p>Escreva em uma frase como foi o atendimento</p></div>
+        </div>
+
+        <div class="prof">
+          <div class="nome">${p.nome}</div>
+          <div class="esp">${p.esp || 'Fisioterapeuta'}${p.clinica_nome ? ' · ' + p.clinica_nome : ''}${p.crefito ? ' · CREFITO ' + p.crefito : ''}</div>
+          <div class="rodape">Avaliações no PerFisio são feitas por contas reais de pacientes.</div>
+        </div>`;
+      // imprime direto quando vem com ?imprimir=1
+      if (new URLSearchParams(location.search).get('imprimir')) setTimeout(() => window.print(), 700);
+    }
+    boot();
+  </script>
+</body>
+</html>

@@ -647,6 +647,18 @@ app.post('/api/conta/google', async (req, res) => {
   } catch (e) { console.error('google login', e); res.status(500).json({ erro: 'Erro ao entrar com o Google' }); }
 });
 
+/* QR code do perfil curto — usado no cartaz A4 de avaliação */
+app.get('/api/public/qrcode/:slug.svg', async (req, res) => {
+  const f = await acharFisioPublico(req.params.slug);
+  if (!f) return res.status(404).send('<svg xmlns="http://www.w3.org/2000/svg"/>');
+  const alvo = `https://${HOST_CURTO}/${req.params.slug}`;
+  const svg = await require('qrcode').toString(alvo, {
+    type: 'svg', margin: 1, errorCorrectionLevel: 'M',
+    color: { dark: '#0F2A2E', light: '#FFFFFF' },
+  });
+  res.type('image/svg+xml').set('Cache-Control', 'public, max-age=86400').send(svg);
+});
+
 /* ---------- AVALIAÇÕES DO PROFISSIONAL ---------- */
 // públicas: média, distribuição e comentários
 app.get('/api/public/avaliacoes/:fisio', async (req, res) => {
