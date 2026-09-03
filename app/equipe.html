@@ -123,6 +123,8 @@
     .link-curto code { flex: 1; font-size: .76rem; font-weight: 700; color: var(--primary-dark);
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
     .link-curto .btn { padding: 4px 8px; }
+    .link-curto.off code { color: var(--text-soft); text-decoration: line-through; opacity: .7; }
+    .link-curto.off .btn { white-space: nowrap; }
   </style>
 
   <script src="../assets/js/app.js"></script>
@@ -191,7 +193,11 @@
             <code>perfis.io/${f.slug}</code>
             <button class="btn btn-ghost btn-sm" title="Copiar link" onclick="copiarLink('${f.slug}', this)">📋</button>
             <a class="btn btn-ghost btn-sm" title="Cartaz A4 com QR code para avaliação" href="cartaz.html?p=${f.slug}" target="_blank">🖨 QR</a>
-          </div>` : ''}
+          </div>` : `
+          <div class="link-curto off" title="O link curto e o QR só funcionam com o perfil público ativo">
+            <code>perfis.io/${f.slug || '...'}</code>
+            <button class="btn btn-soft btn-sm" onclick="abrirEditar('${f.id}')">Ativar perfil</button>
+          </div>`}
           <div style="display:flex;gap:8px;justify-content:center;margin-top:15px;">
             <button class="btn btn-ghost btn-sm" onclick="location.href='agenda.html'">Ver agenda</button>
             <button class="btn btn-soft btn-sm" onclick="abrirEditar('${f.id}')">Editar</button>
