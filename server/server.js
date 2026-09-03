@@ -500,6 +500,24 @@ async function sincronizarAssinatura(sub) {
 /* ============ APP ============ */
 const app = express();
 
+/* O Express 4 não captura erro de handler async: sem isso, uma consulta que
+   falha (ex.: data inválida) deixa a requisição pendurada para sempre — a tela
+   fica "Carregando...". Aqui todo handler async é envolvido para responder. */
+function envolver(fn) {
+  if (typeof fn !== 'function' || fn.length >= 4) return fn; // middleware de erro passa direto
+  return function (req, res, next) {
+    try {
+      const r = fn.call(this, req, res, next);
+      if (r && typeof r.catch === 'function') r.catch(next);
+      return r;
+    } catch (e) { next(e); }
+  };
+}
+for (const metodo of ['get', 'post', 'put', 'patch', 'delete', 'use']) {
+  const original = app[metodo].bind(app);
+  app[metodo] = (...args) => original(...args.map(envolver));
+}
+
 // webhook ANTES do express.json: a assinatura da Stripe exige o corpo cru
 app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   if (!stripe) return res.status(503).send('Stripe não configurado');
@@ -2291,6 +2309,15 @@ app.use(async (req, res) => {
     } catch (e) { /* cai no fallback padrão */ }
   }
   res.status(404).sendFile(path.join(ROOT, 'index.html'));
+});
+
+/* último recurso: erro em qualquer rota vira resposta, nunca silêncio */
+app.use((err, req, res, next) => {
+  console.error('erro em', req.method, req.originalUrl, '·', err.message);
+  if (res.headersSent) return;
+  const dadoRuim = err.code === '22P02' || err.code === '22007' || err.code === '22008';
+  res.status(dadoRuim ? 400 : 500)
+    .json({ erro: dadoRuim ? 'Dados inválidos na requisição' : 'Erro interno do servidor' });
 });
 
 /* ---------- BOOT ---------- */

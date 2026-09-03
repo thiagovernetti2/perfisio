@@ -124,12 +124,17 @@
     let FISIOS = [], PACS = [], SESSOES = [], PAGS = [];
     let editId = null;
     const hoje = PF.hojeISO();
+    /* último dia do mês corrente — 31 fixo quebrava em meses de 30 dias */
+    const fimDoMes = iso => {
+      const [a, m] = iso.split('-').map(Number);
+      return `${a}-${String(m).padStart(2, '0')}-${new Date(a, m, 0).getDate()}`;
+    };
     const mesIni = hoje.slice(0, 8) + '01';
 
     async function boot() {
       [FISIOS, PACS, SESSOES, PAGS] = await Promise.all([
         PF.get('fisios'), PF.get('pacientes'),
-        PF.get('sessoes', { from: mesIni, to: hoje.slice(0, 8) + '31' }),
+        PF.get('sessoes', { from: mesIni, to: fimDoMes(hoje) }),
         PF.get('pagamentos'),
       ]);
       render();

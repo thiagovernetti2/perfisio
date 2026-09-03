@@ -78,7 +78,8 @@
       meses.push({ y: d.getFullYear(), m: d.getMonth(), key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` });
     }
     const from = `${meses[0].key}-01`;
-    const to = PF.hojeISO().slice(0, 8) + '31';
+    const fimDoMes = iso => { const [a, m] = iso.split('-').map(Number); return `${a}-${String(m).padStart(2,'0')}-${new Date(a, m, 0).getDate()}`; };
+    const to = fimDoMes(PF.hojeISO());
     document.getElementById('periodo').textContent =
       `Período: ${MESES_ABREV[meses[0].m]}/${meses[0].y} a ${MESES_ABREV[meses[5].m]}/${meses[5].y}`;
 
