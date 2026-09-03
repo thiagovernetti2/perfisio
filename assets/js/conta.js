@@ -9,14 +9,18 @@ window.Conta = (function () {
   function salvar(t, c) { localStorage.setItem(TOKEN, t); localStorage.setItem(DADOS, JSON.stringify(c)); }
   function sair() { localStorage.removeItem(TOKEN); localStorage.removeItem(DADOS); }
 
-  async function api(caminho, body) {
+  async function api(caminho, body, metodo) {
     const headers = { 'Content-Type': 'application/json' };
     if (token()) headers.Authorization = 'Bearer ' + token();
-    const res = await fetch(caminho, { method: body ? 'POST' : 'GET', headers, body: body ? JSON.stringify(body) : undefined });
+    const res = await fetch(caminho, {
+      method: metodo || (body ? 'POST' : 'GET'), headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
     const dados = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(dados.erro || 'Erro na requisição');
     return dados;
   }
+  const apagar = caminho => api(caminho, null, 'DELETE');
 
   const CSS = `
     .cta-overlay { position: fixed; inset: 0; background: rgba(10,20,22,.55); z-index: 200;
@@ -43,9 +47,16 @@ window.Conta = (function () {
     .cta-btn:disabled { opacity: .6; cursor: default; }
     .cta-fechar { background: none; border: none; font-size: .8rem; color: #64737A; cursor: pointer;
       font-family: inherit; display: block; margin: 12px auto 0; }
+    .cta-google { padding: 0 24px 4px; }
+    .cta-google .gbtn { display: flex; justify-content: center; min-height: 44px; }
+    .cta-ou { display: flex; align-items: center; gap: 10px; color: #93A5A3; font-size: .74rem;
+      font-weight: 600; text-transform: uppercase; letter-spacing: 1px; padding: 14px 24px 0; }
+    .cta-ou::before, .cta-ou::after { content: ''; flex: 1; height: 1px; background: #E4EBEA; }
   `;
 
   let overlay = null, resolver = null, aba = 'entrar';
+  const PADRAO = { titulo: 'Falta pouco para confirmar', texto: 'Sua conta guarda os agendamentos e deixa remarcar em um clique.' };
+  let textos = PADRAO;
 
   function montar() {
     if (overlay) return overlay;
@@ -60,6 +71,10 @@ window.Conta = (function () {
         <div class="cta-topo">
           <h3>Falta pouco para confirmar</h3>
           <p>Sua conta guarda os agendamentos e deixa remarcar em um clique.</p>
+        </div>
+        <div class="cta-google" id="ctaGoogleBox" style="display:none;">
+          <div class="gbtn" id="ctaGoogle"></div>
+          <div class="cta-ou">ou com e-mail</div>
         </div>
         <div class="cta-abas">
           <button type="button" data-aba="entrar">Entrar</button>
@@ -82,7 +97,39 @@ window.Conta = (function () {
     return overlay;
   }
 
+  /* botão oficial do Google (só aparece com GOOGLE_CLIENT_ID configurado) */
+  let googlePronto = false;
+  async function prepararGoogle() {
+    if (googlePronto) return;
+    let clientId = null;
+    try { clientId = (await (await fetch('/api/public/config')).json()).google; } catch (e) { return; }
+    if (!clientId) return;
+    await new Promise((ok, falhou) => {
+      if (window.google?.accounts?.id) return ok();
+      const s = document.createElement('script');
+      s.src = 'https://accounts.google.com/gsi/client';
+      s.async = true; s.defer = true; s.onload = ok; s.onerror = falhou;
+      document.head.appendChild(s);
+    }).catch(() => {});
+    if (!window.google?.accounts?.id) return;
+    window.google.accounts.id.initialize({ client_id: clientId, callback: entrarComGoogle });
+    window.google.accounts.id.renderButton(overlay.querySelector('#ctaGoogle'),
+      { theme: 'outline', size: 'large', text: 'continue_with', locale: 'pt-BR', width: 320 });
+    overlay.querySelector('#ctaGoogleBox').style.display = '';
+    googlePronto = true;
+  }
+
+  async function entrarComGoogle(resposta) {
+    try {
+      const r = await api('/api/conta/google', { credential: resposta.credential });
+      salvar(r.token, r.conta);
+      fechar(r.conta);
+    } catch (e) { erro(e.message); }
+  }
+
   function render() {
+    overlay.querySelector('.cta-topo h3').textContent = textos.titulo;
+    overlay.querySelector('.cta-topo p').textContent = textos.texto;
     overlay.querySelectorAll('.cta-abas button').forEach(b => b.classList.toggle('on', b.dataset.aba === aba));
     overlay.querySelector('#ctaErro').style.display = 'none';
     overlay.querySelector('#ctaOk').textContent = aba === 'entrar' ? 'Entrar e confirmar' : 'Criar conta e confirmar';
@@ -129,22 +176,24 @@ window.Conta = (function () {
     if (f) f(conta);
   }
 
-  function abrir(inicial) {
+  function abrir(inicial, msgs) {
     montar();
+    textos = msgs || PADRAO;
     aba = inicial || 'entrar';
     render();
     overlay.classList.add('aberta');
+    prepararGoogle();
     return new Promise(res => { resolver = res; });
   }
 
   /* garante uma conta logada: devolve a conta ou null se a pessoa desistir */
-  async function exigir() {
+  async function exigir(msgs) {
     if (token()) {
       try { const r = await api('/api/conta/me'); salvar(token(), r.conta); return r.conta; }
       catch (e) { sair(); }
     }
-    return abrir('entrar');
+    return abrir('entrar', msgs);
   }
 
-  return { token, atual, exigir, abrir, sair, api };
+  return { token, atual, exigir, abrir, sair, api, apagar };
 })();

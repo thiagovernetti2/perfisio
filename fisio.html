@@ -70,6 +70,18 @@
     .aval-bar .lb { width: 84px; font-weight: 600; }
     .aval-bar .tr { flex: 1; height: 8px; background: #E9EFED; border-radius: 99px; overflow: hidden; }
     .aval-bar .fl { height: 100%; background: var(--primary); border-radius: 99px; }
+    .estrelas { color: #E8B317; letter-spacing: 1px; }
+    .aval-lista { margin-top: 20px; display: flex; flex-direction: column; gap: 14px; }
+    .aval-item { border-top: 1px solid #F0F4F3; padding-top: 14px; }
+    .aval-item .topo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .aval-item .av { width: 32px; height: 32px; border-radius: 50%; background: var(--primary-soft); color: var(--primary-dark);
+      display: grid; place-items: center; font-weight: 800; font-size: .78rem; overflow: hidden; flex: none; }
+    .aval-item .av img { width: 100%; height: 100%; object-fit: cover; }
+    .aval-item .nome { font-size: .88rem; font-weight: 700; color: var(--ink); }
+    .aval-item .quando { font-size: .74rem; color: var(--text-soft); }
+    .aval-item p { font-size: .87rem; color: var(--text); line-height: 1.6; margin-top: 8px; }
+    .estrela-btn { background: none; border: none; font-size: 1.9rem; line-height: 1; cursor: pointer; color: #DCE5E3; padding: 0 2px; font-family: inherit; }
+    .estrela-btn.on { color: #E8B317; }
 
     .info-li { display: flex; gap: 10px; padding: 8px 0; font-size: .86rem; border-bottom: 1px solid #F0F4F3; }
     .info-li:last-child { border-bottom: none; }
@@ -274,13 +286,8 @@
         <!-- AVALIAÇÕES -->
         <div class="pf-sec">
           <h2>Avaliações de pacientes</h2>
-          <div class="aval-wrap">
-            <div class="aval-circ"><span>Sem<br>avaliações</span></div>
-            <div class="aval-bars">
-              ${['Excelente', 'Muito bom', 'Bom', 'Regular'].map(l =>
-                `<div class="aval-bar"><span class="lb">${l}</span><span class="tr"><span class="fl" style="width:0%;"></span></span><span>0%</span></div>`).join('')}
-              <div style="font-size:.78rem;color:var(--text-soft);margin-top:6px;">Este perfil ainda não recebeu avaliações públicas. Foi atendido por ${p.nome.split(' ')[0]}? Envie a sua pelo WhatsApp.</div>
-            </div>
+          <div id="avalBox">
+            <div style="font-size:.84rem;color:var(--text-soft);">Carregando avaliações...</div>
           </div>
         </div>
 
@@ -352,6 +359,122 @@
         <button class="btn btn-primary" onclick="irAgenda()">Agendar horário</button>`;
       iniciarMapa();
       bkInit();
+      carregarAvaliacoes();
+    }
+
+    /* ================= AVALIAÇÕES ================= */
+    const estrelas = n => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n);
+    const ROTULO = { 5: 'Excelente', 4: 'Muito bom', 3: 'Bom', 2: 'Regular', 1: 'Ruim' };
+    let MINHA = null;
+
+    async function carregarAvaliacoes() {
+      let d;
+      try { d = await PF.api('/api/public/avaliacoes/' + PRO.id); }
+      catch (e) { document.getElementById('avalBox').innerHTML = ''; return; }
+      if (Conta.token()) {
+        try { MINHA = await Conta.api('/api/avaliacoes/' + PRO.id + '/minha'); } catch (e) { MINHA = null; }
+      }
+      const primeiro = PRO.nome.split(' ')[0];
+      const box = document.getElementById('avalBox');
+      const resumo = d.total ? `
+        <div class="aval-wrap">
+          <div class="aval-circ">
+            <span><b style="font-size:1.7rem;color:var(--ink);display:block;">${String(d.media).replace('.', ',')}</b>
+              <span class="estrelas" style="font-size:.8rem;">${estrelas(Math.round(d.media))}</span><br>
+              <span style="font-size:.7rem;">${d.total} avaliação(ões)</span></span>
+          </div>
+          <div class="aval-bars">
+            ${d.distribuicao.map(x => `
+              <div class="aval-bar">
+                <span class="lb">${ROTULO[x.nota]}</span>
+                <span class="tr"><span class="fl" style="width:${d.total ? Math.round(x.total / d.total * 100) : 0}%;"></span></span>
+                <span>${x.total}</span>
+              </div>`).join('')}
+          </div>
+        </div>`
+        : `<div style="font-size:.86rem;color:var(--text-soft);line-height:1.6;">
+             Este perfil ainda não recebeu avaliações. Foi atendido por ${primeiro}? Seja o primeiro a avaliar.
+           </div>`;
+
+      const lista = d.avaliacoes.length ? `
+        <div class="aval-lista">
+          ${d.avaliacoes.map(a => `
+            <div class="aval-item">
+              <div class="topo">
+                <span class="av">${a.foto_url ? `<img src="${a.foto_url}" alt="">` : a.primeiro_nome[0].toUpperCase()}</span>
+                <span class="nome">${a.primeiro_nome}</span>
+                ${a.paciente ? '<span class="badge green" style="font-size:.64rem;">✓ paciente</span>' : ''}
+                <span class="estrelas" style="font-size:.9rem;">${estrelas(a.nota)}</span>
+                <span class="quando" style="margin-left:auto;">${PF.fmtData(String(a.criado_em).slice(0, 10))}</span>
+              </div>
+              ${a.comentario ? `<p>${a.comentario.replace(/</g, '&lt;')}</p>` : ''}
+            </div>`).join('')}
+        </div>` : '';
+
+      box.innerHTML = resumo + lista + `
+        <div style="margin-top:18px;padding-top:16px;border-top:1px solid #F0F4F3;">
+          <button class="btn btn-soft btn-sm" onclick="abrirFormAvaliacao()">
+            ${MINHA ? '✏️ Editar minha avaliação' : `⭐ Avaliar ${primeiro}`}</button>
+        </div>
+        <div id="formAval" style="display:none;margin-top:16px;">
+          <div style="font-size:.86rem;font-weight:700;color:var(--ink);margin-bottom:8px;">Sua nota</div>
+          <div id="estrelasSel" style="margin-bottom:10px;"></div>
+          <div class="field"><label>Comentário (opcional)</label>
+            <textarea id="avalTexto" style="min-height:80px;" placeholder="Como foi o atendimento? O que ajudou no seu tratamento?"></textarea></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+            <button class="btn btn-primary btn-sm" id="btnAval" onclick="enviarAvaliacao()">Publicar avaliação</button>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('formAval').style.display='none'">Cancelar</button>
+            ${MINHA ? '<button class="btn btn-danger btn-sm" style="margin-left:auto;" onclick="apagarAvaliacao()">Excluir</button>' : ''}
+          </div>
+        </div>`;
+    }
+
+    let notaSel = 0;
+    function renderEstrelas() {
+      document.getElementById('estrelasSel').innerHTML = [1, 2, 3, 4, 5]
+        .map(n => `<button type="button" class="estrela-btn${n <= notaSel ? ' on' : ''}" onclick="setNota(${n})" title="${ROTULO[n]}">★</button>`).join('')
+        + `<span style="font-size:.82rem;color:var(--text-soft);margin-left:8px;">${notaSel ? ROTULO[notaSel] : ''}</span>`;
+    }
+    function setNota(n) { notaSel = n; renderEstrelas(); }
+
+    async function abrirFormAvaliacao() {
+      const conta = await Conta.exigir({
+        titulo: 'Entre para avaliar',
+        texto: 'Avaliações vêm de contas reais — é assim que o paciente confia no que lê aqui.',
+      });
+      if (!conta) return;
+      try { MINHA = await Conta.api('/api/avaliacoes/' + PRO.id + '/minha'); } catch (e) { MINHA = null; }
+      notaSel = MINHA ? MINHA.nota : 0;
+      const form = document.getElementById('formAval');
+      form.style.display = '';
+      renderEstrelas();
+      document.getElementById('avalTexto').value = MINHA ? (MINHA.comentario || '') : '';
+      form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    async function enviarAvaliacao() {
+      if (!notaSel) { App.toast('Escolha de 1 a 5 estrelas', 'error'); return; }
+      const btn = document.getElementById('btnAval');
+      btn.disabled = true; btn.textContent = 'Publicando...';
+      try {
+        await Conta.api('/api/avaliacoes', {
+          fisio: PRO.id, nota: notaSel, comentario: document.getElementById('avalTexto').value.trim(),
+        });
+        App.toast('Avaliação publicada. Obrigado!');
+        await carregarAvaliacoes();
+      } catch (e) {
+        App.toast(e.message, 'error');
+        btn.disabled = false; btn.textContent = 'Publicar avaliação';
+      }
+    }
+
+    async function apagarAvaliacao() {
+      if (!confirm('Excluir sua avaliação?')) return;
+      try {
+        await Conta.apagar('/api/avaliacoes/' + PRO.id);
+        MINHA = null; App.toast('Avaliação excluída');
+        await carregarAvaliacoes();
+      } catch (e) { App.toast(e.message, 'error'); }
     }
 
     function abrirFoto(src) {

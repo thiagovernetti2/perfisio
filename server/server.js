@@ -200,6 +200,23 @@ CREATE TABLE IF NOT EXISTS contas (
   criado_em timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS conta_id uuid REFERENCES contas(id) ON DELETE SET NULL;
+-- conta criada pelo Google não tem senha
+ALTER TABLE contas ALTER COLUMN senha_hash DROP NOT NULL;
+ALTER TABLE contas ADD COLUMN IF NOT EXISTS google_id text;
+ALTER TABLE contas ADD COLUMN IF NOT EXISTS foto_url text;
+CREATE UNIQUE INDEX IF NOT EXISTS contas_google_uk ON contas (google_id) WHERE google_id IS NOT NULL;
+
+-- avaliações dos pacientes sobre o profissional
+CREATE TABLE IF NOT EXISTS avaliacoes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  fisio_id uuid NOT NULL REFERENCES fisios(id) ON DELETE CASCADE,
+  conta_id uuid NOT NULL REFERENCES contas(id) ON DELETE CASCADE,
+  nota int NOT NULL CHECK (nota BETWEEN 1 AND 5),
+  comentario text,
+  criado_em timestamptz NOT NULL DEFAULT now(),
+  atualizado_em timestamptz
+);
+CREATE UNIQUE INDEX IF NOT EXISTS avaliacoes_fisio_conta_uk ON avaliacoes (fisio_id, conta_id);
 ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS slug text;
 ALTER TABLE fisios ADD COLUMN IF NOT EXISTS slug text;
 CREATE UNIQUE INDEX IF NOT EXISTS clinicas_slug_uk ON clinicas (slug) WHERE slug IS NOT NULL;
@@ -566,6 +583,8 @@ app.post('/api/conta/login', async (req, res) => {
   const { email, senha } = req.body || {};
   const r = await pool.query('SELECT * FROM contas WHERE email=$1', [String(email || '').trim().toLowerCase()]);
   const c = r.rows[0];
+  if (c && !c.senha_hash)
+    return res.status(400).json({ erro: 'Esta conta entra com o Google — use o botão "Entrar com Google"' });
   if (!c || !bcrypt.compareSync(senha || '', c.senha_hash))
     return res.status(401).json({ erro: 'E-mail ou senha inválidos' });
   pool.query('UPDATE contas SET ultimo_acesso=now() WHERE id=$1', [c.id]).catch(() => {});
@@ -576,6 +595,94 @@ app.get('/api/conta/me', authConta, async (req, res) => {
   const r = await pool.query('SELECT id, nome, email, telefone FROM contas WHERE id=$1', [req.conta]);
   if (!r.rowCount) return res.status(404).json({ erro: 'Conta não encontrada' });
   res.json({ conta: r.rows[0] });
+});
+
+/* login com Google: o navegador manda o ID token e o servidor confere com o Google */
+app.post('/api/conta/google', async (req, res) => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) return res.status(503).json({ erro: 'Login com Google não está configurado no servidor' });
+  const credential = req.body?.credential;
+  if (!credential) return res.status(400).json({ erro: 'Token do Google ausente' });
+  try {
+    const resp = await fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(credential));
+    const g = await resp.json();
+    if (!resp.ok || !g.email) return res.status(401).json({ erro: 'Não foi possível validar sua conta Google' });
+    if (g.aud !== clientId) return res.status(401).json({ erro: 'Token do Google não pertence a este site' });
+    if (g.email_verified === 'false' || g.email_verified === false)
+      return res.status(401).json({ erro: 'Seu e-mail do Google não está verificado' });
+
+    const email = String(g.email).toLowerCase();
+    // acha pelo google_id ou pelo e-mail (quem já tinha conta com senha)
+    const achou = await pool.query('SELECT * FROM contas WHERE google_id=$1 OR email=$2 LIMIT 1', [g.sub, email]);
+    let conta;
+    if (achou.rowCount) {
+      conta = (await pool.query(
+        `UPDATE contas SET google_id=$2, foto_url=COALESCE($3, foto_url), ultimo_acesso=now() WHERE id=$1
+         RETURNING id, nome, email, telefone`, [achou.rows[0].id, g.sub, g.picture || null])).rows[0];
+    } else {
+      conta = (await pool.query(
+        `INSERT INTO contas (nome, email, google_id, foto_url, ultimo_acesso)
+         VALUES ($1,$2,$3,$4,now()) RETURNING id, nome, email, telefone`,
+        [g.name || email.split('@')[0], email, g.sub, g.picture || null])).rows[0];
+    }
+    res.json({ token: assinarConta(conta), conta });
+  } catch (e) { console.error('google login', e); res.status(500).json({ erro: 'Erro ao entrar com o Google' }); }
+});
+
+/* ---------- AVALIAÇÕES DO PROFISSIONAL ---------- */
+// públicas: média, distribuição e comentários
+app.get('/api/public/avaliacoes/:fisio', async (req, res) => {
+  const f = await acharFisioPublico(req.params.fisio);
+  if (!f) return res.status(404).json({ erro: 'Profissional não encontrado' });
+  const lista = await pool.query(`
+    SELECT a.id, a.nota, a.comentario, a.criado_em, c.nome, c.foto_url,
+           EXISTS (SELECT 1 FROM sessoes s JOIN pacientes p ON p.id = s.paciente_id
+                   WHERE p.conta_id = a.conta_id AND s.fisio_id = a.fisio_id AND s.data <= CURRENT_DATE) AS paciente
+    FROM avaliacoes a JOIN contas c ON c.id = a.conta_id
+    WHERE a.fisio_id = $1 ORDER BY a.criado_em DESC LIMIT 50`, [f.id]);
+  const notas = lista.rows.map(a => a.nota);
+  const media = notas.length ? notas.reduce((s, n) => s + n, 0) / notas.length : null;
+  const dist = [5, 4, 3, 2, 1].map(n => ({ nota: n, total: notas.filter(x => x === n).length }));
+  res.json({
+    total: notas.length,
+    media: media === null ? null : Math.round(media * 10) / 10,
+    distribuicao: dist,
+    avaliacoes: lista.rows.map(a => ({
+      ...a, nome: a.nome, primeiro_nome: String(a.nome).split(' ')[0],
+    })),
+  });
+});
+
+// minha avaliação para este profissional
+app.get('/api/avaliacoes/:fisio/minha', authConta, async (req, res) => {
+  const f = await acharFisioPublico(req.params.fisio);
+  if (!f) return res.status(404).json({ erro: 'Profissional não encontrado' });
+  const r = await pool.query('SELECT id, nota, comentario FROM avaliacoes WHERE fisio_id=$1 AND conta_id=$2',
+    [f.id, req.conta]);
+  res.json(r.rows[0] || null);
+});
+
+// cria ou atualiza a avaliação (uma por profissional, por conta)
+app.post('/api/avaliacoes', authConta, async (req, res) => {
+  const { fisio, nota, comentario } = req.body || {};
+  const n = Number(nota);
+  if (!(n >= 1 && n <= 5)) return res.status(400).json({ erro: 'Escolha de 1 a 5 estrelas' });
+  const f = await acharFisioPublico(fisio);
+  if (!f) return res.status(404).json({ erro: 'Profissional não encontrado' });
+  const r = await pool.query(`
+    INSERT INTO avaliacoes (fisio_id, conta_id, nota, comentario) VALUES ($1,$2,$3,$4)
+    ON CONFLICT (fisio_id, conta_id) DO UPDATE
+      SET nota = EXCLUDED.nota, comentario = EXCLUDED.comentario, atualizado_em = now()
+    RETURNING id, nota, comentario`,
+    [f.id, req.conta, n, (comentario || '').trim().slice(0, 600) || null]);
+  res.json(r.rows[0]);
+});
+
+app.delete('/api/avaliacoes/:fisio', authConta, async (req, res) => {
+  const f = await acharFisioPublico(req.params.fisio);
+  if (!f) return res.status(404).json({ erro: 'Profissional não encontrado' });
+  await pool.query('DELETE FROM avaliacoes WHERE fisio_id=$1 AND conta_id=$2', [f.id, req.conta]);
+  res.json({ ok: true });
 });
 
 // agendamentos da conta, em todas as clínicas
@@ -1655,7 +1762,7 @@ app.delete('/api/admin/posts/:id', superauth, async (req, res) => {
 /* ---------- ROTAS PÚBLICAS (diretório) ---------- */
 // config pública (token do mapa)
 app.get('/api/public/config', (req, res) => {
-  res.json({ mapbox: process.env.MAPBOX_TOKEN || null });
+  res.json({ mapbox: process.env.MAPBOX_TOKEN || null, google: process.env.GOOGLE_CLIENT_ID || null });
 });
 
 // diretório de PROFISSIONAIS (vinculados ou não a uma clínica)
