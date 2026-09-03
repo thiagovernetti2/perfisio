@@ -8,6 +8,17 @@
   <link rel="icon" type="image/svg+xml" href="../assets/img/simbolo-perfisio.svg">
   <link rel="stylesheet" href="../assets/css/app.css">
   <style>
+    .ficha-sec {
+      display: flex; align-items: center; gap: 9px; font-size: .84rem; font-weight: 800; color: var(--ink);
+      margin: 22px 0 12px; padding-top: 16px; border-top: 1px solid var(--line);
+    }
+    .ficha-sec:first-of-type { border-top: none; padding-top: 0; margin-top: 18px; }
+    .ficha-sec .n {
+      width: 22px; height: 22px; border-radius: 50%; background: var(--primary-soft); color: var(--primary-dark);
+      display: grid; place-items: center; font-size: .74rem; flex: none;
+    }
+  </style>
+  <style>
     .trat-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
     .trat-chip {
       display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px;
@@ -20,7 +31,7 @@
     .trat-chip .tc-sub { font-size: .68rem; font-weight: 500; }
   </style>
 </head>
-<body data-page="prontuarios" data-title="Prontuários" data-subtitle="Prontuário por ocorrência: cada tratamento tem suas evoluções, avaliação e exercícios">
+<body data-page="prontuarios" data-title="Prontuários" data-subtitle="Prontuário por ocorrência: ficha de avaliação, evoluções e anexos de cada tratamento">
 
   <div class="grid-2" style="grid-template-columns:300px 1fr;">
     <!-- LISTA DE PACIENTES -->
@@ -55,11 +66,10 @@
       <div id="tratConteudo" style="display:none;">
         <div id="tratDescricao" class="card card-pad" style="display:none;margin-bottom:16px;padding:14px 18px;font-size:.86rem;color:var(--text);line-height:1.55;border-left:4px solid var(--primary);"></div>
         <div class="tabs" id="pTabs" data-auto>
-          <button class="tab active" data-tab="evolucoes">Evoluções</button>
+          <button class="tab active" data-tab="avaliacao">Ficha de avaliação</button>
+          <button class="tab" data-tab="evolucoes">Evolução</button>
           <button class="tab" data-tab="grafico">📈 Gráfico</button>
           <button class="tab" data-tab="sessoes">Sessões</button>
-          <button class="tab" data-tab="avaliacao">Avaliação da ocorrência</button>
-          <button class="tab" data-tab="prescricoes">Exercícios prescritos</button>
           <button class="tab" data-tab="anexos">Fotos & Anexos</button>
         </div>
 
@@ -118,7 +128,7 @@
         </div>
 
         <!-- EVOLUÇÕES -->
-        <div data-tab-panel="evolucoes">
+        <div data-tab-panel="evolucoes" style="display:none;">
           <div class="card card-pad" style="margin-bottom:18px;" id="cardNovaEv">
             <h3 style="font-size:.95rem;margin-bottom:12px;">Nova evolução (SOAP) <span id="evTratLabel" style="font-weight:500;color:var(--text-soft);font-size:.8rem;"></span></h3>
             <div class="form-grid">
@@ -138,30 +148,47 @@
         </div>
 
         <!-- AVALIAÇÃO DA OCORRÊNCIA -->
-        <div data-tab-panel="avaliacao" style="display:none;">
+        <div data-tab-panel="avaliacao">
           <div class="card card-pad">
-            <h3 style="font-size:.95rem;margin-bottom:14px;" id="avTitulo">Avaliação inicial da ocorrência</h3>
-            <div class="form-grid">
-              <div class="field full"><label>Descrição / contexto da ocorrência</label><textarea id="avDescricao" style="min-height:90px;" placeholder="História da ocorrência: como começou, exames, cirurgias, objetivo do paciente..."></textarea></div>
-              <div class="field full"><label>Queixa principal e história</label><textarea id="avHistoria" style="min-height:90px;" placeholder="Queixa, início dos sintomas, exames, histórico..."></textarea></div>
-              <div class="field full"><label>Exame físico</label><textarea id="avExame" style="min-height:90px;" placeholder="ADM, força, testes especiais, postura..."></textarea></div>
-              <div class="field full"><label>Diagnóstico cinético-funcional</label><textarea id="avDiag" placeholder="Ex.: lombalgia mecânica crônica com déficit de estabilização..."></textarea></div>
-              <div class="field full"><label>Plano de tratamento e metas</label><textarea id="avPlano" style="min-height:90px;" placeholder="Fases, frequência, metas objetivas (EVA, ADM, retorno ao esporte)..."></textarea></div>
-            </div>
-            <div style="display:flex;justify-content:flex-end;margin-top:14px;">
-              <button class="btn btn-primary" onclick="salvarAvaliacao()">Salvar avaliação</button>
-            </div>
-          </div>
-        </div>
+            <h3 style="font-size:.95rem;" id="avTitulo">Ficha de avaliação</h3>
 
-        <!-- PRESCRIÇÕES -->
-        <div data-tab-panel="prescricoes" style="display:none;">
-          <div class="card">
-            <div class="card-header">
-              <h3>Exercícios desta ocorrência</h3>
-              <button class="btn btn-soft btn-sm" onclick="abrirPrescrever()">＋ Prescrever exercícios</button>
+            <div class="ficha-sec"><span class="n">1</span> Dados pessoais</div>
+            <div class="form-grid">
+              <div class="field full"><label>Nome</label><input type="text" id="fpNome"></div>
+              <div class="field full"><label>Endereço</label><input type="text" id="fpEndereco" placeholder="Rua, número · bairro · cidade/UF"></div>
+              <div class="field"><label>Telefone</label><input type="text" id="fpTelefone" placeholder="(51) 9 0000-0000"></div>
+              <div class="field"><label>E-mail</label><input type="email" id="fpEmail"></div>
+              <div class="field"><label>Data de nascimento</label><input type="date" id="fpNascimento"></div>
+              <div class="field"><label>Sexo</label>
+                <select id="fpSexo">
+                  <option value="">Não informado</option>
+                  <option value="F">Feminino</option>
+                  <option value="M">Masculino</option>
+                  <option value="Outro">Outro</option>
+                </select>
+              </div>
             </div>
-            <div class="card-pad" id="presList"></div>
+
+            <div class="ficha-sec"><span class="n">2</span> Anamnese</div>
+            <div class="form-grid">
+              <div class="field"><label>Diagnóstico clínico</label><textarea id="avDiagClinico" placeholder="Diagnóstico médico, CID, laudo..."></textarea></div>
+              <div class="field"><label>Diagnóstico fisioterapêutico</label><textarea id="avDiagFisio" placeholder="Diagnóstico cinético-funcional"></textarea></div>
+              <div class="field full"><label>Queixa principal</label><textarea id="avQueixa" placeholder="O que trouxe o paciente, nas palavras dele"></textarea></div>
+              <div class="field full"><label>HMA — história da moléstia atual</label><textarea id="avHma" style="min-height:80px;" placeholder="Início dos sintomas, evolução, fatores de melhora e piora, tratamentos já feitos..."></textarea></div>
+              <div class="field full"><label>HMP — história da moléstia pregressa</label><textarea id="avHmp" style="min-height:80px;" placeholder="Doenças prévias, cirurgias, medicações em uso, comorbidades..."></textarea></div>
+              <div class="field full"><label>Exame físico</label><textarea id="avExame" style="min-height:90px;" placeholder="Inspeção, palpação, ADM, força, testes especiais, postura, marcha..."></textarea></div>
+              <div class="field full"><label>Sinais vitais</label><input type="text" id="avSinais" placeholder="PA 120x80 mmHg · FC 72 bpm · FR 16 irpm · SpO₂ 98% · Temp 36,5 °C"></div>
+              <div class="field full"><label>Observações</label><textarea id="avObs" placeholder="Outras informações relevantes"></textarea></div>
+            </div>
+
+            <div class="ficha-sec"><span class="n">3</span> Conduta fisioterapêutica</div>
+            <div class="form-grid">
+              <div class="field full"><label>Conduta, plano e metas</label><textarea id="avConduta" style="min-height:110px;" placeholder="Recursos e técnicas, frequência, fases do tratamento e metas objetivas (EVA, ADM, retorno ao esporte)..."></textarea></div>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+              <button class="btn btn-primary" onclick="salvarAvaliacao()">Salvar ficha</button>
+            </div>
           </div>
         </div>
 
@@ -216,35 +243,6 @@
   </div>
 
   <!-- MODAL PRESCREVER EXERCÍCIOS -->
-  <div class="modal-overlay" id="mPrescreverEx">
-    <div class="modal wide">
-      <div class="modal-head">
-        <h3>Prescrever exercícios <span id="prescTratTitulo" style="font-weight:500;font-size:.8rem;color:var(--text-soft);"></span></h3>
-        <button class="close" onclick="App.closeModal('mPrescreverEx')">×</button>
-      </div>
-      <div class="modal-body">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;">
-          <div id="prescCats" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
-          <input type="text" id="prescBusca" placeholder="🔍 Buscar exercício..." style="margin-left:auto;padding:7px 12px;border:1px solid var(--line);border-radius:9px;font-size:.82rem;outline:none;min-width:180px;">
-        </div>
-        <div id="prescLista" style="max-height:280px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;"></div>
-        <div class="form-grid" style="margin-top:14px;">
-          <div class="field"><label>Frequência</label>
-            <select id="prescFreq"><option>Diária</option><option>2x ao dia</option><option>3x por semana</option><option>Dias de sessão</option></select>
-          </div>
-          <div class="field"><label>Duração do programa</label>
-            <select id="prescDur"><option>2 semanas</option><option>4 semanas</option><option>Até reavaliação</option></select>
-          </div>
-        </div>
-      </div>
-      <div class="modal-foot">
-        <a class="link" href="exercicios.html" style="margin-right:auto;font-size:.8rem;">Gerenciar biblioteca →</a>
-        <button class="btn btn-ghost" onclick="App.closeModal('mPrescreverEx')">Cancelar</button>
-        <button class="btn btn-primary" id="btnPresc" onclick="salvarPrescricaoModal()">Prescrever (0)</button>
-      </div>
-    </div>
-  </div>
-
   <!-- MODAL NOVA OCORRÊNCIA -->
   <div class="modal-overlay" id="mTrat">
     <div class="modal">
@@ -408,19 +406,33 @@
       document.getElementById('tratConteudo').style.display = '';
       document.getElementById('tratVazio').style.display = 'none';
       document.getElementById('evTratLabel').textContent = `→ ${t.titulo}`;
-      document.getElementById('avTitulo').textContent = `Avaliação inicial — ${t.titulo}`;
+      document.getElementById('avTitulo').textContent = `Ficha de avaliação — ${t.titulo}`;
       document.getElementById('cardNovaEv').style.display = t.status === 'ativo' ? '' : 'none';
       if (t.fisio_id) document.getElementById('evFisio').value = t.fisio_id;
       const a = t.avaliacao || {};
-      avHistoria.value = a.historia || ''; avExame.value = a.exame || '';
-      avDiag.value = a.diagnostico || ''; avPlano.value = a.plano || '';
-      avDescricao.value = t.descricao || '';
+      // campos antigos (historia/diagnostico/plano) continuam aparecendo nos novos lugares
+      const pac = PACS.find(x => x.id === sel) || {};
+      fpNome.value = pac.nome || '';
+      fpEndereco.value = pac.endereco || '';
+      fpTelefone.value = pac.telefone || '';
+      fpEmail.value = pac.email || '';
+      fpNascimento.value = pac.nascimento ? String(pac.nascimento).slice(0, 10) : '';
+      fpSexo.value = pac.sexo || '';
+      avDiagClinico.value = a.diag_clinico || '';
+      avDiagFisio.value = a.diag_fisio || a.diagnostico || '';
+      avQueixa.value = a.queixa || a.historia || t.descricao || '';
+      avHma.value = a.hma || '';
+      avHmp.value = a.hmp || '';
+      avExame.value = a.exame || '';
+      avSinais.value = a.sinais_vitais || '';
+      avObs.value = a.observacoes || '';
+      avConduta.value = a.conduta || a.plano || '';
       const descEl = document.getElementById('tratDescricao');
       descEl.style.display = t.descricao ? '' : 'none';
       descEl.innerHTML = t.descricao ? `📝 ${t.descricao.replace(/\n/g, '<br>')}` : '';
       document.getElementById('linkAgendar').href = `agenda.html?p=${sel}&t=${tratSel}`;
       await carregarSessoes(); // primeiro: evoluções e o select do SOAP dependem das sessões
-      await Promise.all([carregarEvolucoes(), carregarPrescricoes(), carregarAnexos()]);
+      await Promise.all([carregarEvolucoes(), carregarAnexos()]);
     }
 
     const fmtSessao = s => `${PF.fmtData(s.data.slice(0,10))} ${s.hora.slice(0,5)}`;
@@ -615,90 +627,29 @@
     /* ---------- Avaliação da ocorrência ---------- */
     async function salvarAvaliacao() {
       try {
-        const avaliacao = { historia: avHistoria.value.trim(), exame: avExame.value.trim(), diagnostico: avDiag.value.trim(), plano: avPlano.value.trim() };
-        const descricao = avDescricao.value.trim() || null;
-        await PF.put('tratamentos', tratSel, { avaliacao, descricao });
+        // 1. dados pessoais vão para o cadastro do paciente
+        const dados = {
+          nome: fpNome.value.trim(), endereco: fpEndereco.value.trim(), telefone: fpTelefone.value.trim(),
+          email: fpEmail.value.trim(), nascimento: fpNascimento.value || null, sexo: fpSexo.value || null,
+        };
+        if (!dados.nome) { App.toast('O nome do paciente é obrigatório', 'error'); return; }
+        const pacAtualizado = await PF.put('pacientes', sel, dados);
+        const iP = PACS.findIndex(x => x.id === sel);
+        if (iP >= 0) PACS[iP] = { ...PACS[iP], ...pacAtualizado };
+
+        // 2. anamnese e conduta ficam na ocorrência
+        const avaliacao = {
+          diag_clinico: avDiagClinico.value.trim(), diag_fisio: avDiagFisio.value.trim(),
+          queixa: avQueixa.value.trim(), hma: avHma.value.trim(), hmp: avHmp.value.trim(),
+          exame: avExame.value.trim(), sinais_vitais: avSinais.value.trim(),
+          observacoes: avObs.value.trim(), conduta: avConduta.value.trim(),
+        };
+        await PF.put('tratamentos', tratSel, { avaliacao });
         const t = TRATS.find(x => x.id === tratSel);
-        if (t) { t.avaliacao = avaliacao; t.descricao = descricao; }
-        const descEl = document.getElementById('tratDescricao');
-        descEl.style.display = descricao ? '' : 'none';
-        descEl.innerHTML = descricao ? `📝 ${descricao.replace(/\n/g, '<br>')}` : '';
-        App.toast('Avaliação salva na ocorrência!');
+        if (t) t.avaliacao = avaliacao;
+        renderPacientes();
+        App.toast('Ficha de avaliação salva!');
       } catch (e) { App.toast(e.message, 'error'); }
-    }
-
-    /* ---------- Prescrições da ocorrência ---------- */
-    async function carregarPrescricoes() {
-      const prs = await PF.get('prescricoes', { paciente_id: sel, tratamento_id: tratSel });
-      document.getElementById('presList').innerHTML = prs.map(pr => `
-        <div class="soap-block">
-          <div class="sp-head">
-            <span class="sp-date">${PF.fmtData(pr.criado_em.slice(0,10))} · ${pr.freq || ''} ${pr.duracao ? '· ' + pr.duracao : ''}</span>
-            <button style="background:none;border:none;color:var(--text-soft);font-size:.8rem;" title="Excluir" onclick="excluirPres('${pr.id}')">✕</button>
-          </div>
-          ${(pr.itens || []).map(i => `<div class="sp-row">💪 <b style="text-transform:none;letter-spacing:0;">${i.nome}</b> ${i.reps || ''}</div>`).join('')}
-        </div>`).join('') ||
-        `<div class="empty">Nenhum exercício vinculado a esta ocorrência.<br><button class="btn btn-soft btn-sm" style="margin-top:10px;" onclick="abrirPrescrever()">＋ Prescrever exercícios</button></div>`;
-    }
-
-    /* ---------- Modal de prescrição (biblioteca embutida) ---------- */
-    let EXS = null, prescCat = 'todos', prescQ = '';
-    const prescSel = new Set();
-    const CATS = [['todos','Todos'],['coluna','Coluna'],['joelho','Joelho'],['ombro','Ombro'],['quadril','Quadril'],['neuro','Neuro'],['pilates','Pilates']];
-
-    async function abrirPrescrever() {
-      if (!EXS) EXS = await PF.get('exercicios');
-      prescSel.clear(); prescQ = '';
-      const t = TRATS.find(x => x.id === tratSel);
-      // pré-filtra pela região da ocorrência quando bate com uma categoria
-      prescCat = EXS.some(e => e.cat === (t || {}).regiao) ? t.regiao : 'todos';
-      document.getElementById('prescTratTitulo').textContent = t ? `→ ${t.titulo}` : '';
-      document.getElementById('prescBusca').value = '';
-      renderPrescModal();
-      App.openModal('mPrescreverEx');
-    }
-
-    function renderPrescModal() {
-      const cats = document.getElementById('prescCats');
-      cats.innerHTML = CATS.map(([c, l]) =>
-        `<button class="chip${prescCat === c ? ' active' : ''}" style="font-size:.74rem;" onclick="prescCat='${c}';renderPrescModal()">${l}</button>`).join('');
-      const itens = EXS.filter(e => (prescCat === 'todos' || e.cat === prescCat) &&
-        e.nome.toLowerCase().includes(prescQ.toLowerCase()));
-      document.getElementById('prescLista').innerHTML = itens.map(e => {
-        const on = prescSel.has(e.id);
-        return `<div onclick="togglePresc('${e.id}')" style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid #EDF1F0;cursor:pointer;${on ? 'background:var(--primary-soft);' : ''}">
-          <input type="checkbox" ${on ? 'checked' : ''} style="pointer-events:none;accent-color:var(--primary);">
-          <span style="font-size:1.1rem;">${e.emoji || '💪'}</span>
-          <div style="flex:1;">
-            <div style="font-size:.85rem;font-weight:600;color:var(--ink);">${e.nome}</div>
-            <div style="font-size:.7rem;color:var(--text-soft);">${e.cat} · ${e.nivel}${e.reps ? ' · ' + e.reps : ''}</div>
-          </div>
-        </div>`;
-      }).join('') || '<div class="empty">Nenhum exercício encontrado.</div>';
-      document.getElementById('btnPresc').textContent = `Prescrever (${prescSel.size})`;
-    }
-
-    function togglePresc(id) { prescSel.has(id) ? prescSel.delete(id) : prescSel.add(id); renderPrescModal(); }
-
-    async function salvarPrescricaoModal() {
-      if (!prescSel.size) { App.toast('Selecione ao menos um exercício', 'error'); return; }
-      const btn = document.getElementById('btnPresc'); btn.disabled = true;
-      try {
-        const itens = [...prescSel].map(id => { const e = EXS.find(x => x.id === id); return { id: e.id, nome: e.nome, reps: e.reps }; });
-        await PF.post('prescricoes', { paciente_id: sel, tratamento_id: tratSel, itens, freq: prescFreq.value, duracao: prescDur.value });
-        App.closeModal('mPrescreverEx');
-        App.toast(`${itens.length} exercício(s) prescritos nesta ocorrência!`);
-        await carregarPrescricoes();
-      } catch (e) { App.toast(e.message, 'error'); }
-      btn.disabled = false;
-    }
-
-    document.getElementById('prescBusca').addEventListener('input', e => { prescQ = e.target.value; renderPrescModal(); });
-
-    async function excluirPres(id) {
-      if (!confirm('Excluir esta prescrição?')) return;
-      try { await PF.del('prescricoes', id); await carregarPrescricoes(); App.toast('Prescrição excluída'); }
-      catch (e) { App.toast(e.message, 'error'); }
     }
 
     /* ---------- Anexos (por paciente) ---------- */
@@ -918,14 +869,16 @@
     <div class="doc"><b>Prontuário Fisioterapêutico</b>Emitido em ${agora}</div>
   </div>
 
-  <div class="sec"><h2>Paciente</h2>
+  <div class="sec"><h2>Dados Pessoais</h2>
     <div class="box grid2">
       ${campo('Nome', p.nome)}
       ${campo('Nascimento', p.nascimento ? PF.fmtData(p.nascimento.slice(0,10)) + (idade ? ` (${idade} anos)` : '') : null)}
+      ${campo('Sexo', { F: 'Feminino', M: 'Masculino' }[p.sexo] || p.sexo)}
       ${campo('CPF', p.cpf)}
       ${campo('Telefone', p.telefone)}
-      ${campo('Convênio', p.convenio || 'Particular')}
       ${campo('E-mail', p.email)}
+      ${campo('Endereço', p.endereco)}
+      ${campo('Convênio', p.convenio || 'Particular')}
     </div>
   </div>
 
@@ -942,11 +895,21 @@
     </div>
   </div>
 
-  ${secao('Avaliação Inicial', (av.historia || av.exame || av.diagnostico || av.plano) ? `<div class="box">
-    ${campo('Queixa e história', av.historia)}
+  ${secao('Ficha de Avaliação · Anamnese',
+    (av.diag_clinico || av.diag_fisio || av.queixa || av.hma || av.hmp || av.exame || av.sinais_vitais || av.observacoes
+     || av.historia || av.diagnostico) ? `<div class="box">
+    ${campo('Diagnóstico clínico', av.diag_clinico)}
+    ${campo('Diagnóstico fisioterapêutico', av.diag_fisio || av.diagnostico)}
+    ${campo('Queixa principal', av.queixa || av.historia)}
+    ${campo('HMA — história da moléstia atual', av.hma)}
+    ${campo('HMP — história da moléstia pregressa', av.hmp)}
     ${campo('Exame físico', av.exame)}
-    ${campo('Diagnóstico cinético-funcional', av.diagnostico)}
-    ${campo('Plano de tratamento', av.plano)}
+    ${campo('Sinais vitais', av.sinais_vitais)}
+    ${campo('Observações', av.observacoes)}
+  </div>` : '')}
+
+  ${secao('Conduta Fisioterapêutica', (av.conduta || av.plano) ? `<div class="box">
+    ${campo('Conduta, plano e metas', av.conduta || av.plano)}
   </div>` : '')}
 
   ${secao(`Evoluções (${evs.length})`, evs.slice().reverse().map(e => {
