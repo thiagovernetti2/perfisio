@@ -69,9 +69,6 @@
     .confirmar { padding: 26px; }
     .resumo { background: var(--primary-soft); border-radius: 12px; padding: 14px 16px; font-size: .88rem; color: var(--primary-dark); font-weight: 700; margin-bottom: 18px; }
     .confirmar .field { margin-bottom: 12px; }
-    .recorrencia { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
-    .recorrencia button { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 7px 13px; font-size: .8rem; font-weight: 600; color: var(--text-soft); cursor: pointer; font-family: inherit; }
-    .recorrencia button.on { border-color: var(--primary); background: var(--primary-soft); color: var(--primary-dark); }
 
     .ok-box { text-align: center; padding: 34px 26px; }
     .ok-box .ic { font-size: 2.6rem; }
@@ -113,7 +110,7 @@
     const DIAS_SEM = ['dom','seg','ter','qua','qui','sex','sáb'];
     const hojeISO = new Date().toISOString().slice(0, 10);
 
-    let P = null, ocupados = [], mesRef = new Date(), diaSel = null, horaSel = null, semanas = 1;
+    let P = null, ocupados = [], mesRef = new Date(), diaSel = null, horaSel = null;
 
     const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const porExtenso = s => new Date(s + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -216,22 +213,12 @@
           <div class="field"><label>WhatsApp *</label><input type="tel" id="cTel" placeholder="(51) 9 0000-0000"></div>
           <div class="field"><label>O que você está sentindo? (opcional)</label>
             <input type="text" id="cObs" placeholder="Ex.: dor no ombro ao levantar o braço"></div>
-          <div class="field" style="margin-bottom:6px;"><label>Repetir toda semana</label>
-            <div class="recorrencia" id="rec">
-              ${[1, 4, 8, 12].map(n => `<button class="${n === 1 ? 'on' : ''}" onclick="setSemanas(${n})">${n === 1 ? 'Só esta' : n + ' semanas'}</button>`).join('')}
-            </div>
-          </div>
           <div id="erroBox" style="display:none;background:var(--red-soft);color:var(--red);border-radius:9px;padding:9px 13px;font-size:.83rem;font-weight:600;margin:12px 0;"></div>
           <div style="display:flex;gap:10px;margin-top:18px;">
             <button class="btn btn-ghost" onclick="renderAgenda()">← Voltar</button>
             <button class="btn btn-primary" style="flex:1;justify-content:center;" id="btnOk" onclick="confirmar()">Confirmar agendamento</button>
           </div>
         </div>`;
-    }
-
-    function setSemanas(n) {
-      semanas = n;
-      [...document.querySelectorAll('#rec button')].forEach((b, i) => b.classList.toggle('on', [1, 4, 8, 12][i] === n));
     }
 
     async function confirmar() {
@@ -246,16 +233,14 @@
       try {
         const r = await PF.api('/api/public/agendar', { method: 'POST', body: {
           fisio_id: P.id, nome, telefone: tel, data: diaSel, hora: horaSel,
-          semanas, obs: document.getElementById('cObs').value.trim() || null,
+          semanas: 1, obs: document.getElementById('cObs').value.trim() || null,
         }});
         const wpp = (P.whatsapp || '').replace(/\D/g, '');
         document.getElementById('painel').innerHTML = `
           <div class="ok-box">
             <div class="ic">✅</div>
             <h2>Sessão agendada!</h2>
-            <p>${porExtenso(r.criadas[0])} às ${r.hora}${r.criadas.length > 1 ? `<br><b>+ ${r.criadas.length - 1} sessão(ões) semanais</b>` : ''}<br>
-               com <b>${r.fisio_nome}</b></p>
-            ${r.conflitos.length ? `<p style="color:var(--amber);font-size:.83rem;margin-top:8px;">${r.conflitos.length} data(s) da recorrência já estavam ocupadas e foram puladas.</p>` : ''}
+            <p>${porExtenso(r.criadas[0])} às ${r.hora}<br>com <b>${r.fisio_nome}</b></p>
             <div class="codigo">${r.codigo}</div>
             <p style="font-size:.8rem;color:var(--text-soft);margin-top:10px;">Guarde este código para remarcar ou cancelar.</p>
             <div style="display:flex;gap:8px;justify-content:center;margin-top:20px;flex-wrap:wrap;">

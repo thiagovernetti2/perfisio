@@ -112,8 +112,6 @@
     .bk-slot:hover { border-color: var(--primary); color: var(--primary-dark); }
     .bk-slot.sel { background: var(--primary); border-color: var(--primary); color: #fff; }
     .bk-slot.ocupado { opacity: .35; text-decoration: line-through; pointer-events: none; background: var(--bg); }
-    .bk-rec { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
-    .bk-rec .chip.active { border-color: var(--primary); background: var(--primary-soft); color: var(--primary-dark); }
     .bk-preview { margin-top: 12px; display: flex; gap: 6px; flex-wrap: wrap; }
     .bk-preview span { font-size: .74rem; font-weight: 600; padding: 4px 10px; border-radius: 99px; background: var(--green-soft); color: var(--green); }
     .bk-preview span.conf { background: var(--red-soft); color: var(--red); text-decoration: line-through; }
@@ -372,7 +370,7 @@
     const MES3 = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
     let bkOcupados = new Set();      // 'YYYY-MM-DD|HH:MM'
     let bkInicio = 0;                // deslocamento da janela de 7 dias
-    let bkData = null, bkHora = null, bkSemanas = 1;
+    let bkData = null, bkHora = null;
     let bkModo = 'novo';             // 'novo' | 'remarcar'
     let bkReserva = null;            // { codigo, sessoes, sessaoSel }
 
@@ -388,7 +386,7 @@
 
     async function bkInit() {
       await bkCarregarOcupados();
-      bkData = null; bkHora = null; bkSemanas = 1; bkInicio = 0;
+      bkData = null; bkHora = null; bkInicio = 0;
       bkRender();
     }
 
@@ -397,15 +395,6 @@
       const agora = new Date();
       if (data === agora.toISOString().slice(0, 10) && Number(hora.slice(0, 2)) <= agora.getHours()) return false;
       return true;
-    }
-
-    function bkDatasSerie() {
-      if (!bkData) return [];
-      return [...Array(bkSemanas)].map((_, i) => {
-        const d = new Date(bkData + 'T12:00:00');
-        d.setDate(d.getDate() + i * 7);
-        return d.toISOString().slice(0, 10);
-      });
     }
 
     function bkRender() {
@@ -446,22 +435,14 @@
             <button class="btn btn-primary" onclick="bkConfirmarRemarcacao()">Confirmar remarcação</button>
           </div>`;
         } else {
-          const serie = bkDatasSerie();
           rodape = `
-            <div class="bk-rec">
-              ${[[1, 'Só uma vez'], [4, 'Semanal · 4 semanas'], [8, 'Semanal · 8 semanas'], [12, 'Semanal · 12 semanas']]
-                .map(([n, l]) => `<button class="chip${bkSemanas === n ? ' active' : ''}" onclick="bkSelSemanas(${n})">${l}</button>`).join('')}
-            </div>
-            ${bkSemanas > 1 ? `<div class="bk-preview">${serie.map(d =>
-              `<span class="${bkLivre(d, bkHora) ? '' : 'conf'}">${fmtBR(d)}</span>`).join('')}</div>
-              ${serie.some(d => !bkLivre(d, bkHora)) ? '<div style="font-size:.74rem;color:var(--red);margin-top:6px;">Datas riscadas estão ocupadas e ficarão de fora — dá para remarcar depois com seu código.</div>' : ''}` : ''}
             <div class="bk-form">
               <div class="field"><label>Seu nome *</label><input type="text" id="bkNome"></div>
               <div class="field"><label>WhatsApp *</label><input type="tel" id="bkTel" placeholder="(11) 9 0000-0000"></div>
               <div class="field full"><label>O que você está sentindo? (opcional)</label><input type="text" id="bkObs" placeholder="Ex.: dor no joelho ao subir escadas"></div>
               <div class="full" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
                 <button class="btn btn-primary" style="padding:12px 26px;" id="bkBtn" onclick="bkConfirmar()">
-                  Confirmar ${bkSemanas > 1 ? bkSemanas + ' sessões' : 'agendamento'} · ${fmtBR(bkData)} às ${bkHora}
+                  Confirmar agendamento · ${fmtBR(bkData)} às ${bkHora}
                 </button>
               </div>
             </div>`;
@@ -481,7 +462,6 @@
     function bkNav(d) { bkInicio = Math.min(Math.max(bkInicio + d, 0), 84); bkRender(); }
     function bkSelDia(iso) { bkData = iso; bkHora = null; bkRender(); }
     function bkSelHora(h) { if (bkData && bkLivre(bkData, h)) { bkHora = h; bkRender(); const f = document.getElementById('bkNome'); } }
-    function bkSelSemanas(n) { bkSemanas = n; bkRender(); }
 
     async function bkConfirmar() {
       const nome = document.getElementById('bkNome').value.trim();
@@ -491,7 +471,7 @@
       try {
         const r = await PF.api('/api/public/agendar', { method: 'POST', body: {
           fisio_id: fisioId, nome, telefone: tel, data: bkData, hora: bkHora,
-          semanas: bkSemanas, obs: document.getElementById('bkObs').value.trim() || null,
+          semanas: 1, obs: document.getElementById('bkObs').value.trim() || null,
         }});
         document.getElementById('bkComponente').innerHTML = `
           <div class="bk-ok">
