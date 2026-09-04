@@ -218,6 +218,8 @@ CREATE TABLE IF NOT EXISTS avaliacoes (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS avaliacoes_fisio_conta_uk ON avaliacoes (fisio_id, conta_id);
 ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS slug text;
+ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS endereco text;
+ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS sexo text;
 ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS logo bytea;
 ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS logo_mime text;
 ALTER TABLE fisios ADD COLUMN IF NOT EXISTS slug text;
@@ -1500,7 +1502,7 @@ const TABLES = {
   fisios: ['nome', 'crefito', 'esp', 'cor', 'comissao', 'ativo',
     'publico', 'especialidades', 'domiciliar', 'bairro', 'cidade', 'lat', 'lng', 'preco', 'bio',
     'whatsapp', 'tratamentos', 'regioes', 'instagram'],
-  pacientes: ['nome', 'nascimento', 'cpf', 'telefone', 'email', 'convenio', 'queixa', 'obs', 'fisio_id', 'status', 'pacote_nome', 'sessoes_total', 'sessoes_feitas', 'avaliacao'],
+  pacientes: ['nome', 'nascimento', 'cpf', 'telefone', 'email', 'endereco', 'sexo', 'convenio', 'queixa', 'obs', 'fisio_id', 'status', 'pacote_nome', 'sessoes_total', 'sessoes_feitas', 'avaliacao'],
   leads: ['nome', 'telefone', 'origem', 'interesse', 'obs', 'valor', 'fisio_id', 'col'],
   sessoes: ['paciente_id', 'tratamento_id', 'fisio_id', 'titulo', 'tipo', 'data', 'hora', 'duracao', 'obs', 'status'],
   tratamentos: ['paciente_id', 'titulo', 'regiao', 'descricao', 'fisio_id', 'status', 'inicio', 'alta', 'avaliacao'],
