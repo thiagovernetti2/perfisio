@@ -67,10 +67,11 @@
         <div id="tratDescricao" class="card card-pad" style="display:none;margin-bottom:16px;padding:14px 18px;font-size:.86rem;color:var(--text);line-height:1.55;border-left:4px solid var(--primary);"></div>
         <div class="tabs" id="pTabs" data-auto>
           <button class="tab active" data-tab="avaliacao">Ficha de avaliação</button>
+          <button class="tab" data-tab="anamnese">Anamnese</button>
+          <button class="tab" data-tab="conduta">Conduta fisioterapêutica</button>
           <button class="tab" data-tab="evolucoes">Evolução</button>
           <button class="tab" data-tab="grafico">📈 Gráfico</button>
-          <button class="tab" data-tab="sessoes">Sessões</button>
-          <button class="tab" data-tab="anexos">Fotos & Anexos</button>
+          <button class="tab" data-tab="anexos">Fotos e Anexos</button>
         </div>
 
         <!-- GRÁFICO DE EVOLUÇÃO -->
@@ -151,8 +152,7 @@
         <div data-tab-panel="avaliacao">
           <div class="card card-pad">
             <h3 style="font-size:.95rem;" id="avTitulo">Ficha de avaliação</h3>
-
-            <div class="ficha-sec"><span class="n">1</span> Dados pessoais</div>
+            <div class="ficha-sec"><span class="n">1.1</span> Dados pessoais</div>
             <div class="form-grid">
               <div class="field full"><label>Nome</label><input type="text" id="fpNome"></div>
               <div class="field full"><label>Endereço</label><input type="text" id="fpEndereco" placeholder="Rua, número · bairro · cidade/UF"></div>
@@ -168,8 +168,17 @@
                 </select>
               </div>
             </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+              <button class="btn btn-primary" onclick="salvarDadosPessoais()">Salvar dados pessoais</button>
+            </div>
+          </div>
+        </div>
 
-            <div class="ficha-sec"><span class="n">2</span> Anamnese</div>
+        <!-- 2) ANAMNESE -->
+        <div data-tab-panel="anamnese" style="display:none;">
+          <div class="card card-pad">
+            <h3 style="font-size:.95rem;margin-bottom:4px;" id="anTitulo">Anamnese</h3>
+            <div style="font-size:.78rem;color:var(--text-soft);margin-bottom:14px;">Preenchida por ocorrência — cada tratamento tem a sua.</div>
             <div class="form-grid">
               <div class="field"><label>Diagnóstico clínico</label><textarea id="avDiagClinico" placeholder="Diagnóstico médico, CID, laudo..."></textarea></div>
               <div class="field"><label>Diagnóstico fisioterapêutico</label><textarea id="avDiagFisio" placeholder="Diagnóstico cinético-funcional"></textarea></div>
@@ -180,14 +189,22 @@
               <div class="field full"><label>Sinais vitais</label><input type="text" id="avSinais" placeholder="PA 120x80 mmHg · FC 72 bpm · FR 16 irpm · SpO₂ 98% · Temp 36,5 °C"></div>
               <div class="field full"><label>Observações</label><textarea id="avObs" placeholder="Outras informações relevantes"></textarea></div>
             </div>
-
-            <div class="ficha-sec"><span class="n">3</span> Conduta fisioterapêutica</div>
-            <div class="form-grid">
-              <div class="field full"><label>Conduta, plano e metas</label><textarea id="avConduta" style="min-height:110px;" placeholder="Recursos e técnicas, frequência, fases do tratamento e metas objetivas (EVA, ADM, retorno ao esporte)..."></textarea></div>
-            </div>
-
             <div style="display:flex;justify-content:flex-end;margin-top:16px;">
-              <button class="btn btn-primary" onclick="salvarAvaliacao()">Salvar ficha</button>
+              <button class="btn btn-primary" onclick="salvarAvaliacao()">Salvar anamnese</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3) CONDUTA -->
+        <div data-tab-panel="conduta" style="display:none;">
+          <div class="card card-pad">
+            <h3 style="font-size:.95rem;margin-bottom:4px;" id="cdTitulo">Conduta fisioterapêutica</h3>
+            <div style="font-size:.78rem;color:var(--text-soft);margin-bottom:14px;">Recursos, técnicas, frequência e metas do tratamento.</div>
+            <div class="form-grid">
+              <div class="field full"><label>Conduta, plano e metas</label><textarea id="avConduta" style="min-height:180px;" placeholder="Recursos e técnicas, frequência, fases do tratamento e metas objetivas (EVA, ADM, retorno ao esporte)..."></textarea></div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+              <button class="btn btn-primary" onclick="salvarAvaliacao()">Salvar conduta</button>
             </div>
           </div>
         </div>
@@ -406,12 +423,14 @@
       document.getElementById('tratConteudo').style.display = '';
       document.getElementById('tratVazio').style.display = 'none';
       document.getElementById('evTratLabel').textContent = `→ ${t.titulo}`;
-      document.getElementById('avTitulo').textContent = `Ficha de avaliação — ${t.titulo}`;
+      const pac = PACS.find(x => x.id === sel) || {};
+      document.getElementById('avTitulo').textContent = `Ficha de avaliação — ${pac.nome || ''}`;
+      document.getElementById('anTitulo').textContent = `Anamnese — ${t.titulo}`;
+      document.getElementById('cdTitulo').textContent = `Conduta fisioterapêutica — ${t.titulo}`;
       document.getElementById('cardNovaEv').style.display = t.status === 'ativo' ? '' : 'none';
       if (t.fisio_id) document.getElementById('evFisio').value = t.fisio_id;
-      const a = t.avaliacao || {};
       // campos antigos (historia/diagnostico/plano) continuam aparecendo nos novos lugares
-      const pac = PACS.find(x => x.id === sel) || {};
+      const a = t.avaliacao || {};
       fpNome.value = pac.nome || '';
       fpEndereco.value = pac.endereco || '';
       fpTelefone.value = pac.telefone || '';
@@ -625,19 +644,25 @@
     }
 
     /* ---------- Avaliação da ocorrência ---------- */
-    async function salvarAvaliacao() {
+    /* 1) Ficha de avaliação — dados pessoais ficam no cadastro do paciente */
+    async function salvarDadosPessoais() {
       try {
-        // 1. dados pessoais vão para o cadastro do paciente
         const dados = {
           nome: fpNome.value.trim(), endereco: fpEndereco.value.trim(), telefone: fpTelefone.value.trim(),
           email: fpEmail.value.trim(), nascimento: fpNascimento.value || null, sexo: fpSexo.value || null,
         };
         if (!dados.nome) { App.toast('O nome do paciente é obrigatório', 'error'); return; }
-        const pacAtualizado = await PF.put('pacientes', sel, dados);
-        const iP = PACS.findIndex(x => x.id === sel);
-        if (iP >= 0) PACS[iP] = { ...PACS[iP], ...pacAtualizado };
+        const atualizado = await PF.put('pacientes', sel, dados);
+        const i = PACS.findIndex(x => x.id === sel);
+        if (i >= 0) PACS[i] = { ...PACS[i], ...atualizado };
+        renderPacientes();
+        App.toast('Dados pessoais salvos!');
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
 
-        // 2. anamnese e conduta ficam na ocorrência
+    /* 2) e 3) anamnese e conduta são da ocorrência — gravam no mesmo registro */
+    async function salvarAvaliacao() {
+      try {
         const avaliacao = {
           diag_clinico: avDiagClinico.value.trim(), diag_fisio: avDiagFisio.value.trim(),
           queixa: avQueixa.value.trim(), hma: avHma.value.trim(), hmp: avHmp.value.trim(),
@@ -647,8 +672,7 @@
         await PF.put('tratamentos', tratSel, { avaliacao });
         const t = TRATS.find(x => x.id === tratSel);
         if (t) t.avaliacao = avaliacao;
-        renderPacientes();
-        App.toast('Ficha de avaliação salva!');
+        App.toast('Salvo na ocorrência!');
       } catch (e) { App.toast(e.message, 'error'); }
     }
 
