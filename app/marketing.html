@@ -78,7 +78,7 @@
     const TEMPLATES = [
       { nome: '🔁 Reativação', filtro: 'inativo', assunto: '{{nome}}, que tal retomar seu tratamento?', corpo: 'Olá {{nome}},\n\nNotamos que faz um tempinho desde sua última sessão na {{clinica}}. Cuidar da recuperação até o fim faz toda a diferença no resultado.\n\nQue tal agendar uma reavaliação? Responda este e-mail ou chame a gente no WhatsApp.\n\nUm abraço,\nEquipe {{clinica}}' },
       { nome: '⭐ Pós-alta', filtro: 'alta', assunto: 'Como você está se sentindo, {{nome}}?', corpo: 'Olá {{nome}},\n\nJá faz um tempo desde a sua alta na {{clinica}} — queremos saber como você está!\n\nSe sentir qualquer desconforto voltando, não espere piorar: uma sessão de manutenção pode evitar recaídas.\n\nEstamos por aqui. 💚\nEquipe {{clinica}}' },
-      { nome: '💪 Exercícios em casa', filtro: 'tratamento', assunto: '{{nome}}, seus exercícios de hoje', corpo: 'Olá {{nome}},\n\nLembrete carinhoso da {{clinica}}: seus exercícios em casa são metade do resultado do tratamento!\n\nQualquer dúvida sobre a execução, fale com seu fisioterapeuta.\n\nBons treinos! 💪\nEquipe {{clinica}}' },
+      { nome: '💬 Retorno do tratamento', filtro: 'tratamento', assunto: '{{nome}}, como você está?', corpo: 'Olá {{nome}},\n\nAqui é a {{clinica}}. Passando para saber como você tem se sentido desde a última sessão.\n\nQualquer dúvida, é só responder este e-mail ou chamar no WhatsApp.\n\nUm abraço!\nEquipe {{clinica}}' },
     ];
 
     async function boot() {

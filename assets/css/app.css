@@ -316,7 +316,7 @@ table.data tbody tr:hover { background: #F9FBFA; }
 .day-list .dl-sub { font-size: .74rem; color: var(--text-soft); margin-top: 2px; }
 .day-list .dl-bar { width: 4px; border-radius: 4px; flex-shrink: 0; }
 
-/* ============ GRID DE CARDS (exercícios / equipe / perfis) ============ */
+/* ============ GRID DE CARDS (equipe / perfis) ============ */
 .ex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); gap: 18px; }
 .ex-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); transition: transform .15s, box-shadow .15s; cursor: pointer; }
 .ex-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(15,42,46,.12); }

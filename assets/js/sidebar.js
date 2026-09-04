@@ -19,7 +19,6 @@
     { id: 'crm',           href: 'crm.html',           ico: '🎯', text: 'CRM · Captação' },
     { label: 'Clínica' },
     { id: 'prontuarios',   href: 'prontuarios.html',   ico: '📋', text: 'Prontuários' },
-    { id: 'exercicios',    href: 'exercicios.html',    ico: '💪', text: 'Exercícios' },
     { id: 'financeiro',    href: 'financeiro.html',    ico: '💳', text: 'Financeiro' },
     { id: 'marketing',     href: 'marketing.html',     ico: '📣', text: 'Marketing' },
     { id: 'aprovacoes',    href: 'aprovacoes.html',    ico: '📱', text: 'Aprovações' },

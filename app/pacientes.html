@@ -169,7 +169,7 @@
     }
 
     async function excluirPaciente() {
-      if (!editId || !confirm('Excluir este paciente e todo o histórico (sessões, evoluções, prescrições)?')) return;
+      if (!editId || !confirm('Excluir este paciente e todo o histórico (sessões, evoluções, anexos)?')) return;
       try {
         await PF.del('pacientes', editId);
         App.closeModal('mPaciente');

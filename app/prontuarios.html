@@ -259,7 +259,6 @@
     </div>
   </div>
 
-  <!-- MODAL PRESCREVER EXERCÍCIOS -->
   <!-- MODAL NOVA OCORRÊNCIA -->
   <div class="modal-overlay" id="mTrat">
     <div class="modal">
@@ -832,9 +831,8 @@
       App.toast('Gerando documento para impressão...', 'info');
       try {
         if (!CLINICA_CACHE) CLINICA_CACHE = await PF.api('/api/clinica');
-        const [evs, prs, anexos] = await Promise.all([
+        const [evs, anexos] = await Promise.all([
           PF.get('evolucoes', { paciente_id: sel, tratamento_id: tratSel }),
-          PF.get('prescricoes', { paciente_id: sel, tratamento_id: tratSel }),
           PF.get('anexos', { paciente_id: sel }),
         ]);
         const p = PACS.find(x => x.id === sel);
@@ -946,11 +944,6 @@
       </div>
     </div>`;
   }).join(''))}
-
-  ${secao('Exercícios Prescritos', prs.length ? prs.map(pr => `<div class="box">
-    <p><b>${PF.fmtData(pr.criado_em.slice(0,10))}</b>${pr.freq ? ' · ' + pr.freq : ''}${pr.duracao ? ' · ' + pr.duracao : ''}</p>
-    <ul style="margin:4px 0 0 18px;">${(pr.itens || []).map(i => `<li>${esc(i.nome)}${i.reps ? ' — ' + esc(i.reps) : ''}</li>`).join('')}</ul>
-  </div>`).join('') : '')}
 
   ${secao(`Sessões (${SESS_TRAT.length})`, SESS_TRAT.length ? `<table><thead><tr><th>Data</th><th>Hora</th><th>Tipo</th><th>Fisioterapeuta</th><th>Situação</th></tr></thead><tbody>
     ${SESS_TRAT.slice().sort((a,b) => (a.data + a.hora).localeCompare(b.data + b.hora)).map(s =>

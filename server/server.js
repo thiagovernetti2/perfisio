@@ -79,21 +79,6 @@ CREATE TABLE IF NOT EXISTS evolucoes (
   s text, o text, a text, p text, eva int,
   criado_em timestamptz NOT NULL DEFAULT now()
 );
-CREATE TABLE IF NOT EXISTS exercicios (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
-  nome text NOT NULL, cat text NOT NULL DEFAULT 'coluna', nivel text NOT NULL DEFAULT 'Iniciante',
-  reps text, emoji text DEFAULT '💪', instrucoes text, video text,
-  criado_em timestamptz NOT NULL DEFAULT now()
-);
-CREATE TABLE IF NOT EXISTS prescricoes (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
-  paciente_id uuid NOT NULL REFERENCES pacientes(id) ON DELETE CASCADE,
-  itens jsonb NOT NULL DEFAULT '[]'::jsonb,
-  freq text, duracao text,
-  criado_em timestamptz NOT NULL DEFAULT now()
-);
 CREATE TABLE IF NOT EXISTS pacotes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
@@ -226,7 +211,6 @@ ALTER TABLE fisios ADD COLUMN IF NOT EXISTS slug text;
 CREATE UNIQUE INDEX IF NOT EXISTS clinicas_slug_uk ON clinicas (slug) WHERE slug IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS fisios_slug_uk ON fisios (slug) WHERE slug IS NOT NULL;
 ALTER TABLE evolucoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
-ALTER TABLE prescricoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
 ALTER TABLE sessoes ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
 ALTER TABLE tratamentos ADD COLUMN IF NOT EXISTS descricao text;
 ALTER TABLE anexos ADD COLUMN IF NOT EXISTS tratamento_id uuid REFERENCES tratamentos(id) ON DELETE SET NULL;
@@ -312,14 +296,10 @@ async function migrarTratamentos() {
     FROM pacientes p
     WHERE NOT EXISTS (SELECT 1 FROM tratamentos t WHERE t.paciente_id = p.id)
       AND (p.avaliacao <> '{}'::jsonb
-        OR EXISTS (SELECT 1 FROM evolucoes e WHERE e.paciente_id = p.id)
-        OR EXISTS (SELECT 1 FROM prescricoes pr WHERE pr.paciente_id = p.id))`);
+        OR EXISTS (SELECT 1 FROM evolucoes e WHERE e.paciente_id = p.id))`);
   await pool.query(`
     UPDATE evolucoes e SET tratamento_id = t.id FROM tratamentos t
     WHERE e.tratamento_id IS NULL AND t.paciente_id = e.paciente_id`);
-  await pool.query(`
-    UPDATE prescricoes pr SET tratamento_id = t.id FROM tratamentos t
-    WHERE pr.tratamento_id IS NULL AND t.paciente_id = pr.paciente_id`);
   // sessões antigas: vincula apenas quando o paciente tem UMA ocorrência (sem ambiguidade)
   await pool.query(`
     UPDATE sessoes s SET tratamento_id = t.id FROM tratamentos t
@@ -332,17 +312,6 @@ async function migrarTratamentos() {
 }
 
 /* ============ SEED (por clínica nova) ============ */
-const SEED_EXERCICIOS = [
-  ['Ponte de glúteos','coluna','Iniciante','3 × 12','🧘'],['Bird-dog','coluna','Iniciante','3 × 10/lado','🐦'],
-  ['Prancha frontal','coluna','Intermediário','3 × 30s','🪵'],['Gato-camelo','coluna','Iniciante','2 × 15','🐈'],
-  ['Agachamento na parede','joelho','Iniciante','3 × 45s','🦵'],['Cadeira extensora elástica','joelho','Intermediário','3 × 12','🪑'],
-  ['Step-up com controle','joelho','Avançado','3 × 10/perna','🪜'],['Rotação externa c/ elástico','ombro','Iniciante','3 × 15','💪'],
-  ['Deslizamento na parede','ombro','Iniciante','3 × 12','🧗'],['Y-T-W no solo','ombro','Intermediário','2 × 10 cada','🔤'],
-  ['Concha (clam shell)','quadril','Iniciante','3 × 15/lado','🦪'],['Abdução em pé c/ elástico','quadril','Intermediário','3 × 12/lado','🩰'],
-  ['Marcha estacionária','neuro','Iniciante','3 × 1 min','🚶'],['Treino de equilíbrio unipodal','neuro','Intermediário','3 × 30s/lado','⚖️'],
-  ['Alcance funcional sentado','neuro','Iniciante','3 × 10','🫳'],['The Hundred','pilates','Intermediário','1 × 100','💯'],
-  ['Roll-up','pilates','Intermediário','2 × 8','🌀'],['Swan (extensão torácica)','pilates','Avançado','2 × 8','🦢'],
-];
 const SEED_PACOTES = [
   ['Sessão avulsa','Fisioterapia ortopédica / esportiva',160,1,'avulsa'],
   ['Pacote 10 sessões','R$ 140/sessão · validade 3 meses',1400,10,'pacote'],
@@ -352,8 +321,6 @@ const SEED_PACOTES = [
 ];
 
 async function seedClinica(client, cid) {
-  for (const [nome, cat, nivel, reps, emoji] of SEED_EXERCICIOS)
-    await client.query('INSERT INTO exercicios (clinica_id,nome,cat,nivel,reps,emoji) VALUES ($1,$2,$3,$4,$5,$6)', [cid, nome, cat, nivel, reps, emoji]);
   for (const [nome, descricao, valor, sessoes, tipo] of SEED_PACOTES)
     await client.query('INSERT INTO pacotes (clinica_id,nome,descricao,valor,sessoes,tipo) VALUES ($1,$2,$3,$4,$5,$6)', [cid, nome, descricao, valor, sessoes, tipo]);
 }
@@ -1507,8 +1474,6 @@ const TABLES = {
   sessoes: ['paciente_id', 'tratamento_id', 'fisio_id', 'titulo', 'tipo', 'data', 'hora', 'duracao', 'obs', 'status'],
   tratamentos: ['paciente_id', 'titulo', 'regiao', 'descricao', 'fisio_id', 'status', 'inicio', 'alta', 'avaliacao'],
   evolucoes: ['paciente_id', 'tratamento_id', 'sessao_id', 'fisio_id', 'data', 's', 'o', 'a', 'p', 'eva'],
-  exercicios: ['nome', 'cat', 'nivel', 'reps', 'emoji', 'instrucoes', 'video'],
-  prescricoes: ['paciente_id', 'tratamento_id', 'itens', 'freq', 'duracao'],
   pacotes: ['nome', 'descricao', 'valor', 'sessoes', 'tipo'],
   pagamentos: ['paciente_id', 'descricao', 'forma', 'vencimento', 'valor', 'status'],
   convenios: ['nome', 'valor_sessao', 'ativo'],
@@ -1517,7 +1482,7 @@ const TABLES = {
 const JSONB_COLS = new Set(['avaliacao', 'itens']);
 const ORDER = {
   sessoes: 'data, hora', evolucoes: 'data DESC, criado_em DESC', pagamentos: 'vencimento NULLS LAST, criado_em DESC',
-  leads: 'criado_em DESC', prescricoes: 'criado_em DESC',
+  leads: 'criado_em DESC',
 };
 
 const SELECT_COLS = {
