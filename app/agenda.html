@@ -19,6 +19,12 @@
     .tg-hora { padding: 6px 8px; font-size: .68rem; font-weight: 700; color: var(--text-soft); text-align: right; border-bottom: 1px solid #F0F4F3; }
     .tg-cell { border-left: 1px solid #EDF1F0; border-bottom: 1px solid #F0F4F3; min-height: 40px; padding: 3px 4px; cursor: pointer; transition: background .12s; }
     .tg-cell:hover { background: var(--primary-soft); }
+    /* arrastar sessão para outro dia/horário */
+    .cal-ev[draggable="true"] { cursor: grab; }
+    .cal-ev.arrastando { opacity: .4; }
+    .drop-alvo { background: var(--primary-soft) !important; box-shadow: inset 0 0 0 2px var(--primary); }
+    /* horário do profissional ocupado em outra clínica — sem nenhum detalhe do atendimento */
+    .cal-ev.ocupado { background: repeating-linear-gradient(135deg, #AEBBB8 0 6px, #C2CCC9 6px 12px) !important; color: #25322F; cursor: default; }
   </style>
 </head>
 <body data-page="agenda" data-title="Agenda" data-subtitle="Sessões, avaliações e turmas da clínica">
@@ -37,7 +43,7 @@
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;" id="fisioChips"></div>
     <div style="flex:1;"></div>
-    <button class="btn btn-primary" onclick="abrirNova()">+ Nova sessão</button>
+    <button class="btn btn-primary" id="btnNovaSessao" onclick="abrirNova()">+ Nova sessão</button>
   </div>
 
   <div class="grid-2">
@@ -58,6 +64,7 @@
       </div>
       <div class="modal-body">
         <div class="form-grid">
+          <div class="field full" id="fClinicaWrap" style="display:none;"><label>Clínica</label><select id="fClinica"></select></div>
           <div class="field full"><label>Paciente (ou deixe vazio p/ turma)</label>
             <select id="fPaciente"></select>
           </div>
@@ -98,7 +105,7 @@
             </div>
           </div>
           <div class="field full" id="fTituloWrap" style="display:none;"><label>Título (turma / bloqueio)</label><input type="text" id="fTitulo" placeholder="Ex.: Pilates — turma das 15h"></div>
-          <div class="field"><label>Fisioterapeuta</label><select id="fFisio"></select></div>
+          <div class="field" id="fFisioWrap"><label>Fisioterapeuta</label><select id="fFisio"></select></div>
           <div class="field"><label>Tipo</label>
             <select id="fTipo"><option>Sessão de tratamento</option><option>Avaliação inicial</option><option>Reavaliação</option><option>Pilates (turma)</option><option>Domiciliar</option></select>
           </div>
@@ -134,14 +141,122 @@
 
   <script src="../assets/js/app.js"></script>
   <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/username.js"></script>
   <script src="../assets/js/sidebar.js"></script>
   <script>
     const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
     let ano, mes; // mes: 0-11
     { const d = new Date(); ano = d.getFullYear(); mes = d.getMonth(); }
     let filtro = 'todos', diaSel = new Date().getDate(), vista = 'mes';
-    let FISIOS = [], PACS = [], EVENTOS = [];
+    let EU = {}; // usuário logado (com fisio_id quando é um profissional da equipe)
+    let SO_LEITURA = false; // perfil fisioterapeuta: consulta a própria agenda e nada mais
+
+    /* deixa a tela coerente com o que o servidor permite a esse perfil:
+       ele marca sessão e cadastra paciente, mas sempre no próprio nome — e quem
+       remarca, cancela ou dá baixa em sessão já criada é a recepção */
+    function aplicarSomenteLeitura() {
+      document.getElementById('fisioChips').style.display = MULTI ? '' : 'none';
+      const sub = document.querySelector('.topbar .subtitle');
+      if (sub) sub.textContent = MULTI ? 'Suas sessões em todas as clínicas' : 'Suas sessões';
+      const sel = document.getElementById('fFisio');
+      sel.innerHTML = MULTI
+        ? VINCULOS.map(v => `<option value="${v.fisio_id}">${v.clinica_nome}</option>`).join('')
+        : FISIOS.filter(f => f.id === EU.fisio_id).map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
+      sel.value = EU.fisio_id;
+      sel.disabled = true;
+      document.getElementById('fFisioWrap').style.display = 'none';
+      if (MULTI) {
+        fClinica.innerHTML = VINCULOS.map(v => `<option value="${v.clinica_id}">${v.clinica_nome}</option>`).join('');
+        fClinica.value = EU.clinica_id;
+        document.getElementById('fClinicaWrap').style.display = '';
+        fClinica.addEventListener('change', trocarClinicaModal);
+      }
+      // o link curto é do perfil público, que fica numa clínica só
+      const eu = FISIOS.find(f => f.id === EU.fisio_id);
+      if (eu && eu.slug && eu.ficha_do_perfil !== false) montarMeuLink(eu);
+    }
+
+    /* nova sessão no modo várias clínicas: paciente e ficha são da clínica escolhida */
+    function trocarClinicaModal() {
+      const v = vinculoDe(fClinica.value);
+      if (v) fFisio.value = v.fisio_id;
+      montarPacSelect();
+      fPaciente.dispatchEvent(new Event('change'));
+    }
+
+    // pacientes do select (no modo várias clínicas, só os da clínica escolhida)
+    function montarPacSelect(selecionado) {
+      const lista = PACS.filter(p => p.status !== 'inativo' && (!MULTI || p._c === fClinica.value));
+      fPaciente.innerHTML = '<option value="">— Sem paciente (turma/bloqueio) —</option>' +
+        '<option value="__novo__">＋ Cadastrar novo paciente…</option>' +
+        lista.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+      if (selecionado) fPaciente.value = selecionado;
+    }
+
+    /* o fisioterapeuta escolhe o próprio username do link curto */
+    function montarMeuLink(f) {
+      const box = document.createElement('div');
+      box.className = 'card card-pad';
+      box.style.cssText = 'display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;margin-bottom:16px;';
+      box.innerHTML = `
+        <div style="font-size:.86rem;font-weight:800;color:var(--ink);">🔗 Seu link</div>
+        <div class="user-link" style="flex:1;min-width:260px;max-width:460px;">
+          <span class="pref">perfis.io/</span>
+          <input type="text" id="mlUsername" maxlength="40" autocomplete="off" spellcheck="false">
+          <button type="button" class="btn btn-soft btn-sm" id="mlSalvar">Salvar</button>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" id="mlCopiar">📋 Copiar</button>
+        <div id="mlStatus" style="flex-basis:100%;font-size:.74rem;"></div>`;
+      document.querySelector('.grid-2').before(box);
+      const campo = ligarUsername({
+        input: box.querySelector('#mlUsername'), botao: box.querySelector('#mlSalvar'),
+        status: box.querySelector('#mlStatus'), fisioId: f.id, atual: f.slug,
+      });
+      campo.aviso(f.publico
+        ? 'Coloque na bio do Instagram, no WhatsApp e no cartão de visita.'
+        : 'Seu perfil público ainda está desligado — peça à clínica para ativar e o link passa a funcionar.', '');
+      box.querySelector('#mlCopiar').onclick = () => {
+        const url = 'https://perfis.io/' + campo.atual();
+        navigator.clipboard.writeText(url)
+          .then(() => App.toast('Link copiado: perfis.io/' + campo.atual()))
+          .catch(() => prompt('Copie o link:', url));
+      };
+    }
+    let FISIOS = [], PACS = [], EVENTOS = [], OCUPADOS = [];
     const hojeISO = PF.hojeISO();
+
+    /* profissional em mais de uma clínica: a agenda soma todas, cada clínica com a sua cor.
+       Para a recepção, os horários dele nas outras clínicas chegam só como "ocupado". */
+    let MULTI = false, VINCULOS = [];
+    const CORES_CLINICA = ['#0DA189', '#2D7DD2', '#7C5CBF', '#D9820B', '#C2456B'];
+    const vinculoDe = cid => VINCULOS.find(v => v.clinica_id === cid);
+    const corClinica = cid => CORES_CLINICA[Math.max(VINCULOS.findIndex(v => v.clinica_id === cid), 0) % CORES_CLINICA.length];
+    // a mesma lista em cada clínica, marcada com a clínica de onde veio (_c)
+    async function somarClinicas(caminho) {
+      const partes = await Promise.all(VINCULOS.map(v =>
+        PF.api(caminho, { clinica: v.clinica_id }).then(l => l.map(x => ({ ...x, _c: v.clinica_id })))));
+      return partes.flat();
+    }
+    const postar = (t, body) => MULTI ? PF.api('/api/' + t, { method: 'POST', body, clinica: fClinica.value }) : PF.post(t, body);
+    const corEv = e => MULTI ? corClinica(e._c) : (fisioById(e.fisio_id) || { cor: '#94A8A5' }).cor;
+    const sufixoClinica = e => MULTI && e._c ? ' · 🏥 ' + (vinculoDe(e._c) || {}).clinica_nome : '';
+    const urlPront = e => `prontuarios.html?p=${e.paciente_id}${e.tratamento_id ? '&t=' + e.tratamento_id : ''}${MULTI && e._c ? '&c=' + e._c : ''}`;
+
+    const ocupDoISO = dISO => OCUPADOS.filter(o => o.data === dISO && (filtro === 'todos' || o.fisio_id === filtro));
+    const rotuloOcupado = o => o.clinica_nome ? `Ocupado · ${o.clinica_nome}` : 'Ocupado em outra clínica';
+    function spanOcupado(o) {
+      const f = fisioById(o.fisio_id);
+      const quem = filtro === 'todos' && f ? f.nome.split(' ')[0] + ' · ' : '';
+      return `<span class="cal-ev ocupado" onclick="event.stopPropagation()" title="${f ? f.nome : 'Profissional'} — ${rotuloOcupado(o)}${o.duracao ? ' (' + o.duracao + ')' : ''}">${o.hora} 🔒 ${quem}ocupado</span>`;
+    }
+    const htmlOcupado = o => `<div class="dl-item">
+        <div class="dl-time">${o.hora}</div>
+        <div class="dl-bar" style="background:#AEBBB8;"></div>
+        <div style="flex:1;">
+          <div class="dl-title">🔒 ${rotuloOcupado(o)}</div>
+          <div class="dl-sub">${(fisioById(o.fisio_id) || {}).nome || ''}${o.duracao ? ' · ' + o.duracao : ''} · horário indisponível para agendar</div>
+        </div>
+      </div>`;
 
     const iso = d => `${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isoData = dt => `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
@@ -159,11 +274,18 @@
     const tratById = id => TRATS_ALL.find(t => t.id === id);
 
     async function boot() {
-      [FISIOS, PACS, TRATS_ALL] = await Promise.all([PF.get('fisios'), PF.get('pacientes'), PF.get('tratamentos')]);
+      EU = await PF.api('/api/me').catch(() => PF.user() || {});
+      /* mantém a sessão local em dia — o menu lateral usa o perfil daqui */
+      if (EU && EU.id) PF.setSession(PF.token(), { ...(PF.user() || {}), ...EU });
+      SO_LEITURA = EU.perfil === 'fisio';
+      VINCULOS = EU.vinculos || [];
+      MULTI = SO_LEITURA && VINCULOS.length > 1;
+      [FISIOS, PACS, TRATS_ALL] = MULTI
+        ? await Promise.all([somarClinicas('/api/fisios'), somarClinicas('/api/pacientes'), somarClinicas('/api/tratamentos')])
+        : await Promise.all([PF.get('fisios'), PF.get('pacientes'), PF.get('tratamentos')]);
       document.getElementById('fFisio').innerHTML = FISIOS.filter(f=>f.ativo).map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
-      document.getElementById('fPaciente').innerHTML = '<option value="">— Sem paciente (turma/bloqueio) —</option>' +
-        '<option value="__novo__">＋ Cadastrar novo paciente…</option>' +
-        PACS.filter(p => p.status !== 'inativo').map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+      if (SO_LEITURA) aplicarSomenteLeitura();
+      montarPacSelect();
       document.getElementById('fPaciente').addEventListener('change', e => {
         const v = e.target.value;
         document.getElementById('fTituloWrap').style.display = v ? 'none' : '';
@@ -183,16 +305,19 @@
       });
       document.getElementById('fTituloWrap').style.display = '';
       renderChips();
+      ligarArrastar();
       await carregarMes();
       // vindo do prontuário: ?p=paciente&t=tratamento abre o modal pré-preenchido
       const q = new URLSearchParams(location.search);
       if (q.get('p') && PACS.some(p => p.id === q.get('p'))) {
+        const pac = PACS.find(p => p.id === q.get('p'));
         abrirNova();
+        if (MULTI) { fClinica.value = pac._c; trocarClinicaModal(); }
         fPaciente.value = q.get('p');
         document.getElementById('fTituloWrap').style.display = 'none';
         montarTratSelect(q.get('p'), q.get('t'));
-        const pac = PACS.find(p => p.id === q.get('p'));
-        if (pac && pac.fisio_id) fFisio.value = pac.fisio_id;
+        // no perfil fisioterapeuta o select já está travado nele mesmo
+        if (!SO_LEITURA && pac && pac.fisio_id) fFisio.value = pac.fisio_id;
       }
     }
 
@@ -214,9 +339,18 @@
     }
 
     function renderChips() {
+      /* fisioterapeuta com login próprio abre a agenda já filtrada na dele */
+      if (!MULTI && EU.fisio_id && EU.perfil === 'fisio' && FISIOS.some(f => f.id === EU.fisio_id)) {
+        filtro = EU.fisio_id;
+        if (fFisio.querySelector(`option[value="${EU.fisio_id}"]`)) fFisio.value = EU.fisio_id;
+      }
       const el = document.getElementById('fisioChips');
-      el.innerHTML = `<button class="chip active" data-f="todos">Todos</button>` +
-        FISIOS.filter(f=>f.ativo).map(f => `<button class="chip" data-f="${f.id}"><span class="dot" style="background:${f.cor};"></span>${f.nome.split(' ')[0]}</button>`).join('');
+      // várias clínicas: o filtro é por clínica, com a cor de cada uma
+      const itens = MULTI
+        ? VINCULOS.map(v => ({ id: v.clinica_id, cor: corClinica(v.clinica_id), nome: v.clinica_nome }))
+        : FISIOS.filter(f => f.ativo).map(f => ({ id: f.id, cor: f.cor, nome: f.nome.split(' ')[0] }));
+      el.innerHTML = `<button class="chip${filtro === 'todos' ? ' active' : ''}" data-f="todos">Todos</button>` +
+        itens.map(i => `<button class="chip${filtro === i.id ? ' active' : ''}" data-f="${i.id}"><span class="dot" style="background:${i.cor};"></span>${i.nome}</button>`).join('');
       el.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => {
         el.querySelectorAll('.chip').forEach(x => x.classList.remove('active'));
         c.classList.add('active');
@@ -238,7 +372,15 @@
       if (vista === 'mes') { from = iso(1); to = iso(new Date(ano, mes + 1, 0).getDate()); }
       else if (vista === 'semana') { const [i, f] = semanaDe(ancora()); from = isoData(i); to = isoData(f); }
       else { from = to = isoData(ancora()); }
-      EVENTOS = await PF.get('sessoes', { from, to });
+      if (MULTI) {
+        EVENTOS = await somarClinicas(`/api/sessoes?from=${from}&to=${to}`);
+        OCUPADOS = [];
+      } else {
+        [EVENTOS, OCUPADOS] = await Promise.all([
+          PF.get('sessoes', { from, to }),
+          PF.get('sessoes/ocupadas', { from, to }).catch(() => []),
+        ]);
+      }
       atualizarLabel();
       render();
     }
@@ -283,7 +425,7 @@
     }
 
     function evsDoISO(dISO) {
-      return EVENTOS.filter(e => e.data.slice(0,10) === dISO && (filtro === 'todos' || e.fisio_id === filtro) && e.status !== 'cancelada');
+      return EVENTOS.filter(e => e.data.slice(0,10) === dISO && (filtro === 'todos' || (MULTI ? e._c : e.fisio_id) === filtro) && e.status !== 'cancelada');
     }
     const evsDo = d => evsDoISO(iso(d));
 
@@ -319,8 +461,9 @@
         for (const d of dias) {
           const dISO = isoData(d);
           const evs = evsDoISO(dISO).filter(e => Number(e.hora.slice(0,2)) === h).sort((a,b) => a.hora.localeCompare(b.hora));
-          html += `<div class="tg-cell" onclick="clicarSlot(event,'${dISO}',${h})" title="Clique para agendar às ${String(h).padStart(2,'0')}:00">` +
-            evs.map(e => `<span class="cal-ev" onclick="event.stopPropagation();selDia('${dISO}');abrirEvento('${e.id}')" style="background:${(fisioById(e.fisio_id)||{cor:'#94A8A5'}).cor};${e.status==='falta'?'opacity:.5;text-decoration:line-through;':''}">${e.hora.slice(0,5)} ${nomeEv(e)}</span>`).join('') +
+          html += `<div class="tg-cell" data-drop="${dISO}" data-h="${h}" onclick="clicarSlot(event,'${dISO}',${h})" title="Clique para agendar às ${String(h).padStart(2,'0')}:00">` +
+            evs.map(e => `<span class="cal-ev" ${attrsArrastar(e)} onclick="event.stopPropagation();selDia('${dISO}');abrirEvento('${e.id}')" style="background:${corEv(e)};${e.status==='falta'?'opacity:.5;text-decoration:line-through;':''}">${e.hora.slice(0,5)} ${nomeEv(e)}</span>`).join('') +
+            ocupDoISO(dISO).filter(o => Number(o.hora.slice(0, 2)) === h).map(spanOcupado).join('') +
           `</div>`;
         }
       }
@@ -339,11 +482,14 @@
       for (let d = 1; d <= ultimo; d++) {
         const evs = evsDo(d).sort((a,b) => a.hora.localeCompare(b.hora));
         const shown = evs.slice(0, 3);
-        const extra = evs.length - shown.length;
+        const ocs = ocupDoISO(iso(d));
+        const ocsShown = ocs.slice(0, Math.max(0, 3 - shown.length));
+        const extra = evs.length - shown.length + ocs.length - ocsShown.length;
         const isHoje = iso(d) === hojeISO;
-        html += `<div class="cal-cell${isHoje ? ' today' : ''}" onclick="clicarDia(event, ${d})" style="cursor:pointer;" title="Clique no espaço vazio para agendar">
+        html += `<div class="cal-cell${isHoje ? ' today' : ''}" data-drop="${iso(d)}" onclick="clicarDia(event, ${d})" style="cursor:pointer;" title="Clique no espaço vazio para agendar">
           <div class="c-day">${d}</div>
-          ${shown.map(e => `<span class="cal-ev" onclick="event.stopPropagation();selDay(${d});abrirEvento('${e.id}')" style="background:${(fisioById(e.fisio_id)||{cor:'#94A8A5'}).cor};${e.status==='falta'?'opacity:.5;text-decoration:line-through;':''}">${e.hora.slice(0,5)} ${nomeEv(e)}</span>`).join('')}
+          ${shown.map(e => `<span class="cal-ev" ${attrsArrastar(e)} onclick="event.stopPropagation();selDay(${d});abrirEvento('${e.id}')" style="background:${corEv(e)};${e.status==='falta'?'opacity:.5;text-decoration:line-through;':''}">${e.hora.slice(0,5)} ${nomeEv(e)}</span>`).join('')}
+          ${ocsShown.map(spanOcupado).join('')}
           ${extra > 0 ? `<span class="cal-more">+${extra} sessões</span>` : ''}
         </div>`;
       }
@@ -355,14 +501,84 @@
 
     function selDay(d) { diaSel = d; renderDay(); }
 
+    /* ---------- arrastar a sessão para outro dia (mês) ou outro dia/horário (semana e dia) ----------
+       Só sessões agendadas se movem; realizada/falta são histórico. O perfil fisioterapeuta
+       não remarca (quem remarca é a recepção), então para ele nada é arrastável. */
+    const podeArrastar = e => !SO_LEITURA && e.status === 'agendada';
+    const attrsArrastar = e => podeArrastar(e)
+      ? `draggable="true" data-ev="${e.id}"` : '';
+
+    function ligarArrastar() {
+      const grid = document.getElementById('calGrid');
+      let arrastando = null;
+      const limparAlvo = () => grid.querySelectorAll('.drop-alvo').forEach(c => c.classList.remove('drop-alvo'));
+
+      grid.addEventListener('dragstart', ev => {
+        const card = ev.target.closest('[data-ev]');
+        if (!card) return;
+        arrastando = card.dataset.ev;
+        ev.dataTransfer.effectAllowed = 'move';
+        ev.dataTransfer.setData('text/plain', arrastando);
+        card.classList.add('arrastando');
+      });
+      grid.addEventListener('dragend', ev => {
+        const card = ev.target.closest('[data-ev]');
+        if (card) card.classList.remove('arrastando');
+        arrastando = null; limparAlvo();
+      });
+      grid.addEventListener('dragover', ev => {
+        const alvo = ev.target.closest('[data-drop]');
+        if (!arrastando || !alvo) return;
+        ev.preventDefault(); // sem isso o navegador não deixa soltar
+        ev.dataTransfer.dropEffect = 'move';
+        if (!alvo.classList.contains('drop-alvo')) { limparAlvo(); alvo.classList.add('drop-alvo'); }
+      });
+      grid.addEventListener('dragleave', ev => {
+        const alvo = ev.target.closest('[data-drop]');
+        if (alvo && !alvo.contains(ev.relatedTarget)) alvo.classList.remove('drop-alvo');
+      });
+      grid.addEventListener('drop', ev => {
+        const alvo = ev.target.closest('[data-drop]');
+        const id = arrastando || ev.dataTransfer.getData('text/plain');
+        limparAlvo();
+        if (!alvo || !id) return;
+        ev.preventDefault();
+        moverSessao(id, alvo.dataset.drop, alvo.dataset.h);
+      });
+    }
+
+    async function moverSessao(id, data, horaDaCelula) {
+      const e = EVENTOS.find(x => x.id === id);
+      if (!e || !podeArrastar(e)) return;
+      const [hh, mm] = e.hora.slice(0, 5).split(':');
+      // no mês mantém o horário; na grade vai para a hora da célula, preservando os minutos
+      const hora = horaDaCelula != null ? `${String(horaDaCelula).padStart(2, '0')}:${mm}` : `${hh}:${mm}`;
+      if (e.data.slice(0, 10) === data && e.hora.slice(0, 5) === hora) return;
+
+      const quando = `${PF.fmtData(data)} às ${hora}`;
+      const conflito = EVENTOS.find(x => x.id !== id && x.fisio_id === e.fisio_id && x.status !== 'cancelada'
+        && x.data.slice(0, 10) === data && x.hora.slice(0, 5) === hora);
+      const f = fisioById(e.fisio_id);
+      if (conflito && !confirm(`${f ? f.nome : 'O profissional'} já tem ${nomeEv(conflito)} em ${quando}.\n\nMover mesmo assim?`)) return;
+      if (data < hojeISO && !confirm(`${quando} já passou.\n\nMover a sessão para essa data mesmo assim?`)) return;
+
+      try {
+        await PF.put('sessoes', id, { data, hora });
+        App.toast(`${nomeEv(e)} → ${quando}`);
+        selDia(data);
+        await carregarMes();
+      } catch (err) { App.toast(err.message, 'error'); }
+    }
+
     function renderDay() {
       const dows = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
       const dw = dows[new Date(ano, mes, diaSel).getDay()];
       document.getElementById('dayTitle').textContent = `${dw.charAt(0).toUpperCase() + dw.slice(1)}, ${diaSel} de ${MESES[mes]}`;
-      const evs = evsDo(diaSel).sort((a,b) => a.hora.localeCompare(b.hora));
+      const evs = evsDo(diaSel);
+      const ocs = ocupDoISO(iso(diaSel));
       const list = document.getElementById('dayList');
-      if (!evs.length) { list.innerHTML = `<div class="empty">Nenhuma sessão neste dia.</div>`; return; }
-      list.innerHTML = evs.map(e => {
+      if (!evs.length && !ocs.length) { list.innerHTML = `<div class="empty">Nenhuma sessão neste dia.</div>`; return; }
+      const htmlEv = e => {
         const f = fisioById(e.fisio_id);
         const t = e.tratamento_id ? tratById(e.tratamento_id) : null;
         const pac = pacById(e.paciente_id);
@@ -378,15 +594,15 @@
         const badge = e.status === 'realizada' ? '<span class="badge green">✓ realizada</span>'
           : e.status === 'falta' ? '<span class="badge red">falta</span>' : credBadge;
         const linkPront = e.paciente_id
-          ? `<a href="prontuarios.html?p=${e.paciente_id}${e.tratamento_id ? '&t=' + e.tratamento_id : ''}" style="color:var(--primary);font-weight:600;font-size:.74rem;">📋 ${e.status === 'realizada' ? 'registrar evolução' : 'prontuário'} →</a>`
+          ? `<a href="${urlPront(e)}" style="color:var(--primary);font-weight:600;font-size:.74rem;">📋 ${e.status === 'realizada' ? 'registrar evolução' : 'prontuário'} →</a>`
           : '';
         return `<div class="dl-item">
           <div class="dl-time">${e.hora.slice(0,5)}</div>
-          <div class="dl-bar" style="background:${f ? f.cor : '#94A8A5'};"></div>
+          <div class="dl-bar" style="background:${corEv(e)};"></div>
           <div style="flex:1;">
             <div class="dl-title" style="cursor:pointer;" onclick="abrirEvento('${e.id}')" title="Ver detalhes">${nomeEv(e)} ${badge}</div>
-            <div class="dl-sub">${e.tipo}${t ? ' · 🩺 ' + t.titulo : ''}${f ? ' · ' + f.nome : ''}${e.obs ? ' · ' + e.obs : ''}</div>
-            ${e.status === 'agendada' ? `<div style="display:flex;gap:6px;margin-top:7px;align-items:center;">
+            <div class="dl-sub">${e.tipo}${t ? ' · 🩺 ' + t.titulo : ''}${f && !MULTI ? ' · ' + f.nome : ''}${sufixoClinica(e)}${e.obs ? ' · ' + e.obs : ''}</div>
+            ${(e.status === 'agendada' && !SO_LEITURA) ? `<div style="display:flex;gap:6px;margin-top:7px;align-items:center;">
               <button class="btn btn-soft btn-sm" onclick="mudarStatus('${e.id}','realizada')">✓ Realizada</button>
               <button class="btn btn-ghost btn-sm" onclick="mudarStatus('${e.id}','falta')">Falta</button>
               <button class="btn btn-ghost btn-sm" onclick="excluir('${e.id}')" title="Excluir">🗑</button>
@@ -394,7 +610,9 @@
             </div>` : `<div style="margin-top:5px;">${linkPront}</div>`}
           </div>
         </div>`;
-      }).join('');
+      };
+      list.innerHTML = [...evs.map(e => [e.hora.slice(0, 5), htmlEv(e)]), ...ocs.map(o => [o.hora, htmlOcupado(o)])]
+        .sort((a, b) => a[0].localeCompare(b[0])).map(x => x[1]).join('');
     }
 
     function abrirNova(data, hora) {
@@ -416,23 +634,23 @@
         /* 1) cria o paciente, se for novo */
         let pacienteId = fPaciente.value === '__novo__' ? null : (fPaciente.value || null);
         if (fPaciente.value === '__novo__') {
-          const novoPac = await PF.post('pacientes', {
+          const novoPac = await postar('pacientes', {
             nome: npNome.value.trim(), telefone: npTel.value.trim() || null, convenio: npConv.value,
             fisio_id: fFisio.value, status: 'avaliacao',
           });
           pacienteId = novoPac.id;
-          PACS = await PF.get('pacientes');
+          PACS = MULTI ? await somarClinicas('/api/pacientes') : await PF.get('pacientes');
         }
         /* 2) cria a ocorrência, se for nova */
         let tratId = pacienteId ? (fPaciente.value === '__novo__' ? '__novo__' : (fTrat.value || null)) : null;
         if (tratId === '__novo__') {
-          const novoTrat = await PF.post('tratamentos', {
+          const novoTrat = await postar('tratamentos', {
             paciente_id: pacienteId,
             titulo: ntTitulo.value.trim() || 'Avaliação inicial',
             regiao: ntRegiao.value, fisio_id: fFisio.value, status: 'ativo',
           });
           tratId = novoTrat.id;
-          TRATS_ALL = await PF.get('tratamentos');
+          TRATS_ALL = MULTI ? await somarClinicas('/api/tratamentos') : await PF.get('tratamentos');
         }
         const base = {
           paciente_id: pacienteId,
@@ -449,15 +667,21 @@
           const d0 = new Date(base.data + 'T12:00:00');
           passos.forEach(p => { const d = new Date(d0); d.setDate(d0.getDate() + p); datas.push(d.toISOString().slice(0,10)); });
         }
-        for (const data of datas) await PF.post('sessoes', { ...base, data });
+        // cada data vale sozinha: um horário já ocupado (inclusive em outra clínica) não derruba as outras
+        const falhas = [];
+        for (const data of datas) {
+          try { await postar('sessoes', { ...base, data }); }
+          catch (err) { falhas.push({ data, erro: err.message }); }
+        }
+        if (falhas.length === datas.length) throw new Error(falhas[0].erro);
         App.closeModal('mSessao');
-        App.toast(datas.length > 1 ? `${datas.length} sessões agendadas!` : 'Sessão agendada!');
+        const feitas = datas.length - falhas.length;
+        App.toast(feitas > 1 ? `${feitas} sessões agendadas!` : 'Sessão agendada!');
+        if (falhas.length) setTimeout(() => App.toast(
+          `Não agendado (horário ocupado): ${falhas.map(x => PF.fmtData(x.data)).join(', ')}`, 'error'), 800);
         if (fPaciente.value === '__novo__') {
           // reconstrói o select com o paciente recém-criado selecionado
-          fPaciente.innerHTML = '<option value="">— Sem paciente (turma/bloqueio) —</option>' +
-            '<option value="__novo__">＋ Cadastrar novo paciente…</option>' +
-            PACS.filter(p => p.status !== 'inativo').map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
-          fPaciente.value = pacienteId;
+          montarPacSelect(pacienteId);
           document.getElementById('fNovoPacWrap').style.display = 'none';
           document.getElementById('fNovoTratWrap').style.display = 'none';
           montarTratSelect(pacienteId, tratId);
@@ -492,15 +716,22 @@
         linha('Tipo', e.tipo) +
         linha('Paciente', pac ? pac.nome : null) +
         linha('Ocorrência', t ? `🩺 ${t.titulo}${t.status === 'concluido' ? ' (concluída)' : ''}` : (pac ? '<span style="color:var(--text-soft);">sem vínculo</span>' : null)) +
-        linha('Fisioterapeuta', f ? f.nome : null) +
+        linha(MULTI ? 'Clínica' : 'Fisioterapeuta', MULTI ? (vinculoDe(e._c) || {}).clinica_nome : (f ? f.nome : null)) +
         linha('Observações', e.obs);
       const foot = [];
+      if (SO_LEITURA) {
+        document.getElementById('evmFoot').innerHTML =
+          '<div style="font-size:.78rem;color:var(--text-soft);flex:1;">Para remarcar ou cancelar, fale com a recepção.</div>'
+          + (pac ? `<button class="btn btn-primary" onclick="location.href='${urlPront(e)}&s=${e.id}'">📋 Registrar evolução no prontuário</button>` : '');
+        App.openModal('mEvento');
+        return;
+      }
       if (e.status === 'agendada') {
         foot.push(`<button class="btn btn-soft" onclick="App.closeModal('mEvento');mudarStatus('${e.id}','realizada')">✓ Realizada</button>`);
         foot.push(`<button class="btn btn-ghost" onclick="App.closeModal('mEvento');mudarStatus('${e.id}','falta')">Falta</button>`);
       }
       foot.push(`<button class="btn btn-danger" onclick="App.closeModal('mEvento');excluir('${e.id}')">🗑 Excluir</button>`);
-      if (pac) foot.push(`<button class="btn btn-primary" style="margin-left:auto;" onclick="location.href='prontuarios.html?p=${e.paciente_id}${e.tratamento_id ? '&t=' + e.tratamento_id : ''}&s=${e.id}'">📋 Registrar evolução no prontuário</button>`);
+      if (pac) foot.push(`<button class="btn btn-primary" style="margin-left:auto;" onclick="location.href='${urlPront(e)}&s=${e.id}'">📋 Registrar evolução no prontuário</button>`);
       document.getElementById('evmFoot').innerHTML = foot.join('');
       App.openModal('mEvento');
     }

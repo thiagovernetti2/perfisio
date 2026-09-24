@@ -181,6 +181,17 @@
           <div class="field"><label>Senha provisória *</label><input type="text" id="uSenha" placeholder="mín. 6 caracteres"></div>
           <div class="field"><label>Perfil de acesso</label>
             <select id="uPerfil"><option value="fisio">Fisioterapeuta</option><option value="recepcao">Recepção</option><option value="gestor">Gestor (acesso total)</option></select>
+            <div style="font-size:.72rem;color:var(--text-soft);margin-top:5px;">
+              <b>Fisioterapeuta</b> acessa só a própria agenda (pode marcar sessão e cadastrar paciente)
+              e o prontuário dos pacientes dele. <b>Recepção</b> e <b>Gestor</b> acessam o sistema todo.
+            </div>
+          </div>
+          <div class="field full"><label>Vincular a um profissional da equipe</label>
+            <select id="uFisio"><option value="">— Nenhum —</option></select>
+            <div style="font-size:.72rem;color:var(--text-soft);margin-top:5px;">
+              A agenda abre já filtrada no profissional vinculado. Com o perfil <b>Fisioterapeuta</b> e nenhum
+              vínculo, a ficha dele é criada na <a href="equipe.html" style="color:var(--primary);font-weight:600;">Equipe</a> automaticamente.
+            </div>
           </div>
         </div>
       </div>
@@ -341,12 +352,17 @@
     }
 
     async function carregarUsuarios() {
-      const users = await PF.get('usuarios');
+      const [users, fisios] = await Promise.all([PF.get('usuarios'), PF.get('fisios').catch(() => [])]);
+      /* só profissionais que ainda não têm login */
+      const livres = fisios.filter(f => f.ativo && !users.some(u => u.fisio_id === f.id));
+      document.getElementById('uFisio').innerHTML = '<option value="">— Nenhum —</option>'
+        + livres.map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
       const BADGE = { gestor: '<span class="badge primary">Gestor</span>', fisio: '<span class="badge blue">Fisioterapeuta</span>', recepcao: '<span class="badge amber">Recepção</span>' };
       const CORES = ['#0DA189','#2D7DD2','#7C5CBF','#D9820B'];
       document.getElementById('userRows').innerHTML = users.map((u, i) => `
         <tr>
-          <td><div class="cell-person"><span class="avatar-sm" style="background:${CORES[i % 4]};">${App.iniciais(u.nome)}</span><span class="p-name">${u.nome}</span></div></td>
+          <td><div class="cell-person"><span class="avatar-sm" style="background:${CORES[i % 4]};">${App.iniciais(u.nome)}</span>
+            <div><div class="p-name">${u.nome}</div>${u.fisio_nome ? `<div class="p-sub">Agenda de ${u.fisio_nome}</div>` : ''}</div></div></td>
           <td>${u.email}</td>
           <td>${BADGE[u.perfil] || u.perfil}</td>
           <td>${u.ultimo_acesso ? new Date(u.ultimo_acesso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
@@ -359,9 +375,12 @@
       }
       const btn = document.getElementById('btnUser'); btn.disabled = true;
       try {
-        await PF.post('usuarios', { nome: uNome.value.trim(), email: uEmail.value.trim(), senha: uSenha.value, perfil: uPerfil.value });
+        await PF.post('usuarios', {
+          nome: uNome.value.trim(), email: uEmail.value.trim(), senha: uSenha.value,
+          perfil: uPerfil.value, fisio_id: uFisio.value || undefined,
+        });
         App.closeModal('mUsuario');
-        ['uNome','uEmail','uSenha'].forEach(id => document.getElementById(id).value = '');
+        ['uNome','uEmail','uSenha','uFisio'].forEach(id => document.getElementById(id).value = '');
         App.toast('Usuário criado! Compartilhe o e-mail e a senha provisória com ele.');
         await carregarUsuarios();
       } catch (e) { App.toast(e.message, 'error'); }

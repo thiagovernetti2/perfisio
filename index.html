@@ -28,17 +28,15 @@
       content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 140px;
       background: linear-gradient(180deg, rgba(255,255,255,0) 0%, #fff 100%); pointer-events: none;
     }
-    /* contorno branco + sombra: o título precisa se destacar do fundo colorido */
     .hero h1 {
       font-size: clamp(2.3rem, 5.6vw, 3.9rem); font-weight: 900; color: var(--ink);
       letter-spacing: -.5px; line-height: 1.15;
-      -webkit-text-stroke: .055em #fff; paint-order: stroke fill;
     }
     .hero h1 em { color: var(--primary-dark); font-style: normal; }
-    /* halo branco suave: mesma razão do contorno do título */
+    /* halo branco suave: destaca o texto do fundo colorido do hero */
     .hero p { color: var(--text); font-size: 1.05rem; margin: 16px auto 0; max-width: 560px;
       text-shadow: 0 1px 6px #fff, 0 0 14px rgba(255,255,255,.9); }
-    .hero .kicker, .hero #dirSub { text-shadow: 0 1px 6px #fff, 0 0 14px rgba(255,255,255,.9); }
+    .hero #dirSub { text-shadow: 0 1px 6px #fff, 0 0 14px rgba(255,255,255,.9); }
     .search-bar {
       display: flex; gap: 8px; background: #fff; border: 1px solid var(--line); border-radius: 14px;
       padding: 8px; max-width: 640px; margin: 30px auto 0; box-shadow: var(--shadow-lg); flex-wrap: wrap;
@@ -91,6 +89,18 @@
     .cta-band h2 { font-size: 1.7rem; font-weight: 900; letter-spacing: -.4px; position: relative; z-index: 1; }
     .cta-band p { color: #A9BCB9; margin: 12px auto 26px; max-width: 520px; position: relative; z-index: 1; }
     .cta-band .btn { position: relative; z-index: 1; }
+
+    /* últimos artigos do blog */
+    .home-posts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 1080px; margin: 0 auto; }
+    .home-post { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: #fff; box-shadow: var(--shadow); transition: transform .15s, box-shadow .15s; }
+    .home-post:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+    .home-post .capa { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; background: var(--primary-soft); }
+    .home-post .txt { padding: 20px 22px 24px; display: flex; flex-direction: column; flex: 1; }
+    .home-post .data { font-size: .72rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--primary-dark); }
+    .home-post h3 { font-size: 1.02rem; font-weight: 800; color: var(--ink); line-height: 1.35; margin-top: 9px; letter-spacing: -.3px; }
+    .home-post p { color: var(--text-soft); font-size: .86rem; line-height: 1.6; margin-top: 9px; flex: 1; }
+    .home-post .ler { margin-top: 14px; font-size: .82rem; font-weight: 700; color: var(--primary); }
+    @media (max-width: 900px) { .home-posts { grid-template-columns: 1fr; } }
 
     .lp-footer { border-top: 1px solid var(--line); padding: 28px 6vw; display: flex; align-items: center; gap: 16px; font-size: .8rem; color: var(--text-soft); flex-wrap: wrap; }
     .lp-footer .spacer { flex: 1; }
@@ -148,7 +158,7 @@
     .faq p { font-size: .89rem; color: var(--text-soft); line-height: 1.7; margin-top: 10px; }
 
     /* ===== COMUNIDADE (página do profissional) ===== */
-    .com-grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; align-items: center; max-width: 1080px; margin: 0 auto; }
+    .com-grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; align-items: stretch; max-width: 1080px; margin: 0 auto; }
     .com-grid h2 { text-align: left; }
     .com-lead { font-size: 1.02rem; color: var(--text); line-height: 1.75; margin-top: 14px; }
     .com-publico { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
@@ -157,15 +167,92 @@
     .com-lista li .ck { flex: none; width: 26px; height: 26px; border-radius: 8px; background: var(--primary-soft); color: var(--primary-dark); display: grid; place-items: center; font-size: .82rem; }
     .com-lista li span.txt { font-weight: 600; }
     .com-lista li small { display: block; font-weight: 500; font-size: .84rem; color: var(--text-soft); margin-top: 3px; line-height: 1.55; }
-    .com-art { position: relative; }
+    /* a arte encosta na seção de baixo: a seção não tem espaço no rodapé e a coluna alinha embaixo */
+    #comunidade { padding-bottom: 0; }
+    .com-art { position: relative; align-self: end; }
     .com-art::before {
-      content: ''; position: absolute; inset: 8% -4% 4% -4%; border-radius: 24px;
+      content: ''; position: absolute; inset: 6% -6% 0 -6%; border-radius: 24px;
       background: radial-gradient(60% 60% at 50% 45%, rgba(13,161,137,.16), transparent 70%);
     }
-    .com-art img { position: relative; width: 100%; height: auto; display: block; border-radius: 14px; }
+
+    /* ===== Mockup da página do profissional (recriado do Figma) =====
+       Desenhado numa base de 560x352: toda medida é calc(N * var(--s)), então a composição
+       inteira acompanha a largura da coluna. O celular termina no fim da seção. */
+    .pm { position: relative; container-type: inline-size; }
+    .pm-palco { position: relative; --s: calc(100cqw / 560); height: calc(352 * var(--s)); }
+    .pm-palco > * { position: absolute; }
+    .pm-cartao { background: #fff; border-radius: calc(13 * var(--s)); box-shadow: 0 calc(12 * var(--s)) calc(30 * var(--s)) rgba(12,46,42,.14); }
+    .pm-ico { flex: none; display: grid; place-items: center; border-radius: calc(7 * var(--s)); background: var(--primary-soft);
+      color: var(--primary-dark); width: calc(21 * var(--s)); height: calc(21 * var(--s)); font-size: calc(11 * var(--s)); }
+    .pm-sala { left: calc(376 * var(--s)); top: calc(58 * var(--s)); width: calc(184 * var(--s)); height: calc(198 * var(--s));
+      object-fit: cover; border-radius: calc(14 * var(--s)); box-shadow: 0 calc(14 * var(--s)) calc(34 * var(--s)) rgba(12,46,42,.18); }
+    .pm-domiciliar { left: calc(84 * var(--s)); top: 0; width: calc(212 * var(--s)); z-index: 6;
+      display: flex; align-items: center; gap: calc(9 * var(--s)); padding: calc(10 * var(--s)) calc(14 * var(--s));
+      font-size: calc(13 * var(--s)); font-weight: 700; color: var(--ink); white-space: nowrap; }
+    .pm-tile { left: calc(382 * var(--s)); top: 0; width: calc(46 * var(--s)); height: calc(46 * var(--s)); z-index: 5;
+      border-radius: calc(14 * var(--s)); background: var(--primary); color: #fff; display: grid; place-items: center;
+      font-size: calc(19 * var(--s)); box-shadow: 0 calc(8 * var(--s)) calc(20 * var(--s)) rgba(13,161,137,.35); }
+    .pm-link { left: 0; top: calc(62 * var(--s)); width: calc(136 * var(--s)); z-index: 3; white-space: nowrap;
+      display: flex; align-items: center; gap: calc(6 * var(--s)); padding: calc(10 * var(--s)) calc(11 * var(--s));
+      border-radius: calc(12 * var(--s)); background: #AFEFDC; color: #0A6B57; font-weight: 800; font-size: calc(10.5 * var(--s)); }
+    .pm-dupla { left: calc(90 * var(--s)); top: calc(116 * var(--s)); width: calc(56 * var(--s)); height: calc(58 * var(--s)); z-index: 6;
+      object-fit: cover; border-radius: calc(9 * var(--s)); box-shadow: 0 calc(8 * var(--s)) calc(18 * var(--s)) rgba(12,46,42,.2); }
+    .pm-aval { left: calc(376 * var(--s)); top: calc(272 * var(--s)); width: calc(172 * var(--s)); white-space: nowrap;
+      display: flex; align-items: center; gap: calc(7 * var(--s)); padding: calc(10 * var(--s)) calc(12 * var(--s));
+      border-radius: calc(12 * var(--s)); background: #FFFAEB; color: #B4690E; font-weight: 800; font-size: calc(13 * var(--s));
+      box-shadow: 0 calc(10 * var(--s)) calc(24 * var(--s)) rgba(12,46,42,.1); }
+    .pm-form { left: 0; top: calc(198 * var(--s)); width: calc(140 * var(--s)); padding: calc(11 * var(--s)); z-index: 4; }
+    .pm-form .t { display: block; font-size: calc(12 * var(--s)); font-weight: 800; color: var(--ink); margin-bottom: calc(8 * var(--s)); }
+    .pm-form .l { border: 1px solid var(--line); border-radius: calc(8 * var(--s)); padding: calc(7 * var(--s)) calc(9 * var(--s));
+      font-size: calc(9 * var(--s)); color: var(--ink); font-weight: 600; }
+    .pm-form .l + .l { margin-top: calc(6 * var(--s)); }
+    .pm-form small { display: block; color: var(--text-soft); font-weight: 500; }
+    .pm-perfil { left: calc(424 * var(--s)); top: calc(4 * var(--s)); width: calc(136 * var(--s)); z-index: 7;
+      overflow: hidden; text-align: center; padding-bottom: calc(11 * var(--s)); }
+    .pm-perfil .capa { width: 100%; height: calc(54 * var(--s)); object-fit: cover; display: block; }
+    .pm-perfil .av { width: calc(36 * var(--s)); height: calc(36 * var(--s)); border-radius: 50%; object-fit: cover;
+      border: calc(2 * var(--s)) solid #fff; margin-top: calc(-18 * var(--s)); position: relative; }
+    .pm-perfil .nome { font-size: calc(11 * var(--s)); font-weight: 800; color: var(--ink); margin-top: calc(3 * var(--s)); }
+    .pm-perfil .nome i { color: var(--primary); font-style: normal; }
+    .pm-perfil .sub { font-size: calc(8.5 * var(--s)); color: var(--text-soft); }
+    .pm-perfil .chip { display: inline-block; margin-top: calc(5 * var(--s)); padding: calc(3 * var(--s)) calc(9 * var(--s));
+      border-radius: 999px; background: var(--primary-soft); color: var(--primary-dark); font-size: calc(8 * var(--s)); font-weight: 700; }
+    .pm-perfil .ver { margin: calc(8 * var(--s)) calc(10 * var(--s)) 0; border: 1px solid #DCDCF6; border-radius: calc(8 * var(--s));
+      padding: calc(6 * var(--s)); font-size: calc(9 * var(--s)); font-weight: 700; color: #5F56D6; }
+    /* o celular é a peça principal: maior que os cartões em volta, cortado no fim da seção */
+    .pm-fone { left: calc(140 * var(--s)); top: calc(30 * var(--s)); width: calc(232 * var(--s)); height: calc(322 * var(--s)); z-index: 5;
+      background: #fff; border: calc(2 * var(--s)) solid #5DE0BA; border-radius: calc(22 * var(--s)) calc(22 * var(--s)) 0 0;
+      padding: calc(9 * var(--s)); overflow: hidden; box-shadow: 0 calc(16 * var(--s)) calc(38 * var(--s)) rgba(12,46,42,.2); }
+    /* dentro do celular tudo cresce junto: a tela redefine a unidade de medida */
+    .pm-tela { --s: calc(100cqw / 560 * 1.27); }
+    .pm-fone .topo { display: flex; align-items: center; gap: calc(6 * var(--s)); margin-bottom: calc(9 * var(--s)); }
+    .pm-fone .topo i { width: calc(6 * var(--s)); height: calc(6 * var(--s)); border-radius: 50%; background: var(--primary); }
+    .pm-fone .topo u { flex: 1; height: calc(3 * var(--s)); border-radius: 999px; background: var(--primary-soft); }
+    .pm-fone .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: calc(7 * var(--s));
+      font-size: calc(10 * var(--s)); font-weight: 800; color: var(--ink); }
+    .pm-fone .head em { font-style: normal; font-size: calc(8 * var(--s)); color: var(--text-soft); letter-spacing: calc(1.5 * var(--s)); }
+    .pm-capa { position: relative; border-radius: calc(9 * var(--s)); overflow: hidden; height: calc(46 * var(--s)); }
+    .pm-capa img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .pm-capa span { position: absolute; right: calc(6 * var(--s)); top: calc(7 * var(--s)); background: #5F56D6; color: #fff;
+      border-radius: 999px; padding: calc(3 * var(--s)) calc(8 * var(--s)); font-size: calc(7.5 * var(--s)); font-weight: 700; }
+    .pm-fone .av { width: calc(30 * var(--s)); height: calc(30 * var(--s)); border-radius: 50%; object-fit: cover; display: block;
+      border: calc(2 * var(--s)) solid #fff; margin: calc(-15 * var(--s)) 0 0 calc(4 * var(--s)); position: relative; }
+    .pm-fone .nome { font-size: calc(11.5 * var(--s)); font-weight: 800; color: var(--ink); margin-top: calc(4 * var(--s)); }
+    .pm-fone .sub { font-size: calc(8 * var(--s)); color: var(--text-soft); }
+    .pm-fone .li { display: flex; gap: calc(5 * var(--s)); align-items: center; font-size: calc(8 * var(--s)); color: var(--ink); margin-top: calc(5 * var(--s)); }
+    .pm-fone .li u { text-decoration: none; color: var(--primary-dark); font-weight: 700; }
+    .pm-fone .sec { font-size: calc(9 * var(--s)); font-weight: 800; color: var(--ink); margin-top: calc(9 * var(--s)); }
+    .pm-fone .txt { font-size: calc(7.5 * var(--s)); line-height: 1.5; color: var(--text-soft); margin-top: calc(3 * var(--s)); }
+    .pm-wpp { margin-top: calc(10 * var(--s)); border-radius: calc(9 * var(--s)); background: #5F56D6; color: #fff;
+      text-align: center; padding: calc(7 * var(--s)); font-size: calc(9 * var(--s)); font-weight: 700; }
 
     @media (max-width: 900px) { .passos { grid-template-columns: repeat(2,1fr); } }
-    @media (max-width: 860px) { .com-grid { grid-template-columns: 1fr; gap: 32px; } .com-art { order: -1; } .com-grid h2 { text-align: center; } }
+    @media (max-width: 860px) {
+      .com-grid { grid-template-columns: 1fr; gap: 32px; } .com-grid h2 { text-align: center; }
+      /* empilhado, a arte volta para cima e a seção recupera o espaço no rodapé */
+      .com-art { order: -1; align-self: auto; }
+      #comunidade { padding-bottom: 56px; }
+    }
     @media (max-width: 860px) { .preco-grid { grid-template-columns: 1fr !important; } }
     @media (max-width: 720px) {
       .lp-header nav { display: none; }
@@ -178,12 +265,14 @@
 <body>
 
   <header class="lp-header">
-    <a class="logo" href="index.html"><img src="assets/img/logo-perfisio.svg" alt="PerFisio" width="176" height="30"></a>
+    <a class="logo" href="/"><img src="assets/img/logo-perfisio.svg" alt="PerFisio" width="176" height="30"></a>
     <nav>
       <a href="#profissionais">Encontrar fisioterapeuta</a>
+      <a href="site-para-fisioterapeutas">Para fisioterapeutas</a>
       <a href="#clinicas">Para clínicas</a>
       <a href="#sistema">O sistema</a>
-      <a href="planos.html">Planos e preços</a>
+      <a href="planos.html">Planos</a>
+      <a href="blog">Blog</a>
       <a href="login.html" class="btn btn-ghost btn-sm">Entrar</a>
       <a href="login.html#registro" class="btn btn-primary btn-sm">Criar perfil grátis</a>
     </nav>
@@ -287,8 +376,49 @@
         </div>
       </div>
       <div class="com-art">
-        <img src="assets/img/mockup-perfisio.png" width="720" height="528" loading="lazy"
-             alt="Página de um fisioterapeuta no PerFisio vista no computador e no celular">
+        <!-- página do profissional: composição recriada do Figma, só as fotos são imagem -->
+        <div class="pm" role="img" aria-label="Página de um fisioterapeuta no PerFisio: perfil no celular, link curto perfis.io, formação, avaliações e a sala de atendimento da clínica">
+          <div class="pm-palco" aria-hidden="true">
+            <img class="pm-sala" src="assets/img/mock/sala.png" width="244" height="220" loading="lazy" alt="">
+            <div class="pm-tile">🏠</div>
+            <div class="pm-cartao pm-domiciliar"><span class="pm-ico">🏠</span> Oferece atendimento domiciliar</div>
+            <div class="pm-link"><span>🔗</span> perfis.io/seu-nome</div>
+            <img class="pm-dupla" src="assets/img/mock/dupla.png" width="80" height="80" loading="lazy" alt="">
+            <div class="pm-cartao pm-form">
+              <span class="t">Formação</span>
+              <div class="l">2016 · Graduação em fisioterapia<small>Anhanguera Pelotas</small></div>
+              <div class="l">2019 · Especialização em gerontologia<small>Anhanguera Pelotas</small></div>
+            </div>
+            <div class="pm-cartao pm-aval"><span>⭐</span> 4,8 de 5 avaliações</div>
+            <div class="pm-cartao pm-perfil">
+              <img class="capa" src="assets/img/mock/dupla.png" width="80" height="80" loading="lazy" alt="">
+              <img class="av" src="assets/img/mock/retrato.png" width="50" height="50" loading="lazy" alt="">
+              <div class="nome">Mariane Lapinski <i>✔</i></div>
+              <div class="sub">Atendimento domiciliar</div>
+              <span class="chip">Pelotas</span>
+              <div class="ver">Ver perfil</div>
+            </div>
+            <div class="pm-fone">
+              <div class="pm-tela">
+              <div class="topo"><i></i><u></u></div>
+              <div class="head">PerFisio <em>🔍 📅 👤</em></div>
+              <div class="pm-capa">
+                <img src="assets/img/mock/dupla.png" width="80" height="80" loading="lazy" alt="">
+                <span>✎ editar perfil</span>
+              </div>
+              <img class="av" src="assets/img/mock/retrato.png" width="50" height="50" loading="lazy" alt="">
+              <div class="nome">Mariane Lapinski</div>
+              <div class="sub">Fisioterapeuta em Pelotas</div>
+              <div class="li">🏥 Atende na <u>Clínica Vida</u></div>
+              <div class="li">🏠 Oferece <u>atendimento domiciliar</u></div>
+              <div class="sec">Sobre</div>
+              <div class="txt">Sempre tive uma relação próxima com meus avós e daí veio o carinho pela fisioterapia voltada à saúde do idoso.</div>
+              <div class="sec">Especialidades</div>
+              <div class="pm-wpp">💬 WhatsApp</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -499,6 +629,44 @@
     </div>
   </section>
 
+  <!-- BLOG -->
+  <section class="section" id="blog">
+    <h2>Do nosso blog</h2>
+    <p class="sec-sub">Por que criamos o PerFisio, o que aprendemos com fisioterapeutas e como ser encontrado por quem precisa de você.</p>
+    <div class="home-posts">
+      <a class="home-post" href="porque-eu-criei-o-perfisio">
+        <img class="capa" src="assets/img/blog/post03.jpg" alt="" width="760" height="760" loading="lazy">
+        <div class="txt">
+          <div class="data">09 de julho de 2024</div>
+          <h3>Porque eu criei o Perfisio, site para Fisioterapeutas</h3>
+          <p>A história por trás da plataforma — e o que faltava para os fisioterapeutas serem encontrados.</p>
+          <span class="ler">Ler o artigo →</span>
+        </div>
+      </a>
+      <a class="home-post" href="fisioterapeuta-precisa-de-site">
+        <img class="capa" src="assets/img/blog/post02.jpg" alt="" width="760" height="760" loading="lazy">
+        <div class="txt">
+          <div class="data">09 de julho de 2024</div>
+          <h3>Você é fisioterapeuta e precisa de um site profissional?</h3>
+          <p>Sete motivos para ter presença online — e por que um site tradicional quase nunca é a resposta.</p>
+          <span class="ler">Ler o artigo →</span>
+        </div>
+      </a>
+      <a class="home-post" href="queremos-conectar-pacientes-e-profissionais">
+        <img class="capa" src="assets/img/blog/post01.jpg" alt="" width="760" height="760" loading="lazy">
+        <div class="txt">
+          <div class="data">09 de julho de 2024</div>
+          <h3>Queremos conectar pacientes e profissionais</h3>
+          <p>A distância entre o profissional e o paciente muitas vezes inviabiliza o atendimento.</p>
+          <span class="ler">Ler o artigo →</span>
+        </div>
+      </a>
+    </div>
+    <div style="text-align:center;margin-top:28px;">
+      <a class="btn btn-soft" href="blog" style="padding:11px 24px;">Ver todos os artigos →</a>
+    </div>
+  </section>
+
   <!-- CTA -->
   <section style="padding-top:56px;">
     <div class="cta-band">
@@ -632,7 +800,7 @@
         const ini = p.nome.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase();
         const tags = p.especialidades.map(e => LABEL[e] || e).slice(0, 3);
         if (p.domiciliar) tags.push('🏠 Domiciliar');
-        const url = p.slug ? `/fisioterapeuta/${p.slug}` : `fisio.html?id=${p.id}`;
+        const url = p.url || (p.slug ? `/fisioterapeuta/${p.slug}` : `fisio.html?id=${p.id}`);
         return `<div class="perfil-card" onmouseenter="focarMapa(${i})" onclick="location.href='${url}'">
           <div class="pc-top" style="background:linear-gradient(135deg,${g1},${g2});"><span class="pc-avatar" style="background:${g2};">${ini}${p.tem_foto ? `<img src="/api/public/fisio-foto/${p.id}" alt="" loading="lazy" onerror="this.remove()">` : ''}</span></div>
           <div class="pc-body">

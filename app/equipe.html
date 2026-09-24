@@ -12,8 +12,13 @@
 
   <div class="page-head">
     <div style="display:flex;gap:8px;" id="eqBadges"></div>
-    <button class="btn btn-primary" onclick="abrirNovo()">+ Novo profissional</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-ghost" onclick="abrirConvite()" title="Para quem já usa o PerFisio em outra clínica">✉️ Convidar de outra clínica</button>
+      <button class="btn btn-primary" onclick="abrirNovo()">+ Novo profissional</button>
+    </div>
   </div>
+
+  <div id="convitesBox"></div>
 
   <div class="ex-grid" id="proGrid" style="grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));"><div class="empty">Carregando...</div></div>
 
@@ -48,21 +53,35 @@
             <select id="prAtivo"><option value="true">Sim</option><option value="false">Não (desligado)</option></select>
           </div>
         </div>
-        <div style="margin-top:18px;padding:16px;background:var(--primary-soft);border-radius:12px;">
+        <!-- quem veio de outra clínica: o perfil público é o de lá; aqui só o valor da consulta -->
+        <div id="boxPerfilFora" style="display:none;margin-top:18px;padding:16px;background:var(--primary-soft);border-radius:12px;">
+          <div style="font-size:.85rem;font-weight:800;color:var(--primary-dark);margin-bottom:4px;">🏥 Atende também em outra clínica</div>
+          <div style="font-size:.76rem;color:var(--text-soft);margin-bottom:12px;line-height:1.55;" id="perfilForaTxt"></div>
+          <div class="form-grid">
+            <div class="field"><label>Valor da consulta nesta clínica (R$)</label><input type="number" id="prConsultaFora" min="0" step="1" placeholder="Ex.: 180"></div>
+          </div>
+        </div>
+        <div id="boxPerfil" style="margin-top:18px;padding:16px;background:var(--primary-soft);border-radius:12px;">
           <div style="font-size:.85rem;font-weight:800;color:var(--primary-dark);margin-bottom:4px;">🌐 Perfil público no diretório PerFisio</div>
           <div style="font-size:.75rem;color:var(--text-soft);margin-bottom:12px;">Pacientes encontram este profissional na busca por especialidade e por proximidade.</div>
           <div class="check-row" style="padding-top:0;"><input type="checkbox" id="prPublico"><label for="prPublico" style="margin:0;font-weight:600;">Exibir este profissional no diretório público</label></div>
 
-          <!-- link curto para bio do Instagram, WhatsApp, cartão... -->
+          <!-- link curto (username): perfis.io/username -->
           <div id="boxLinkCurto" style="display:none;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:12px 0;">
             <div style="font-size:.78rem;font-weight:700;color:var(--ink);margin-bottom:6px;">🔗 Link curto para divulgar</div>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-              <code id="linkCurto" style="flex:1;min-width:180px;background:var(--bg);padding:8px 11px;border-radius:8px;font-size:.84rem;font-weight:700;color:var(--primary-dark);"></code>
-              <button type="button" class="btn btn-soft btn-sm" onclick="copiarLinkCurto()">Copiar</button>
-              <button type="button" class="btn btn-ghost btn-sm" onclick="abrirLinkCurto()">Abrir</button>
+            <div class="user-link">
+              <span class="pref">perfis.io/</span>
+              <input type="text" id="prUsername" maxlength="40" autocomplete="off" spellcheck="false" placeholder="seu-nome">
+              <button type="button" class="btn btn-soft btn-sm" id="btnUsername">Salvar</button>
+            </div>
+            <div id="usernameStatus" style="font-size:.72rem;margin-top:6px;min-height:16px;"></div>
+            <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;" id="linkCurtoAcoes">
+              <button type="button" class="btn btn-ghost btn-sm" onclick="copiarLinkCurto()">📋 Copiar link</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="abrirLinkCurto()">Abrir ↗</button>
             </div>
             <div style="font-size:.72rem;color:var(--text-soft);margin-top:8px;line-height:1.5;">
-              Abre um perfil enxuto com a agenda — ideal para a bio do Instagram, o WhatsApp e o cartão de visita.
+              Funciona como um username: letras, números e hífen. Se trocar, o endereço antigo continua levando
+              ao perfil — cartões e cartazes já impressos não quebram.
             </div>
           </div>
           <div style="display:flex;gap:14px;align-items:center;margin:12px 0;padding:12px;background:#fff;border-radius:10px;border:1px solid var(--line);flex-wrap:wrap;">
@@ -88,9 +107,10 @@
             <div class="field full"><label>Especialidades exibidas</label>
               <div style="display:flex;gap:7px;flex-wrap:wrap;" id="prEspChips"></div>
             </div>
+            <div class="field"><label>Estado</label><select id="prUf"></select></div>
+            <div class="field"><label>Cidade</label><select id="prCidade"></select></div>
             <div class="field"><label>Bairro</label><input type="text" id="prBairro" placeholder="Ex.: Vila Mariana"></div>
-            <div class="field"><label>Cidade / UF</label><input type="text" id="prCidade" placeholder="Ex.: São Paulo/SP"></div>
-            <div class="field"><label>Preço exibido</label><input type="text" id="prPreco" placeholder="Ex.: R$ 160 por sessão"></div>
+            <div class="field"><label>Valor da consulta (R$)</label><input type="number" id="prConsulta" min="0" step="1" placeholder="Ex.: 180"></div>
             <div class="field"><label>Localização no mapa</label>
               <div style="display:flex;gap:6px;">
                 <input type="text" id="prCoord" placeholder="lat, lng" style="flex:1;">
@@ -103,16 +123,89 @@
             <div class="field full"><label>Tratamentos (separados por vírgula)</label><input type="text" id="prTratamentos" placeholder="Articulares, Lesões do esporte, Musculares, Reabilitação funcional, Dores em geral"></div>
             <div class="field full"><label>Regiões atendidas</label><input type="text" id="prRegioes" placeholder="Ex.: Vila Mariana, Moema e região · domiciliar na zona sul"></div>
             <div class="check-row full" style="padding-bottom:0;"><input type="checkbox" id="prDomiciliar"><label for="prDomiciliar" style="margin:0;font-weight:500;">🏠 Atende em domicílio</label></div>
+            <div class="field full"><label>Pacotes e planos que aparecem no perfil</label>
+              <div id="prPacotes"></div>
+              <div style="font-size:.72rem;color:var(--text-soft);margin-top:6px;line-height:1.5;">
+                A clínica cria os pacotes em <a href="financeiro.html" style="color:var(--primary);font-weight:600;">Financeiro → Pacotes & Planos</a>;
+                aqui você escolhe quais este profissional oferece. A consulta individual do perfil usa o <b>valor da consulta</b> acima.
+              </div>
+            </div>
           </div>
         </div>
-        <div style="margin-top:14px;padding:12px 14px;background:var(--bg);border-radius:9px;font-size:.8rem;color:var(--text-soft);">
-          💡 Para dar <b>acesso ao sistema</b> a este profissional, crie um usuário em <a href="configuracoes.html" style="color:var(--primary);font-weight:600;">Configurações → Usuários</a>.
+        <div id="boxAcessoFora" style="display:none;margin-top:18px;padding:14px 16px;background:var(--bg);border-radius:12px;font-size:.8rem;color:var(--ink);line-height:1.55;">
+          <span id="acessoForaTxt"></span>
+        </div>
+        <!-- acesso ao sistema: cria o usuário em Configurações → Usuários automaticamente -->
+        <div id="boxAcesso" style="margin-top:18px;padding:16px;background:var(--bg);border-radius:12px;">
+          <div style="font-size:.85rem;font-weight:800;color:var(--ink);margin-bottom:4px;">🔑 Acesso ao sistema</div>
+          <div style="font-size:.75rem;color:var(--text-soft);margin-bottom:12px;">
+            Com um e-mail aqui, o profissional vira usuário do sistema (perfil <b>Fisioterapeuta</b>) e entra
+            no app para <b>cuidar da própria agenda</b> — vê as sessões dele, marca novas, cadastra paciente
+            e usa o prontuário dos pacientes dele. Financeiro, CRM, equipe e as agendas dos colegas ficam
+            fora, e remarcar ou cancelar sessão continua com a recepção. Ele também aparece em
+            <a href="configuracoes.html" style="color:var(--primary);font-weight:600;">Configurações → Usuários</a>.
+          </div>
+          <div id="acessoAtual" style="display:none;background:var(--primary-soft);border-radius:9px;padding:9px 12px;font-size:.78rem;color:var(--primary-dark);font-weight:600;margin-bottom:10px;"></div>
+          <div class="form-grid">
+            <div class="field"><label>E-mail de acesso</label><input type="email" id="prEmail" placeholder="fisio@clinica.com.br"></div>
+            <div class="field"><label>Senha provisória</label><input type="text" id="prSenha" placeholder="em branco = gerada automaticamente"></div>
+          </div>
+          <div style="margin-top:8px;">
+            <button type="button" class="btn btn-ghost btn-sm" id="btnRemoverAcesso" style="display:none;color:var(--red);" onclick="removerAcesso()">Remover acesso ao sistema</button>
+          </div>
         </div>
       </div>
       <div class="modal-foot">
         <button class="btn btn-danger" id="btnProExcluir" style="margin-right:auto;display:none;" onclick="excluirPro()">Excluir</button>
         <button class="btn btn-ghost" onclick="App.closeModal('mPro')">Cancelar</button>
         <button class="btn btn-primary" id="btnPro" onclick="salvarPro()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CONVITE (profissional que já usa o PerFisio em outra clínica) -->
+  <div class="modal-overlay" id="mConvite">
+    <div class="modal" style="max-width:480px;">
+      <div class="modal-head">
+        <h3>✉️ Convidar de outra clínica</h3>
+        <button class="close" onclick="App.closeModal('mConvite')">×</button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size:.82rem;color:var(--text-soft);line-height:1.6;margin-bottom:14px;">
+          Para fisioterapeutas que <b>já usam o PerFisio</b> em outra clínica. Ele recebe o convite no app e, ao aceitar,
+          entra na sua equipe com o mesmo login e o mesmo perfil público. A agenda dele é uma só: sua clínica vê os
+          pacientes daqui e, dos horários nas outras clínicas, apenas que estão <b>ocupados</b>.
+        </div>
+        <div class="field"><label>E-mail de login do profissional</label><input type="email" id="cvEmail" placeholder="nome@email.com" onkeydown="if(event.key==='Enter')enviarConvite()"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal('mConvite')">Cancelar</button>
+        <button class="btn btn-primary" id="btnConvite" onclick="enviarConvite()">Enviar convite</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CREDENCIAIS (mostrado uma única vez, depois de criar o acesso) -->
+  <div class="modal-overlay" id="mCred">
+    <div class="modal" style="max-width:460px;">
+      <div class="modal-head">
+        <h3>🔑 Acesso criado</h3>
+        <button class="close" onclick="App.closeModal('mCred')">×</button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size:.82rem;color:var(--text-soft);margin-bottom:14px;">
+          Envie estes dados para <b id="credNome" style="color:var(--ink);"></b>. A senha provisória
+          <b>não será mostrada de novo</b> — se perder, é só gerar outra aqui na Equipe.
+        </div>
+        <div style="background:var(--bg);border-radius:11px;padding:14px;font-size:.9rem;">
+          <div style="margin-bottom:8px;"><span style="color:var(--text-soft);font-size:.75rem;display:block;">Endereço</span><b id="credUrl"></b></div>
+          <div style="margin-bottom:8px;"><span style="color:var(--text-soft);font-size:.75rem;display:block;">E-mail</span><b id="credEmail"></b></div>
+          <div><span style="color:var(--text-soft);font-size:.75rem;display:block;">Senha provisória</span><b id="credSenha" style="font-family:monospace;font-size:1.05rem;color:var(--primary-dark);"></b></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal('mCred')">Fechar</button>
+        <button class="btn btn-primary" onclick="copiarCredenciais(this)">Copiar dados</button>
       </div>
     </div>
   </div>
@@ -128,14 +221,30 @@
     .pro-acoes .btn[disabled] { opacity: .45; cursor: not-allowed; }
     .link-curto.off code { color: var(--text-soft); text-decoration: line-through; opacity: .7; }
     .link-curto.off .btn { white-space: nowrap; }
+    .pro-acesso { margin-top: 8px; font-size: .74rem; font-weight: 600; color: var(--primary-dark);
+      display: flex; align-items: center; justify-content: center; gap: 4px; }
+    .pro-acesso span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
+    .pac-op { display: flex; gap: 9px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px;
+      background: #fff; margin-top: 6px; cursor: pointer; font-size: .82rem; font-weight: 500; }
+    .pac-op input { margin-top: 2px; accent-color: var(--primary); }
+    .pac-op small { display: block; color: var(--text-soft); font-size: .72rem; margin-top: 1px; }
+    .pac-vazio { font-size: .78rem; color: var(--text-soft); }
+    .pro-vinculo { margin-top: 6px; font-size: .72rem; font-weight: 700; color: #2D7DD2; }
+    .convites { margin-bottom: 16px; }
+    .convite-linha { display: flex; gap: 8px 10px; align-items: center; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--line); font-size: .82rem; }
   </style>
 
   <script src="../assets/js/app.js"></script>
   <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/username.js"></script>
+  <script src="../assets/js/localidade.js"></script>
   <script src="../assets/js/sidebar.js"></script>
   <script>
-    let FISIOS = [], PACS = [], SESSOES = [], PAGS = [];
+    let FISIOS = [], PACS = [], SESSOES = [], PAGS = [], USUARIOS = [], CONVITES = [];
     let editId = null;
+    let FORA = false; // ficha de quem veio de outra clínica (o perfil público é o de lá)
+    /* login vinculado a cada profissional (usuarios.fisio_id) */
+    const acessoDe = id => USUARIOS.find(u => u.fisio_id === id) || null;
     const hoje = PF.hojeISO();
     /* último dia do mês corrente — 31 fixo quebrava em meses de 30 dias */
     const fimDoMes = iso => {
@@ -145,12 +254,77 @@
     const mesIni = hoje.slice(0, 8) + '01';
 
     async function boot() {
-      [FISIOS, PACS, SESSOES, PAGS] = await Promise.all([
+      [FISIOS, PACS, SESSOES, PAGS, USUARIOS] = await Promise.all([
         PF.get('fisios'), PF.get('pacientes'),
         PF.get('sessoes', { from: mesIni, to: fimDoMes(hoje) }),
         PF.get('pagamentos'),
+        PF.get('usuarios').catch(() => []),
       ]);
       render();
+      CONVITES = await PF.api('/api/fisios/convites').catch(() => []);
+      renderConvites();
+    }
+
+    /* ---------- convites para quem já atende em outra clínica ---------- */
+    function renderConvites() {
+      const vis = CONVITES.filter(c => c.status === 'pendente' || c.status === 'recusado');
+      document.getElementById('convitesBox').innerHTML = vis.length ? `<div class="card card-pad convites">
+        <div style="font-size:.85rem;font-weight:800;color:var(--ink);margin-bottom:6px;">✉️ Convites enviados</div>
+        ${vis.map(c => `<div class="convite-linha">
+          <span style="flex:1;min-width:200px;"><b>${c.nome || c.email}</b> · ${c.email}</span>
+          ${c.status === 'pendente'
+            ? `<span class="badge amber">Aguardando resposta</span>
+               <button class="btn btn-ghost btn-sm" onclick="cancelarConvite('${c.id}')">Cancelar</button>`
+            : '<span class="badge gray">Recusado</span>'}
+        </div>`).join('')}
+      </div>` : '';
+    }
+
+    function abrirConvite() {
+      cvEmail.value = '';
+      App.openModal('mConvite');
+      setTimeout(() => cvEmail.focus(), 60);
+    }
+
+    async function enviarConvite() {
+      const btn = document.getElementById('btnConvite'); btn.disabled = true;
+      try {
+        const r = await PF.api('/api/fisios/convites', { method: 'POST', body: { email: cvEmail.value.trim() } });
+        App.closeModal('mConvite');
+        App.toast(`Convite enviado para ${r.nome}` +
+          (r.email_enviado ? ' — ele também recebeu por e-mail' : ' — ele vê o convite quando entrar no PerFisio'));
+        CONVITES = await PF.api('/api/fisios/convites');
+        renderConvites();
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false;
+    }
+
+    async function cancelarConvite(id) {
+      if (!confirm('Cancelar este convite?')) return;
+      try {
+        await PF.api('/api/fisios/convites/' + id, { method: 'DELETE' });
+        CONVITES = await PF.api('/api/fisios/convites');
+        renderConvites();
+        App.toast('Convite cancelado');
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    /* quem veio de outra clínica: perfil público e login são os de lá, e não se mexe neles daqui */
+    function aplicarModoFora(f) {
+      FORA = !!(f && f.ficha_do_perfil === false);
+      document.getElementById('boxPerfil').style.display = FORA ? 'none' : '';
+      document.getElementById('boxPerfilFora').style.display = FORA ? '' : 'none';
+      if (FORA) {
+        perfilForaTxt.innerHTML = `${f.nome.split(' ')[0]} atende em mais de uma clínica. O perfil público é um só e é
+          cuidado pela <b>${f.clinica_do_perfil || 'clínica de origem'}</b> — sua clínica aparece nele como local de
+          atendimento, com o valor de consulta abaixo.`;
+        prConsultaFora.value = f.valor_consulta == null ? '' : Number(f.valor_consulta);
+      }
+      const loginFora = !!(f && f.login_de_fora && !acessoDe(f.id));
+      document.getElementById('boxAcesso').style.display = loginFora ? 'none' : '';
+      document.getElementById('boxAcessoFora').style.display = loginFora ? '' : 'none';
+      if (loginFora) acessoForaTxt.innerHTML = `🔑 Entra com o login próprio <b>${f.login_de_fora}</b> — o mesmo em
+        todas as clínicas onde atende. Aqui ele vê só a própria agenda e os prontuários dos pacientes desta clínica.`;
     }
 
     function statsDe(f) {
@@ -179,6 +353,14 @@
           <div class="pro-name">${f.nome}</div>
           <div class="pro-crefito">${f.crefito || 'CREFITO não informado'}</div>
           <div class="pro-esp"><span class="badge primary">${f.esp || 'Fisioterapeuta'}</span>${f.ativo ? '' : ' <span class="badge gray">Inativo</span>'}</div>
+          ${f.outras_clinicas ? `<div class="pro-vinculo">🏥 Atende também em ${f.outras_clinicas} outra${f.outras_clinicas > 1 ? 's clínicas' : ' clínica'}</div>` : ''}
+          <div class="pro-acesso" title="${acessoDe(f.id) || f.login_de_fora ? 'Login do profissional no sistema' : 'Este profissional ainda não entra no sistema'}">
+            ${acessoDe(f.id)
+              ? `🔑 <span>${acessoDe(f.id).email}</span>`
+              : f.login_de_fora
+                ? `🔑 <span>${f.login_de_fora}</span>`
+                : `<span style="color:var(--text-soft);">🔒 Sem acesso ao sistema</span>`}
+          </div>
           <div style="margin-top:14px;">
             <div style="display:flex;justify-content:space-between;font-size:.74rem;margin-bottom:5px;">
               <span style="color:var(--text-soft);font-weight:600;">Ocupação no mês</span>
@@ -191,7 +373,10 @@
             <div><div class="n">${d.realizadas}</div><div class="l">Sessões/mês</div></div>
             <div><div class="n">${d.faltas}</div><div class="l">Faltas</div></div>
           </div>
-          ${f.publico && f.slug ? `
+          ${f.ficha_do_perfil === false ? `
+          <div class="link-curto off" title="O perfil público é um só e fica com a clínica de origem">
+            <code style="text-decoration:none;">Perfil público pela ${f.clinica_do_perfil || 'outra clínica'}</code>
+          </div>` : f.publico && f.slug ? `
           <div class="link-curto">
             <code>perfis.io/${f.slug}</code>
             <button class="btn btn-ghost btn-sm" title="Copiar link" onclick="copiarLink('${f.slug}', this)">📋</button>
@@ -201,9 +386,9 @@
             <button class="btn btn-soft btn-sm" onclick="abrirEditar('${f.id}')">Ativar perfil</button>
           </div>`}
           <div class="pro-acoes">
-            <a class="btn btn-ghost btn-sm" href="cartao.html?p=${f.slug || f.id}" target="_blank"
-               title="Cartão de visita · folha A4 com 10 unidades">💳 Cartão</a>
-            ${f.publico && f.slug
+            ${f.ficha_do_perfil === false ? '' : `<a class="btn btn-ghost btn-sm" href="cartao.html?p=${f.slug || f.id}" target="_blank"
+               title="Cartão de visita · folha A4 com 10 unidades">💳 Cartão</a>`}
+            ${f.ficha_do_perfil === false ? '' : f.publico && f.slug
               ? `<a class="btn btn-ghost btn-sm" href="cartaz.html?p=${f.slug}" target="_blank"
                    title="Cartaz A4 com QR code para o paciente avaliar">🏷 Cartaz</a>`
               : `<button class="btn btn-ghost btn-sm" disabled
@@ -234,6 +419,7 @@
       ['pelvica', '🌸 Pélvica'], ['geriatrica', '👵 Geriátrica'],
     ];
     let espSel = new Set();
+    const locPro = ligarLocalidade({ uf: prUf, cidade: prCidade });
 
     function renderEspChips() {
       document.getElementById('prEspChips').innerHTML = ESPECIALIDADES.map(([k, l]) =>
@@ -242,7 +428,7 @@
     function toggleEsp(k) { espSel.has(k) ? espSel.delete(k) : espSel.add(k); renderEspChips(); }
 
     async function buscarCoord() {
-      const q = [prBairro.value.trim(), prCidade.value.trim()].filter(Boolean).join(', ');
+      const q = [prBairro.value.trim(), locPro.valor()].filter(Boolean).join(', ');
       if (!q) { App.toast('Preencha bairro e cidade primeiro', 'error'); return; }
       try {
         const cfg = await PF.api('/api/public/config');
@@ -338,13 +524,24 @@
       }).catch(() => App.toast('Copie manualmente: ' + url, 'error'));
     }
 
-    /* link curto perfis.io/{slug} */
+    /* link curto perfis.io/{username} — a clínica escolhe/troca o username do profissional */
     let LINK_CURTO = '';
     function mostrarLinkCurto(f) {
       const box = document.getElementById('boxLinkCurto');
-      if (!f || !f.slug || !f.publico) { box.style.display = 'none'; LINK_CURTO = ''; return; }
+      if (!f || !f.slug) { box.style.display = 'none'; LINK_CURTO = ''; return; }
       LINK_CURTO = `perfis.io/${f.slug}`;
-      document.getElementById('linkCurto').textContent = LINK_CURTO;
+      const campo = ligarUsername({
+        input: document.getElementById('prUsername'), botao: document.getElementById('btnUsername'),
+        status: document.getElementById('usernameStatus'), fisioId: f.id, atual: f.slug,
+        aoSalvar: async r => {
+          LINK_CURTO = `perfis.io/${r.slug}`;
+          FISIOS = await PF.get('fisios');
+          render();
+          App.toast('Link curto atualizado');
+        },
+      });
+      campo.aviso(f.publico ? '' : 'O link só abre depois que o perfil público for ativado.', '');
+      document.getElementById('linkCurtoAcoes').style.display = f.publico ? 'flex' : 'none';
       box.style.display = '';
     }
     function copiarLinkCurto() {
@@ -354,6 +551,36 @@
     }
     function abrirLinkCurto() { window.open('https://' + LINK_CURTO, '_blank'); }
 
+    /* pacotes da clínica que aparecem no perfil deste profissional */
+    let PACOTES_PRONTO = false, pedidoPacotes = 0;
+    async function carregarPacotesFisio(f) {
+      PACOTES_PRONTO = false;
+      const vez = ++pedidoPacotes;
+      const el = document.getElementById('prPacotes');
+      el.innerHTML = '<span class="pac-vazio">Carregando pacotes…</span>';
+      try {
+        const lista = f
+          ? await PF.api(`/api/fisios/${f.id}/pacotes`)
+          : (await PF.get('pacotes')).map(p => ({ ...p, valor: Number(p.valor), ativo: p.tipo !== 'avulsa' }));
+        if (vez !== pedidoPacotes) return; // abriu outro profissional no meio do caminho
+        el.innerHTML = lista.map(p => `
+          <label class="pac-op">
+            <input type="checkbox" value="${p.id}" ${p.ativo ? 'checked' : ''}>
+            <span><b>${p.nome}</b> · ${App.money(p.valor)}${p.tipo === 'mensal' ? '/mês' : ''}
+              <small>${p.sessoes > 1 ? p.sessoes + ' sessões' : '1 sessão'}${p.tipo === 'avulsa' ? ' · avulsa' : ''}${p.descricao ? ' · ' + p.descricao : ''}</small></span>
+          </label>`).join('') || '<span class="pac-vazio">A clínica ainda não cadastrou pacotes.</span>';
+        PACOTES_PRONTO = true;
+      } catch (e) {
+        if (vez === pedidoPacotes) el.innerHTML = `<span class="pac-vazio" style="color:var(--red);">${e.message}</span>`;
+      }
+    }
+
+    async function salvarPacotesFisio(id) {
+      if (!PACOTES_PRONTO || !id) return; // a lista não carregou: não mexe no que já está salvo
+      const ativos = [...document.querySelectorAll('#prPacotes input:checked')].map(i => i.value);
+      await PF.api(`/api/fisios/${id}/pacotes`, { method: 'PUT', body: { ativos } });
+    }
+
     function preencherPublico(f) {
       const vazio = !f;
       mostrarLinkCurto(f);
@@ -361,8 +588,9 @@
       espSel = new Set(vazio ? [] : (f.especialidades || '').split(',').map(s => s.trim()).filter(Boolean));
       renderEspChips();
       prBairro.value = vazio ? '' : (f.bairro || '');
-      prCidade.value = vazio ? '' : (f.cidade || '');
-      prPreco.value = vazio ? '' : (f.preco || '');
+      locPro.definir(vazio ? null : f.cidade);
+      prConsulta.value = vazio || f.valor_consulta == null ? '' : Number(f.valor_consulta);
+      carregarPacotesFisio(f);
       prBio.value = vazio ? '' : (f.bio || '');
       prWhatsapp.value = vazio ? '' : (f.whatsapp || '');
       prInstagram.value = vazio ? '' : (f.instagram || '');
@@ -374,6 +602,51 @@
       carregarGaleria();
     }
 
+    /* ---------- acesso ao sistema (usuários & permissões) ---------- */
+    function preencherAcesso(f) {
+      const u = f ? acessoDe(f.id) : null;
+      const box = document.getElementById('acessoAtual');
+      prEmail.value = u ? u.email : '';
+      prSenha.value = '';
+      document.getElementById('prSenha').placeholder = u
+        ? 'em branco = mantém a senha atual'
+        : 'em branco = gerada automaticamente';
+      box.style.display = u ? '' : 'none';
+      if (u) box.innerHTML = `✅ Já tem acesso como <b>${u.perfil === 'gestor' ? 'Gestor' : u.perfil === 'recepcao' ? 'Recepção' : 'Fisioterapeuta'}</b>` +
+        (u.ultimo_acesso ? ` · último acesso em ${new Date(u.ultimo_acesso).toLocaleDateString('pt-BR')}` : ' · ainda não entrou');
+      document.getElementById('btnRemoverAcesso').style.display =
+        (u && u.perfil !== 'gestor' && u.id !== (PF.user() || {}).id) ? '' : 'none';
+    }
+
+    function mostrarCredenciais(nome, acesso) {
+      if (!acesso || !acesso.senha) return;
+      document.getElementById('credNome').textContent = nome;
+      document.getElementById('credUrl').textContent = location.host + '/login.html';
+      document.getElementById('credEmail').textContent = acesso.email;
+      document.getElementById('credSenha').textContent = acesso.senha;
+      App.openModal('mCred');
+    }
+
+    function copiarCredenciais(botao) {
+      const txt = `Acesso ao PerFisio\nEndereço: https://${document.getElementById('credUrl').textContent}\n`
+        + `E-mail: ${document.getElementById('credEmail').textContent}\n`
+        + `Senha provisória: ${document.getElementById('credSenha').textContent}`;
+      navigator.clipboard.writeText(txt)
+        .then(() => { botao.textContent = '✓ Copiado'; setTimeout(() => botao.textContent = 'Copiar dados', 1800); })
+        .catch(() => App.toast('Não consegui copiar — selecione o texto manualmente', 'error'));
+    }
+
+    async function removerAcesso() {
+      if (!editId || !confirm('Remover o acesso deste profissional ao sistema? Ele continua na equipe e na agenda.')) return;
+      try {
+        await PF.api(`/api/fisios/${editId}/acesso`, { method: 'DELETE' });
+        USUARIOS = await PF.get('usuarios').catch(() => USUARIOS);
+        preencherAcesso(FISIOS.find(x => x.id === editId));
+        render();
+        App.toast('Acesso removido');
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
     function abrirNovo() {
       editId = null;
       document.getElementById('mProTitulo').textContent = 'Novo profissional';
@@ -381,6 +654,8 @@
       prNome.value = ''; prCrefito.value = ''; prEsp.value = 'Ortopedia e Traumato';
       prComissao.value = 40; prCor.value = '#2D7DD2'; prAtivo.value = 'true';
       preencherPublico(null);
+      preencherAcesso(null);
+      aplicarModoFora(null);
       App.openModal('mPro');
     }
 
@@ -393,6 +668,8 @@
       prNome.value = f.nome; prCrefito.value = f.crefito || ''; prEsp.value = f.esp || 'Ortopedia e Traumato';
       prComissao.value = Number(f.comissao); prCor.value = f.cor; prAtivo.value = String(f.ativo);
       preencherPublico(f);
+      preencherAcesso(f);
+      aplicarModoFora(f);
       App.openModal('mPro');
     }
 
@@ -405,32 +682,58 @@
         comissao: Number(prComissao.value) || 0, cor: prCor.value, ativo: prAtivo.value === 'true',
         publico: prPublico.checked, especialidades: [...espSel].join(','),
         domiciliar: prDomiciliar.checked, bairro: prBairro.value.trim() || null,
-        cidade: prCidade.value.trim() || null, preco: prPreco.value.trim() || null,
+        cidade: locPro.valor(), preco: null,
+        valor_consulta: prConsulta.value === '' ? null : Number(prConsulta.value),
         bio: prBio.value.trim() || null,
         whatsapp: prWhatsapp.value.trim() || null, instagram: prInstagram.value.trim() || null,
         tratamentos: prTratamentos.value.trim() || null, regioes: prRegioes.value.trim() || null,
         lat: temCoord ? coord[0] : null, lng: temCoord ? coord[1] : null,
       };
+      if (FORA) { // o perfil público é o da outra clínica: daqui só vai o valor da consulta
+        ['publico', 'especialidades', 'domiciliar', 'bairro', 'cidade', 'preco', 'bio', 'whatsapp', 'instagram',
+         'tratamentos', 'regioes', 'lat', 'lng'].forEach(k => delete body[k]);
+        body.valor_consulta = prConsultaFora.value === '' ? null : Number(prConsultaFora.value);
+      }
+      const email = prEmail.value.trim();
+      const senha = prSenha.value.trim();
       const btn = document.getElementById('btnPro'); btn.disabled = true;
       try {
-        if (editId) await PF.put('fisios', editId, body);
-        else await PF.post('fisios', body);
+        let acesso = null;
+        if (editId) {
+          await PF.put('fisios', editId, body);
+          if (!FORA) await salvarPacotesFisio(editId);
+          const atual = acessoDe(editId);
+          if (email && (!atual || atual.email !== email.toLowerCase() || senha))
+            acesso = await PF.api(`/api/fisios/${editId}/acesso`, { method: 'POST', body: { email, senha: senha || undefined } });
+          else if (!email && atual)
+            App.toast('O acesso continua ativo — use "Remover acesso ao sistema" para tirá-lo', 'info');
+        } else {
+          /* rota específica: cria o profissional e, com e-mail, já cria o usuário do sistema */
+          const novo = await PF.api('/api/fisios', { method: 'POST', body: { ...body, email: email || undefined, senha: senha || undefined } });
+          acesso = novo.acesso;
+          await salvarPacotesFisio(novo.id);
+        }
         App.closeModal('mPro');
         App.toast(editId ? 'Profissional atualizado!' : 'Profissional adicionado à equipe!');
-        FISIOS = await PF.get('fisios');
+        [FISIOS, USUARIOS] = await Promise.all([PF.get('fisios'), PF.get('usuarios').catch(() => USUARIOS)]);
         render();
+        if (acesso && acesso.senha) mostrarCredenciais(body.nome, acesso);
       } catch (e) { App.toast(e.message, 'error'); }
       btn.disabled = false;
     }
 
     async function excluirPro() {
-      if (!editId || !confirm('Excluir este profissional? Sessões dele ficarão sem responsável.')) return;
+      const f = FISIOS.find(x => x.id === editId);
+      const pergunta = f && f.outras_clinicas
+        ? `Tirar ${f.nome} da sua equipe? Ele continua atendendo nas outras clínicas, com o mesmo login e perfil público. As sessões dele aqui ficam sem responsável.`
+        : 'Excluir este profissional? Sessões dele ficarão sem responsável.';
+      if (!editId || !confirm(pergunta)) return;
       try {
         await PF.del('fisios', editId);
         App.closeModal('mPro');
-        FISIOS = await PF.get('fisios');
+        [FISIOS, USUARIOS] = await Promise.all([PF.get('fisios'), PF.get('usuarios').catch(() => USUARIOS)]);
         render();
-        App.toast('Profissional excluído');
+        App.toast(f && f.outras_clinicas ? 'Profissional saiu da sua equipe' : 'Profissional excluído');
       } catch (e) { App.toast(e.message, 'error'); }
     }
 

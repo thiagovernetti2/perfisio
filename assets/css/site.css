@@ -1,0 +1,79 @@
+/* PERFISIO — cabeçalho, rodapé e artigos das páginas públicas
+   (usado por site-para-fisioterapeutas, blog e posts) */
+
+body { background: #fff; }
+
+.lp-header {
+  display: flex; align-items: center; gap: 12px; padding: 18px 6vw;
+  border-bottom: 1px solid var(--line); position: sticky; top: 0;
+  background: rgba(255, 255, 255, .92); backdrop-filter: blur(8px); z-index: 50;
+}
+.lp-header .logo { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 1.15rem; color: var(--ink); }
+.lp-header .logo img { height: 30px; width: auto; display: block; }
+.lp-header nav { margin-left: auto; display: flex; align-items: center; gap: 22px; font-size: .9rem; font-weight: 600; color: var(--text-soft); }
+.lp-header nav a:hover { color: var(--ink); }
+
+.lp-footer { padding: 30px 6vw; text-align: center; color: var(--text-soft); font-size: .84rem; border-top: 1px solid var(--line); margin-top: 70px; }
+.lp-footer a { color: var(--primary-dark); font-weight: 600; }
+
+/* ---------- blog ---------- */
+.blog-hero { padding: 58px 6vw 34px; text-align: center; background: linear-gradient(180deg, #F0FAF7 0%, #fff 100%); }
+.blog-hero .kicker { font-size: .78rem; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; color: var(--primary-dark); }
+.blog-hero h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 900; color: var(--ink); letter-spacing: -1px; margin-top: 12px; }
+.blog-hero p { color: var(--text-soft); font-size: 1rem; margin: 14px auto 0; max-width: 600px; line-height: 1.7; }
+
+.post-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 1080px; margin: 40px auto 0; padding: 0 6vw; }
+.post-card {
+  display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 16px;
+  overflow: hidden; background: #fff; box-shadow: var(--shadow); transition: transform .15s, box-shadow .15s;
+}
+.post-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+/* height:auto é obrigatório: sem ele o atributo height do <img> vence o aspect-ratio */
+.post-card .capa { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; background: var(--primary-soft); }
+.post-card .txt { padding: 22px 24px 26px; display: flex; flex-direction: column; flex: 1; }
+.post-card .data { font-size: .74rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--primary-dark); }
+.post-card h2, .post-card h3 { font-size: 1.08rem; font-weight: 800; color: var(--ink); line-height: 1.35; margin-top: 10px; letter-spacing: -.3px; }
+.post-card p { color: var(--text-soft); font-size: .88rem; line-height: 1.65; margin-top: 10px; flex: 1; }
+.post-card .ler { margin-top: 16px; font-size: .84rem; font-weight: 700; color: var(--primary); }
+
+/* capa do artigo aberto */
+.post-capa {
+  display: block; width: calc(100% - 12vw); max-width: 760px; margin: 26px auto 0; border-radius: 18px;
+  height: auto; aspect-ratio: 16 / 9; object-fit: cover; box-shadow: var(--shadow);
+}
+
+/* ---------- post ---------- */
+.post-head { padding: 54px 6vw 0; max-width: 760px; margin: 0 auto; }
+.post-head .volta { font-size: .82rem; font-weight: 600; color: var(--text-soft); }
+.post-head .volta:hover { color: var(--primary-dark); }
+.post-head .data { font-size: .74rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--primary-dark); margin-top: 22px; }
+.post-head h1 { font-size: clamp(1.7rem, 3.8vw, 2.5rem); font-weight: 900; color: var(--ink); letter-spacing: -1px; line-height: 1.2; margin-top: 10px; }
+
+.post-body { max-width: 760px; margin: 0 auto; padding: 0 6vw; }
+.post-body > p { color: var(--text); font-size: 1.02rem; line-height: 1.85; margin-top: 20px; }
+.post-body > p:first-child { margin-top: 26px; }
+.post-body h2 { font-size: 1.25rem; font-weight: 800; color: var(--ink); margin-top: 34px; letter-spacing: -.3px; }
+.post-body a { color: var(--primary-dark); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.post-body ol { margin: 20px 0 0; padding-left: 0; list-style: none; counter-reset: item; }
+.post-body ol li { counter-increment: item; position: relative; padding-left: 44px; margin-top: 16px; color: var(--text); font-size: 1.02rem; line-height: 1.8; }
+.post-body ol li::before {
+  content: counter(item); position: absolute; left: 0; top: 2px; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--primary-soft); color: var(--primary-dark); font-size: .82rem; font-weight: 800;
+  display: grid; place-items: center;
+}
+.post-body ol li b { color: var(--ink); }
+
+.post-cta {
+  max-width: 760px; margin: 46px auto 0; padding: 28px 6vw; border: 1px solid var(--line);
+  border-radius: 18px; background: linear-gradient(180deg, #F0FAF7, #fff); text-align: center;
+}
+.post-cta h3 { font-size: 1.15rem; font-weight: 800; color: var(--ink); letter-spacing: -.3px; }
+.post-cta p { color: var(--text-soft); font-size: .92rem; line-height: 1.7; margin: 10px auto 18px; max-width: 500px; }
+
+.mais-posts { max-width: 1080px; margin: 60px auto 0; padding: 0 6vw; }
+.mais-posts h3 { font-size: 1.05rem; font-weight: 800; color: var(--ink); text-align: center; margin-bottom: 20px; }
+
+@media (max-width: 900px) {
+  .post-grid { grid-template-columns: 1fr; }
+  .lp-header nav a:not(.btn) { display: none; }
+}

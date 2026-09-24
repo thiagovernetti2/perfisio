@@ -11,7 +11,17 @@
   const title = body.dataset.title || 'PerFisio';
   const subtitle = body.dataset.subtitle || '';
 
-  const NAV = [
+  /* fisioterapeuta acessa só a agenda dele e o prontuário dos pacientes dele —
+     o servidor recusa o resto; aqui a gente só não mostra o que ele não pode usar */
+  const SO_AGENDA = usuario.perfil === 'fisio';
+  const PAGINAS_DO_FISIO = ['agenda', 'prontuarios'];
+  if (SO_AGENDA && page && !PAGINAS_DO_FISIO.includes(page)) { location.replace('agenda.html'); return; }
+
+  const NAV = SO_AGENDA ? [
+    { label: 'Principal' },
+    { id: 'agenda',      href: 'agenda.html',      ico: '📅', text: 'Minha agenda' },
+    { id: 'prontuarios', href: 'prontuarios.html', ico: '📋', text: 'Prontuários' },
+  ] : [
     { label: 'Principal' },
     { id: 'dashboard',     href: 'dashboard.html',     ico: '📊', text: 'Dashboard' },
     { id: 'agenda',        href: 'agenda.html',        ico: '📅', text: 'Agenda' },
@@ -63,7 +73,7 @@
       ${subtitle ? `<div class="subtitle">${subtitle}</div>` : ''}
     </div>
     <div class="spacer"></div>
-    <div class="search">🔍 <input type="text" placeholder="Buscar paciente..." id="pfGlobalSearch"></div>`;
+    ${SO_AGENDA ? '' : '<div class="search">🔍 <input type="text" placeholder="Buscar paciente..." id="pfGlobalSearch"></div>'}`;
 
   const shell = document.createElement('div');
   shell.className = 'app-shell';
@@ -82,6 +92,58 @@
   body.appendChild(shell);
 
   sidebar.querySelector('#pfLogout').addEventListener('click', PF.logout);
+
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  /* profissional em mais de uma clínica: escolhe em qual está agora (prontuários e cadastros
+     são de cada clínica; a agenda soma todas) e responde aos convites de clínicas novas */
+  (async function clinicasDoProfissional() {
+    let eu;
+    try { eu = await PF.api('/api/me'); } catch (e) { return; }
+    PF.setSession(PF.token(), { ...(PF.user() || {}), ...eu });
+    // o perfil depende da clínica em uso (gestora aqui, fisioterapeuta na outra): recarrega com o menu certo
+    if ((usuario.perfil === 'fisio') !== (eu.perfil === 'fisio')) { location.reload(); return; }
+
+    const vinculos = eu.vinculos || [];
+    if (vinculos.length > 1) {
+      const box = document.createElement('div');
+      box.style.cssText = 'padding:0 14px 12px;';
+      box.innerHTML = `<label style="display:block;font-size:.66rem;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:rgba(255,255,255,.55);margin:0 0 5px 2px;">Clínica em uso</label>
+        <select style="width:100%;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.22);border-radius:9px;padding:8px 10px;font-size:.8rem;font-weight:600;">
+          ${vinculos.map(v => `<option style="color:#1d2b28;" value="${v.clinica_id}"${v.clinica_id === eu.clinica_id ? ' selected' : ''}>${esc(v.clinica_nome)}</option>`).join('')}
+        </select>`;
+      box.querySelector('select').addEventListener('change', async e => {
+        PF.setClinica(e.target.value === eu.clinica_origem ? null : e.target.value);
+        try { PF.setSession(PF.token(), { ...(PF.user() || {}), ...(await PF.api('/api/me')) }); } catch (err) {}
+        location.href = 'agenda.html';
+      });
+      sidebar.querySelector('.user-box').before(box);
+    }
+
+    let convites = [];
+    try { convites = await PF.api('/api/convites'); } catch (e) { return; }
+    convites.forEach(cv => {
+      const barra = document.createElement('div');
+      barra.style.cssText = 'background:var(--primary-soft);border-bottom:1px solid #BFE5DD;color:var(--primary-dark);' +
+        'padding:12px 20px;font-size:.85rem;display:flex;gap:10px 12px;align-items:center;flex-wrap:wrap;';
+      barra.innerHTML = `🏥 <span style="flex:1;min-width:240px;line-height:1.5;"><b>${esc(cv.clinica_nome)}</b> convidou você para atender também por lá.
+        Sua agenda continua uma só: a clínica vê apenas os pacientes dela e, dos seus outros horários, só que estão ocupados.</span>
+        <button class="btn btn-primary btn-sm" type="button" data-a="aceitar">Aceitar</button>
+        <button class="btn btn-ghost btn-sm" type="button" data-a="recusar">Recusar</button>`;
+      barra.querySelectorAll('button').forEach(b => b.addEventListener('click', async () => {
+        barra.querySelectorAll('button').forEach(x => { x.disabled = true; });
+        try {
+          const r = await PF.api(`/api/convites/${cv.id}/${b.dataset.a}`, { method: 'POST' });
+          App.toast(b.dataset.a === 'aceitar' ? `Pronto! Agora você também atende na ${r.clinica_nome}` : 'Convite recusado');
+          setTimeout(() => location.reload(), 900);
+        } catch (err) {
+          App.toast(err.message, 'error');
+          barra.querySelectorAll('button').forEach(x => { x.disabled = false; });
+        }
+      }));
+      main.insertBefore(barra, content);
+    });
+  })();
 
   /* aviso de e-mail não confirmado (some sozinho quando o usuário confirma) */
   (async function avisoVerificacao() {
@@ -121,11 +183,13 @@
       localStorage.setItem('pf_user', localStorage.getItem('pf_admin_user'));
       localStorage.removeItem('pf_admin_token');
       localStorage.removeItem('pf_admin_user');
+      localStorage.removeItem('pf_clinica');
       location.href = '../admin/';
     });
     document.body.appendChild(faixa);
   }
-  topbar.querySelector('#pfGlobalSearch').addEventListener('keydown', e => {
+  const busca = topbar.querySelector('#pfGlobalSearch');
+  if (busca) busca.addEventListener('keydown', e => {
     if (e.key === 'Enter' && e.target.value.trim())
       location.href = 'pacientes.html?q=' + encodeURIComponent(e.target.value.trim());
   });

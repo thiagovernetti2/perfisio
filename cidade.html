@@ -169,7 +169,7 @@
         const ini = p.nome.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase();
         const tags = (p.especialidades || []).map(e => LABEL[e] || e).slice(0, 3);
         if (p.domiciliar) tags.push('🏠 Domiciliar');
-        const url = p.slug ? `/fisioterapeuta/${p.slug}` : `/fisio.html?id=${p.id}`;
+        const url = p.url || (p.slug ? `/fisioterapeuta/${p.slug}` : `/fisio.html?id=${p.id}`);
         return `<div class="perfil-card" onclick="location.href='${url}'">
           <div class="pc-top" style="background:linear-gradient(135deg,${g1},${g2});"><span class="pc-avatar" style="background:${g2};">${ini}${p.tem_foto ? `<img src="/api/public/fisio-foto/${p.id}" alt="" loading="lazy" onerror="this.remove()">` : ''}</span></div>
           <div class="pc-body">

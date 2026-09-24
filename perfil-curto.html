@@ -244,7 +244,7 @@
         ${P.bio ? `<div class="bio">${P.bio.slice(0, 210)}${P.bio.length > 210 ? '…' : ''}</div>` : ''}
         <div class="links">
           ${wpp ? `<a class="btn btn-soft btn-sm" href="https://wa.me/55${wpp}" target="_blank">💬 Falar no WhatsApp</a>` : ''}
-          <a class="btn btn-ghost btn-sm" href="https://www.perfisio.com.br/fisioterapeuta/${P.slug || SLUG}">Ver perfil completo →</a>
+          <a class="btn btn-ghost btn-sm" href="https://www.perfisio.com.br${P.url || '/fisioterapeuta/' + (P.slug || SLUG)}">Ver perfil completo →</a>
         </div>`;
     }
 
@@ -356,7 +356,7 @@
             <p style="font-size:.8rem;color:var(--text-soft);margin-top:10px;">Guarde este código para remarcar ou cancelar.</p>
             <div style="display:flex;gap:8px;justify-content:center;margin-top:20px;flex-wrap:wrap;">
               ${wpp ? `<a class="btn btn-soft btn-sm" target="_blank" href="https://wa.me/55${wpp}?text=${encodeURIComponent('Olá! Agendei uma sessão pelo PerFisio — código ' + r.codigo)}">💬 Avisar no WhatsApp</a>` : ''}
-              <a class="btn btn-ghost btn-sm" href="https://www.perfisio.com.br/fisioterapeuta/${P.slug || SLUG}">Ver perfil completo</a>
+              <a class="btn btn-ghost btn-sm" href="https://www.perfisio.com.br${P.url || '/fisioterapeuta/' + (P.slug || SLUG)}">Ver perfil completo</a>
             </div>
           </div>`;
       } catch (e) {

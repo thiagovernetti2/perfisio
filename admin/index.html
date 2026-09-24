@@ -14,6 +14,11 @@
     .cred-box { background: var(--primary-soft); border: 1.5px dashed var(--primary); border-radius: 12px; padding: 16px; font-size: .9rem; }
     .cred-box code { background: #fff; padding: 2px 8px; border-radius: 6px; font-weight: 700; }
     .tgl { cursor: pointer; }
+    /* links públicos do profissional na lista do admin */
+    .lk { display: flex; align-items: center; gap: 4px; background: var(--bg); border-radius: 8px; padding: 3px 4px 3px 9px; }
+    .lk code { flex: 1; font-size: .74rem; font-weight: 700; color: var(--primary-dark); white-space: nowrap; }
+    .lk .btn { padding: 4px 8px; }
+    .lk.off code { color: var(--text-soft); text-decoration: line-through; opacity: .75; }
   </style>
 </head>
 <body>
@@ -116,13 +121,19 @@
         <!-- CLÍNICAS -->
         <div data-sec-panel="clinicas" style="display:none;">
           <div class="card">
-            <div class="card-header">
+            <div class="card-header" style="flex-wrap:wrap;gap:10px;">
               <h3>Clínicas <span id="clinCount" style="font-weight:500;font-size:.78rem;color:var(--text-soft);"></span></h3>
-              <button class="btn btn-primary btn-sm" onclick="abrirNovaClinica()">+ Nova clínica</button>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <div style="display:flex;gap:6px;" id="clinAbas">
+                  <button class="chip active" data-aba="ativas" onclick="trocarAbaClinicas('ativas')">Cadastradas</button>
+                  <button class="chip" data-aba="excluidas" onclick="trocarAbaClinicas('excluidas')">🗑 Excluídas</button>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="abrirNovaClinica()">+ Nova clínica</button>
+              </div>
             </div>
             <div class="table-wrap" style="padding-top:8px;">
               <table class="data">
-                <thead><tr><th>Clínica</th><th>Equipe</th><th>Pacientes</th><th>Sessões 30d</th><th>Receita</th><th>Diretório</th><th>Redes sociais</th><th>Assinatura</th><th>Status</th><th></th></tr></thead>
+                <thead id="clinHead"><tr><th>Clínica</th><th>Equipe</th><th>Pacientes</th><th>Sessões 30d</th><th>Receita</th><th>Diretório</th><th>Redes sociais</th><th>Assinatura</th><th>Status</th><th></th></tr></thead>
                 <tbody id="clinRows"></tbody>
               </table>
             </div>
@@ -132,13 +143,19 @@
         <!-- PROFISSIONAIS -->
         <div data-sec-panel="fisios" style="display:none;">
           <div class="card">
-            <div class="card-header">
+            <div class="card-header" style="flex-wrap:wrap;gap:10px;">
               <h3>Fisioterapeutas de todas as clínicas <span id="fisioCount" style="font-weight:500;font-size:.78rem;color:var(--text-soft);"></span></h3>
-              <button class="btn btn-primary btn-sm" onclick="abrirFisio(null)">+ Novo fisioterapeuta</button>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <div style="display:flex;gap:6px;" id="fisioAbas">
+                  <button class="chip active" data-aba="ativos" onclick="trocarAbaFisios('ativos')">Cadastrados</button>
+                  <button class="chip" data-aba="excluidos" onclick="trocarAbaFisios('excluidos')">🗑 Excluídos</button>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="abrirFisio(null)">+ Novo fisioterapeuta</button>
+              </div>
             </div>
             <div class="table-wrap" style="padding-top:8px;">
               <table class="data">
-                <thead><tr><th>Profissional</th><th>Clínica</th><th>Especialidade</th><th>Cidade</th><th>Público no diretório</th><th>Ativo</th><th></th></tr></thead>
+                <thead id="fisioHead"><tr><th>Profissional</th><th>Clínica</th><th>Especialidade</th><th>Cidade</th><th>Público no diretório</th><th>Ativo</th><th></th></tr></thead>
                 <tbody id="fisioRows"></tbody>
               </table>
             </div>
@@ -233,9 +250,10 @@
           <div class="field"><label>Comissão (%)</label><input type="number" id="mfComissao" value="40"></div>
           <div class="field"><label>Cor</label><input type="color" id="mfCor" value="#0DA189" style="height:42px;padding:4px;"></div>
           <div class="field"><label>WhatsApp</label><input type="text" id="mfWhatsapp"></div>
-          <div class="field"><label>Preço exibido</label><input type="text" id="mfPreco" placeholder="R$ 160 por sessão"></div>
+          <div class="field"><label>Valor da consulta (R$)</label><input type="number" id="mfPreco" min="0" step="1" placeholder="Ex.: 180"></div>
+          <div class="field"><label>Estado</label><select id="mfUf"></select></div>
+          <div class="field"><label>Cidade</label><select id="mfCidade"></select></div>
           <div class="field"><label>Bairro</label><input type="text" id="mfBairro"></div>
-          <div class="field"><label>Cidade/UF</label><input type="text" id="mfCidade"></div>
           <div class="field full"><label>Especialidades no diretório (separadas por vírgula)</label><input type="text" id="mfEspecialidades" placeholder="esportiva, ortopedia, pilates, neuro, rpg, respiratoria, pelvica, geriatrica"></div>
           <div class="field full"><label>Bio</label><textarea id="mfBio"></textarea></div>
           <div class="check-row"><input type="checkbox" id="mfPublico"><label for="mfPublico" style="margin:0;font-weight:500;">🌐 Público no diretório</label></div>
@@ -279,8 +297,10 @@
 
   <script src="../assets/js/app.js"></script>
   <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/localidade.js"></script>
   <script>
     let CLINICAS = [], FISIOS = [], detalheId = null, fisioEditId = null;
+    const locMf = ligarLocalidade({ uf: mfUf, cidade: mfCidade });
     const CORES = ['#0DA189','#2D7DD2','#7C5CBF','#D9820B','#D64545','#1E9E6A'];
 
     const SECOES = {
@@ -383,9 +403,39 @@
     }
 
     /* ================= CLÍNICAS ================= */
+    let ABA_CLINICAS = 'ativas';
+    function trocarAbaClinicas(aba) {
+      ABA_CLINICAS = aba;
+      document.querySelectorAll('#clinAbas .chip').forEach(c => c.classList.toggle('active', c.dataset.aba === aba));
+      renderClinicas();
+    }
+
     function renderClinicas() {
-      document.getElementById('clinCount').textContent = '· ' + CLINICAS.length + ' no total';
-      document.getElementById('clinRows').innerHTML = CLINICAS.map((c, i) => `
+      const vivas = CLINICAS.filter(c => !c.excluida_em), excluidas = CLINICAS.filter(c => c.excluida_em);
+      document.getElementById('clinCount').textContent = '· ' + vivas.length + ' no total';
+      document.querySelector('#clinAbas [data-aba="ativas"]').textContent = `Cadastradas (${vivas.length})`;
+      document.querySelector('#clinAbas [data-aba="excluidas"]').textContent = `🗑 Excluídas (${excluidas.length})`;
+
+      if (ABA_CLINICAS === 'excluidas') {
+        document.getElementById('clinHead').innerHTML =
+          '<tr><th>Clínica</th><th>Excluída em</th><th>Usuários</th><th>Pacientes</th><th>Receita</th><th>Assinatura</th><th></th></tr>';
+        document.getElementById('clinRows').innerHTML = excluidas.map(c => `
+          <tr onclick="abrirDetalhe('${c.id}')" style="cursor:pointer;opacity:.85;">
+            <td><div class="cell-person"><span class="avatar-sm" style="background:#94A8A5;">${App.iniciais(c.nome)}</span>
+              <div><div class="p-name">${c.nome}</div><div class="p-sub">${c.email || ''}</div></div></div></td>
+            <td><span class="badge gray">🗑 ${new Date(c.excluida_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></td>
+            <td>${c.usuarios}</td>
+            <td>${c.pacientes}</td>
+            <td style="font-weight:700;">${App.money(Number(c.receita))}</td>
+            <td>${c.assinante ? '<span class="badge amber" title="A assinatura na Stripe não é cancelada pela exclusão">💳 ainda assinante</span>' : '<span class="badge gray">—</span>'}</td>
+            <td onclick="event.stopPropagation()"><button class="btn btn-soft btn-sm" onclick="restaurarClinica('${c.id}')">↩ Restaurar</button></td>
+          </tr>`).join('') || '<tr><td colspan="7" class="empty">Nenhuma clínica excluída.</td></tr>';
+        return;
+      }
+
+      document.getElementById('clinHead').innerHTML =
+        '<tr><th>Clínica</th><th>Equipe</th><th>Pacientes</th><th>Sessões 30d</th><th>Receita</th><th>Diretório</th><th>Redes sociais</th><th>Assinatura</th><th>Status</th><th></th></tr>';
+      document.getElementById('clinRows').innerHTML = vivas.map((c, i) => `
         <tr onclick="abrirDetalhe('${c.id}')" style="cursor:pointer;">
           <td><div class="cell-person"><span class="avatar-sm" style="background:${CORES[i % 6]};">${App.iniciais(c.nome)}</span>
             <div><div class="p-name">${c.nome}</div><div class="p-sub">${c.dominio
@@ -404,8 +454,32 @@
             ${c.ativa
               ? `<button class="btn btn-danger btn-sm" onclick="mudar('${c.id}', false, '${c.nome.replace(/'/g, '')}')">Desativar</button>`
               : `<button class="btn btn-soft btn-sm" onclick="mudar('${c.id}', true, '${c.nome.replace(/'/g, '')}')">Reativar</button>`}
+            <button class="btn btn-ghost btn-sm" title="Excluir (vai para Excluídas)" onclick="excluirClinica('${c.id}')">🗑</button>
           </td>
         </tr>`).join('') || '<tr><td colspan="10" class="empty">Nenhuma clínica.</td></tr>';
+    }
+
+    async function excluirClinica(id) {
+      const c = CLINICAS.find(x => x.id === id);
+      if (!c) return;
+      const stripe = c.assinante
+        ? '\n\n⚠️ Esta clínica tem assinatura na Stripe. A exclusão NÃO cancela a cobrança — cancele na Stripe se for o caso.' : '';
+      if (!confirm(`Excluir ${c.nome}?\n\n• ${c.usuarios} usuário(s) perdem o acesso na hora\n• sai do diretório, e o domínio próprio para de responder\n`
+        + `• pacientes (${c.pacientes}), prontuários e financeiro ficam guardados\n\nFica em "Excluídas" e pode ser restaurada.${stripe}`)) return;
+      try {
+        const r = await PF.api('/api/admin/clinicas/' + id, { method: 'DELETE' });
+        App.toast(`${r.nome} foi para Excluídas · ${r.usuarios_bloqueados} acesso(s) bloqueado(s)`);
+        await carregar();
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    async function restaurarClinica(id, doDetalhe) {
+      try {
+        const r = await PF.api(`/api/admin/clinicas/${id}/restaurar`, { method: 'POST' });
+        App.toast(`${r.nome} restaurada e ativa de novo`);
+        await carregar();
+        if (doDetalhe) abrirDetalhe(id);
+      } catch (e) { App.toast(e.message, 'error'); }
     }
 
     function abrirNovaClinica() {
@@ -448,6 +522,13 @@
       document.getElementById('dtNovoFisio').onclick = () => { App.closeModal('mDetalhe'); abrirFisio(null, id); };
       const BADGE_U = { gestor: 'primary', fisio: 'blue', recepcao: 'amber' };
       document.getElementById('dtBody').innerHTML = `
+        ${d.excluida_em ? `
+        <div style="display:flex;align-items:center;gap:12px;background:var(--red-soft);border:1px solid #F2C9C9;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:.86rem;">
+          <span style="font-size:1.2rem;">🗑</span>
+          <div style="flex:1;"><b style="color:var(--red);">Clínica excluída em ${new Date(d.excluida_em).toLocaleDateString('pt-BR')}</b>
+            <span style="display:block;color:var(--text-soft);font-size:.78rem;">Ninguém da equipe entra no sistema e ela não aparece no site. Os dados continuam guardados.</span></div>
+          <button class="btn btn-soft btn-sm" onclick="restaurarClinica('${d.id}', true)">↩ Restaurar</button>
+        </div>` : ''}
         <div class="form-grid" style="margin-bottom:18px;">
           <div class="field"><label>Nome</label><input type="text" id="dcNome" value="${d.nome || ''}"></div>
           <div class="field"><label>E-mail</label><input type="text" id="dcEmail" value="${d.email || ''}"></div>
@@ -488,8 +569,14 @@
           </label>
         </div>
 
-        <h4 style="font-size:.85rem;color:var(--ink);margin-bottom:8px;">🧑‍⚕️ Equipe (${d.fisios.length})</h4>
-        ${d.fisios.map(f => `
+        <h4 style="font-size:.85rem;color:var(--ink);margin-bottom:8px;">🧑‍⚕️ Equipe (${d.fisios.filter(f => !f.excluido_em).length})</h4>
+        ${d.fisios.map(f => f.excluido_em ? `
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #F0F4F3;font-size:.86rem;opacity:.6;">
+            <span class="avatar-sm" style="background:#94A8A5;">${App.iniciais(f.nome)}</span>
+            <div style="flex:1;"><b style="color:var(--ink);text-decoration:line-through;">${f.nome}</b> <span style="color:var(--text-soft);">· ${f.esp || '—'}</span></div>
+            <span class="badge gray">🗑 excluído em ${new Date(f.excluido_em).toLocaleDateString('pt-BR')}</span>
+            <button class="btn btn-soft btn-sm" onclick="restaurarFisio('${f.id}', true)">↩ Restaurar</button>
+          </div>` : `
           <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #F0F4F3;font-size:.86rem;">
             <span class="avatar-sm" style="background:${f.cor};">${App.iniciais(f.nome)}</span>
             <div style="flex:1;"><b style="color:var(--ink);">${f.nome}</b> <span style="color:var(--text-soft);">· ${f.esp || '—'}${f.cidade ? ' · ' + f.cidade : ''}</span></div>
@@ -536,6 +623,7 @@
       try {
         const r = await PF.api(`/api/admin/clinicas/${id}/impersonar`, { method: 'POST' });
         // guarda a sessão de superadmin para poder voltar
+        PF.setClinica(null);
         localStorage.setItem('pf_admin_token', PF.token());
         localStorage.setItem('pf_admin_user', localStorage.getItem('pf_user'));
         PF.setSession(r.token, r.usuario);
@@ -567,20 +655,135 @@
     }
 
     /* ================= PROFISSIONAIS ================= */
+    let ABA_FISIOS = 'ativos';
+    function trocarAbaFisios(aba) {
+      ABA_FISIOS = aba;
+      document.querySelectorAll('#fisioAbas .chip').forEach(c => c.classList.toggle('active', c.dataset.aba === aba));
+      renderFisios();
+    }
+
     async function carregarFisios() {
       FISIOS = await PF.api('/api/admin/fisios');
-      document.getElementById('fisioCount').textContent = '· ' + FISIOS.length + ' no total';
-      document.getElementById('fisioRows').innerHTML = FISIOS.map(f => `
-        <tr>
-          <td><div class="cell-person"><span class="avatar-sm" style="background:${f.cor};">${App.iniciais(f.nome)}</span>
+      renderFisios();
+    }
+
+    function renderFisios() {
+      // profissionais de clínica excluída somem das duas abas — voltam junto se a clínica for restaurada
+      const lista = FISIOS.filter(f => !f.clinica_excluida);
+      const vivos = lista.filter(f => !f.excluido_em), excluidos = lista.filter(f => f.excluido_em);
+      document.getElementById('fisioCount').textContent = '· ' + vivos.length + ' no total';
+      document.querySelector('#fisioAbas [data-aba="ativos"]').textContent = `Cadastrados (${vivos.length})`;
+      document.querySelector('#fisioAbas [data-aba="excluidos"]').textContent = `🗑 Excluídos (${excluidos.length})`;
+      const pessoa = f => `<td><div class="cell-person"><span class="avatar-sm" style="background:${f.cor};">${App.iniciais(f.nome)}</span>
             <div><div class="p-name">${f.nome}</div><div class="p-sub">${f.crefito || ''}</div></div></div></td>
           <td>${f.clinica_nome}</td>
           <td>${f.esp || '—'}</td>
-          <td>${[f.bairro, f.cidade].filter(Boolean).join(', ') || '—'}</td>
+          <td>${[f.bairro, f.cidade].filter(Boolean).join(', ') || '—'}</td>`;
+
+      if (ABA_FISIOS === 'excluidos') {
+        document.getElementById('fisioHead').innerHTML =
+          '<tr><th>Profissional</th><th>Clínica</th><th>Especialidade</th><th>Cidade</th><th>Excluído em</th><th>Agenda futura</th><th></th></tr>';
+        document.getElementById('fisioRows').innerHTML = excluidos.map(f => `
+          <tr style="opacity:.8;">
+            ${pessoa(f)}
+            <td><span class="badge gray">🗑 ${new Date(f.excluido_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></td>
+            <td>${f.sessoes_futuras ? `<span class="badge amber" title="Sessões agendadas que ainda estão na agenda da clínica">${f.sessoes_futuras} sessão(ões)</span>` : '—'}</td>
+            <td><button class="btn btn-soft btn-sm" onclick="restaurarFisio('${f.id}')">↩ Restaurar</button></td>
+          </tr>`).join('') || '<tr><td colspan="7" class="empty">Nenhum profissional excluído.</td></tr>';
+        return;
+      }
+
+      document.getElementById('fisioHead').innerHTML =
+        '<tr><th>Profissional</th><th>Clínica</th><th>Especialidade</th><th>Cidade</th><th>Link curto e site</th><th>Público no diretório</th><th>Ativo</th><th></th></tr>';
+      document.getElementById('fisioRows').innerHTML = vivos.map(f => `
+        <tr>
+          ${pessoa(f)}
+          <td style="min-width:250px;">${celulaLinks(f)}</td>
           <td><span class="badge ${f.publico ? 'green' : 'gray'} tgl" onclick="togglePublico('${f.id}', ${!f.publico})">${f.publico ? '🌐 Público' : 'Oculto'} ↺</span></td>
           <td><span class="badge ${f.ativo ? 'green' : 'red'} tgl" onclick="toggleAtivo('${f.id}', ${!f.ativo})">${f.ativo ? 'Ativo' : 'Inativo'} ↺</span></td>
-          <td><button class="btn btn-ghost btn-sm" onclick="abrirFisio('${f.id}')">Editar</button></td>
-        </tr>`).join('') || '<tr><td colspan="7" class="empty">Nenhum profissional.</td></tr>';
+          <td style="white-space:nowrap;">
+            <button class="btn btn-ghost btn-sm" onclick="abrirFisio('${f.id}')">Editar</button>
+            <button class="btn btn-ghost btn-sm" title="Excluir (vai para Excluídos)" onclick="excluirFisio('${f.id}')">🗑</button>
+          </td>
+        </tr>`).join('') || '<tr><td colspan="8" class="empty">Nenhum profissional.</td></tr>';
+    }
+
+    /* link curto (perfis.io) e perfil no site: só funcionam com perfil público, profissional ativo e clínica ativa */
+    function celulaLinks(f) {
+      if (!f.slug) return '<span style="color:var(--text-soft);font-size:.78rem;">gerando endereço…</span>';
+      const curta = f.url_curta.replace(/^https?:\/\//, '');
+      if (f.publico && f.ativo && f.clinica_ativa) return `
+        <div class="lk">
+          <code title="${f.url_curta}">${curta}</code>
+          <button class="btn btn-ghost btn-sm" title="Copiar link curto" onclick="copiarLink('${f.url_curta}', this)">📋</button>
+          <button class="btn btn-ghost btn-sm" title="Trocar o username" onclick="editarUsername('${f.id}')">✏️</button>
+          <a class="btn btn-ghost btn-sm" href="${f.url_publica}" target="_blank" rel="noopener" title="${f.url_publica}">Site ↗</a>
+        </div>`;
+      const motivo = !f.clinica_ativa ? 'A clínica está desativada'
+        : 'O link curto e a página no site só funcionam com o perfil público e o profissional ativo';
+      return `
+        <div class="lk off" title="${motivo}">
+          <code>${curta}</code>
+          <button class="btn btn-ghost btn-sm" title="Trocar o username" onclick="editarUsername('${f.id}')">✏️</button>
+          ${f.clinica_ativa
+            ? `<button class="btn btn-soft btn-sm" onclick="habilitarLinks('${f.id}')">Habilitar</button>`
+            : '<span class="badge gray">clínica desativada</span>'}
+        </div>`;
+    }
+
+    function copiarLink(url, botao) {
+      navigator.clipboard.writeText(url).then(() => {
+        App.toast('Link copiado: ' + url.replace(/^https?:\/\//, ''));
+        if (botao) { const antes = botao.textContent; botao.textContent = '✓'; setTimeout(() => botao.textContent = antes, 1600); }
+      }).catch(() => prompt('Copie o link:', url));
+    }
+
+    async function editarUsername(id) {
+      const f = FISIOS.find(x => x.id === id);
+      if (!f) return;
+      const novo = prompt(`Novo username de ${f.nome}\n\nperfis.io/…  (letras, números e hífen)\n`
+        + `O endereço atual continua redirecionando para o novo.`, f.slug);
+      if (novo === null || novo.trim().toLowerCase() === f.slug) return;
+      try {
+        const r = await PF.api(`/api/admin/fisios/${id}/slug`, { method: 'PUT', body: { slug: novo } });
+        App.toast(`Link atualizado: perfis.io/${r.slug}` + (r.anterior ? ` · perfis.io/${r.anterior} redireciona` : ''));
+        await carregarFisios();
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    async function habilitarLinks(id) {
+      const f = FISIOS.find(x => x.id === id);
+      if (!f) return;
+      if (!confirm(`Habilitar o link curto de ${f.nome}?\n\nO perfil fica público: o link ${f.url_curta.replace(/^https?:\/\//, '')} passa a funcionar `
+        + `e ${f.nome.split(' ')[0]} também aparece no diretório do site.`)) return;
+      try {
+        await PF.api('/api/admin/fisios/' + id, { method: 'PUT', body: { publico: true, ativo: true } });
+        App.toast('Link curto habilitado');
+        await carregarFisios();
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    async function excluirFisio(id) {
+      const f = FISIOS.find(x => x.id === id);
+      if (!f) return;
+      const agenda = f.sessoes_futuras
+        ? `\n\n⚠️ ${f.sessoes_futuras} sessão(ões) agendada(s) daqui para frente continuam na agenda da clínica — avise para remanejar.` : '';
+      if (!confirm(`Excluir ${f.nome} (${f.clinica_nome})?\n\nSai do diretório, da equipe da clínica e perde o acesso ao sistema. `
+        + `Sessões, prontuários e financeiro antigos continuam intactos.\n\nFica em "Excluídos" e pode ser restaurado.${agenda}`)) return;
+      try {
+        const r = await PF.api('/api/admin/fisios/' + id, { method: 'DELETE' });
+        App.toast(`${r.nome} foi para Excluídos` + (r.logins_bloqueados ? ' · acesso ao sistema bloqueado' : ''));
+        await carregarFisios();
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    async function restaurarFisio(id, doDetalhe) {
+      try {
+        const r = await PF.api(`/api/admin/fisios/${id}/restaurar`, { method: 'POST' });
+        App.toast(`${r.nome} restaurado · o perfil público continua desligado`);
+        await carregarFisios();
+        if (doDetalhe && detalheId) abrirDetalhe(detalheId);
+      } catch (e) { App.toast(e.message, 'error'); }
     }
 
     async function togglePublico(id, v) {
@@ -601,8 +804,8 @@
       mfNome.value = f ? f.nome : ''; mfCrefito.value = f ? (f.crefito || '') : '';
       mfEsp.value = f ? (f.esp || 'Ortopedia e Traumato') : 'Ortopedia e Traumato';
       mfComissao.value = f ? Number(f.comissao) : 40; mfCor.value = f ? f.cor : '#0DA189';
-      mfWhatsapp.value = f ? (f.whatsapp || '') : ''; mfPreco.value = f ? (f.preco || '') : '';
-      mfBairro.value = f ? (f.bairro || '') : ''; mfCidade.value = f ? (f.cidade || '') : '';
+      mfWhatsapp.value = f ? (f.whatsapp || '') : ''; mfPreco.value = f && f.valor_consulta != null ? Number(f.valor_consulta) : '';
+      mfBairro.value = f ? (f.bairro || '') : ''; locMf.definir(f ? f.cidade : null);
       mfEspecialidades.value = f ? (f.especialidades || '') : '';
       mfBio.value = f ? (f.bio || '') : '';
       mfPublico.checked = f ? !!f.publico : false;
@@ -621,8 +824,8 @@
       const body = {
         nome: mfNome.value.trim(), crefito: mfCrefito.value.trim() || null, esp: mfEsp.value,
         comissao: Number(mfComissao.value) || 0, cor: mfCor.value,
-        whatsapp: mfWhatsapp.value.trim() || null, preco: mfPreco.value.trim() || null,
-        bairro: mfBairro.value.trim() || null, cidade: mfCidade.value.trim() || null,
+        whatsapp: mfWhatsapp.value.trim() || null, preco: null, valor_consulta: mfPreco.value === '' ? null : Number(mfPreco.value),
+        bairro: mfBairro.value.trim() || null, cidade: locMf.valor(),
         especialidades: mfEspecialidades.value.trim() || null, bio: mfBio.value.trim() || null,
         publico: mfPublico.checked, domiciliar: mfDomiciliar.checked, ativo: mfAtivo.checked,
       };

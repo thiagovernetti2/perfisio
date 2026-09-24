@@ -187,7 +187,8 @@
     const NOME_ESP = { esportiva: 'Esportiva', ortopedia: 'Ortopedia', pilates: 'Pilates', neuro: 'Neuro', rpg: 'RPG', respiratoria: 'Respiratória', pelvica: 'Pélvica', geriatrica: 'Geriátrica' };
     const TRAT_PADRAO = ['Articulares', 'Lesões do esporte', 'Musculares', 'Reabilitação funcional', 'Dores em geral'];
     /* aceita /fisioterapeuta/{slug} (URL amigável) ou ?id= (link antigo) */
-    const fisioId = location.pathname.startsWith('/fisioterapeuta/')
+    // /fisioterapeuta-{cidade}/{username} ou /fisioterapeuta/{username}: o username é sempre o 2º pedaço
+    const fisioId = location.pathname.startsWith('/fisioterapeuta')
       ? decodeURIComponent(location.pathname.split('/')[2] || '')
       : new URLSearchParams(location.search).get('id');
     let PRO = null;
@@ -209,7 +210,9 @@
         return;
       }
       const p = PRO;
-      document.title = `${p.nome} · Fisioterapia em ${p.cidade || p.bairro || 'sua região'} — PerFisio`;
+      // mesmo título que o servidor entrega (SEO local: "Fisioterapeuta em Cidade - UF")
+      const ondeTitulo = p.cidade ? p.cidade.replace(/\s*\/\s*/, ' - ') : (p.bairro || '');
+      document.title = ondeTitulo ? `Fisioterapeuta em ${ondeTitulo} — ${p.nome} | PerFisio` : `${p.nome} — Fisioterapeuta | PerFisio`;
       const cor2 = escurecer(p.cor);
       const ini = p.nome.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase();
       const espNomes = p.especialidades.map(e => NOME_ESP[e] || e);
@@ -219,6 +222,12 @@
       const trats = p.tratamentos.length ? p.tratamentos : TRAT_PADRAO;
       const TIPO_PAC = { avulsa: 'Consulta individual', pacote: 'Pacote', mensal: 'Plano mensal' };
 
+      // clínicas onde atende (a do perfil primeiro); perfis antigos da API vêm só com a clínica principal
+      const locais = p.locais && p.locais.length ? p.locais : [{
+        fisio_id: p.id, clinica_id: p.clinica_id, nome: p.clinica_nome, slug: p.clinica_slug,
+        endereco: p.clinica_endereco, telefone: p.clinica_telefone, valor_consulta: p.valor_consulta,
+      }];
+      const reais = v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
       document.getElementById('conteudo').innerHTML = `
         <!-- HERO -->
         <div class="pf-banner" style="background:linear-gradient(135deg,${p.cor},${cor2});"></div>
@@ -273,7 +282,7 @@
           <h2>Pacotes de atendimento</h2>
           <div class="pac-grid">
             ${p.pacotes.map((pc, i) => `<div class="pac-card${i === 1 ? ' destaque' : ''}">
-              <div class="pn">${TIPO_PAC[pc.tipo] === 'Pacote' ? pc.nome : (TIPO_PAC[pc.tipo] || pc.nome)}</div>
+              <div class="pn">${pc.tipo === 'consulta' ? 'Consulta individual' : pc.nome}</div>
               <div class="pv">${pc.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })}${pc.tipo === 'mensal' ? '<span style="font-size:.75rem;font-weight:600;color:var(--text-soft);">/mês</span>' : ''}</div>
               <div class="pd">${pc.sessoes > 1 ? pc.sessoes + ' sessões' : '1 sessão'}${pc.descricao ? ' · ' + pc.descricao : ''}</div>
             </div>`).join('')}
@@ -317,20 +326,22 @@
           <div id="mapaFisio"></div>
         </div>
 
-        <!-- CLÍNICA ASSOCIADA -->
+        <!-- CLÍNICA(S) ONDE ATENDE -->
         <div class="pf-sec">
-          <h2>Clínica associada</h2>
-          <div class="clin-card">
-            <div class="clin-av">${p.clinica_nome.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase()}</div>
+          <h2>${locais.length > 1 ? 'Onde atende' : 'Clínica associada'}</h2>
+          ${locais.map((l, i) => `
+          <div class="clin-card"${i ? ' style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line);"' : ''}>
+            <div class="clin-av">${l.nome.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase()}</div>
             <div style="flex:1;min-width:200px;">
-              <div style="font-weight:800;color:var(--ink);">${p.clinica_nome}</div>
-              <div style="font-size:.8rem;color:var(--text-soft);margin-top:2px;">${p.clinica_endereco || ''}</div>
+              <div style="font-weight:800;color:var(--ink);">${l.nome}</div>
+              <div style="font-size:.8rem;color:var(--text-soft);margin-top:2px;">${l.endereco || ''}</div>
+              ${locais.length > 1 && l.valor_consulta != null ? `<div style="font-size:.8rem;margin-top:4px;font-weight:700;color:var(--primary-dark);">Consulta: ${reais(l.valor_consulta)}</div>` : ''}
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <a class="btn btn-ghost btn-sm" href="${p.clinica_slug ? '/clinica/' + p.clinica_slug : '/clinica.html?id=' + p.clinica_id}">Ver clínica</a>
-              ${p.clinica_telefone ? `<a class="btn btn-soft btn-sm" href="${wpp(p.clinica_telefone, 'Olá! Vim pelo PerFisio e gostaria de informações sobre a ' + p.clinica_nome + '.')}" target="_blank" rel="noopener">💬 Enviar mensagem</a>` : ''}
+              <a class="btn btn-ghost btn-sm" href="${l.slug ? '/clinica/' + l.slug : '/clinica.html?id=' + l.clinica_id}">Ver clínica</a>
+              ${l.telefone ? `<a class="btn btn-soft btn-sm" href="${wpp(l.telefone, 'Olá! Vim pelo PerFisio e gostaria de informações sobre a ' + l.nome + '.')}" target="_blank" rel="noopener">💬 Enviar mensagem</a>` : ''}
             </div>
-          </div>
+          </div>`).join('')}
         </div>
 
         <!-- REDES SOCIAIS E PLANOS -->
@@ -346,7 +357,7 @@
           <h2>Também na ${p.clinica_nome}</h2>
           <div class="colegas">
             ${p.colegas.map(c => `
-              <a class="colega" href="${c.slug ? '/fisioterapeuta/' + c.slug : '/fisio.html?id=' + c.id}">
+              <a class="colega" href="${c.url || (c.slug ? '/fisioterapeuta/' + c.slug : '/fisio.html?id=' + c.id)}">
                 <span class="av" style="background:${c.cor};">${c.nome.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase()}${c.tem_foto ? `<img src="/api/public/fisio-foto/${c.id}" alt="" loading="lazy" onerror="this.remove()">` : ''}</span>
                 <span><span class="n">${c.nome}</span><br><span class="s">${c.esp || ''}</span></span>
               </a>`).join('')}
@@ -492,7 +503,14 @@
     const HORAS = ['07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00'];
     const DWS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
     const MES3 = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-    let bkOcupados = new Set();      // 'YYYY-MM-DD|HH:MM'
+    let bkOcupados = [];             // { data, ini, fim } em minutos — de todas as clínicas onde atende
+    let bkLocal = null;              // ficha da clínica escolhida (quem atende em mais de um lugar)
+    const minDe = h => { const [a, b] = String(h).split(':').map(Number); return (a || 0) * 60 + (b || 0); };
+    const duracaoMin = d => {
+      const s = String(d || ''); const n = parseInt((s.match(/\d+/) || [])[0], 10);
+      if (!n) return 50;
+      return /h/i.test(s) && !/min/i.test(s) ? n * 60 : n;
+    };
     let bkInicio = 0;                // deslocamento da janela de 7 dias
     let bkData = null, bkHora = null;
     let bkModo = 'novo';             // 'novo' | 'remarcar'
@@ -504,18 +522,20 @@
     async function bkCarregarOcupados() {
       try {
         const r = await PF.api(`/api/public/agenda/${PRO.id}?from=${isoDia(0)}&to=${isoDia(90)}`);
-        bkOcupados = new Set(r.map(s => s.data + '|' + s.hora));
-      } catch (e) { bkOcupados = new Set(); }
+        bkOcupados = r.map(s => { const ini = minDe(s.hora); return { data: s.data, ini, fim: ini + duracaoMin(s.duracao) }; });
+      } catch (e) { bkOcupados = []; }
     }
 
     async function bkInit() {
+      if (!bkLocal) bkLocal = ((PRO.locais || [])[0] || {}).fisio_id || PRO.id;
       await bkCarregarOcupados();
       bkData = null; bkHora = null; bkInicio = 0;
       bkRender();
     }
 
     function bkLivre(data, hora) {
-      if (bkOcupados.has(data + '|' + hora)) return false;
+      const ini = minDe(hora); // a consulta dura 50 min: não pode encostar em nada já marcado
+      if (bkOcupados.some(o => o.data === data && o.ini < ini + 50 && ini < o.fim)) return false;
       const agora = new Date();
       if (data === agora.toISOString().slice(0, 10) && Number(hora.slice(0, 2)) <= agora.getHours()) return false;
       return true;
@@ -572,7 +592,15 @@
         }
       }
 
-      el.innerHTML = `${aviso}
+      const locais = PRO.locais || [];
+      const seletorLocal = bkModo === 'novo' && locais.length > 1 ? `
+        <div class="field" style="margin-bottom:14px;max-width:460px;">
+          <label>Onde você quer ser atendido?</label>
+          <select onchange="bkLocal=this.value;bkRender()">
+            ${locais.map(l => `<option value="${l.fisio_id}"${l.fisio_id === bkLocal ? ' selected' : ''}>${l.nome}${l.endereco ? ' — ' + l.endereco : ''}</option>`).join('')}
+          </select>
+        </div>` : '';
+      el.innerHTML = `${aviso}${seletorLocal}
         <div class="bk-dias">
           <button class="nav" onclick="bkNav(-7)" ${bkInicio === 0 ? 'disabled style="opacity:.3;"' : ''}>‹</button>
           <div class="bk-strip">${dias}</div>
@@ -604,7 +632,7 @@
       const btn = document.getElementById('bkBtn'); btn.disabled = true; btn.textContent = 'Agendando…';
       try {
         const r = await Conta.api('/api/public/agendar', {
-          fisio_id: PRO.id, data: bkData, hora: bkHora, semanas: 1, obs,
+          fisio_id: PRO.id, local: bkLocal, data: bkData, hora: bkHora, semanas: 1, obs,
         });
         document.getElementById('bkComponente').innerHTML = `
           <div class="bk-ok">

@@ -232,6 +232,48 @@ ALTER TABLE fisios ADD COLUMN IF NOT EXISTS instagram text;
 ALTER TABLE sessoes ADD COLUMN IF NOT EXISTS reserva text;
 ALTER TABLE fisios ADD COLUMN IF NOT EXISTS foto bytea;
 ALTER TABLE fisios ADD COLUMN IF NOT EXISTS foto_mime text;
+-- exclusão pelo superadmin é lógica: some de tudo, mas fica em "Excluídos" e pode voltar
+ALTER TABLE fisios ADD COLUMN IF NOT EXISTS excluido_em timestamptz;
+ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS excluida_em timestamptz;
+-- endereços antigos de quem trocou o username: redirecionam e nunca vão para outra pessoa
+CREATE TABLE IF NOT EXISTS fisio_slugs_antigos (
+  slug text PRIMARY KEY,
+  fisio_id uuid NOT NULL REFERENCES fisios(id) ON DELETE CASCADE,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+-- valor da consulta é de cada profissional (não da clínica)
+ALTER TABLE fisios ADD COLUMN IF NOT EXISTS valor_consulta numeric;
+-- pacotes/planos da clínica ligados ou desligados no perfil de cada profissional
+-- (sem linha = padrão: pacotes e planos aparecem, avulsas não)
+CREATE TABLE IF NOT EXISTS fisio_pacotes (
+  fisio_id uuid NOT NULL REFERENCES fisios(id) ON DELETE CASCADE,
+  pacote_id uuid NOT NULL REFERENCES pacotes(id) ON DELETE CASCADE,
+  ativo boolean NOT NULL,
+  PRIMARY KEY (fisio_id, pacote_id)
+);
+-- aproveita o "preço exibido" antigo (texto) como valor da consulta, uma vez
+DO $$ BEGIN
+  UPDATE fisios SET valor_consulta =
+    replace(replace(substring(preco from '[0-9]+(?:[.][0-9]{3})*(?:,[0-9]{1,2})?'), '.', ''), ',', '.')::numeric
+  WHERE valor_consulta IS NULL AND preco ~ '[0-9]';
+EXCEPTION WHEN others THEN RAISE NOTICE 'migração de valor_consulta ignorada: %', SQLERRM;
+END $$;
+-- profissional em mais de uma clínica: cada clínica tem a sua ficha (comissão, cor, pacientes)
+-- e as fichas da mesma pessoa compartilham pessoa_id — a agenda dela é a soma de todas
+ALTER TABLE fisios ADD COLUMN IF NOT EXISTS pessoa_id uuid NOT NULL DEFAULT gen_random_uuid();
+CREATE INDEX IF NOT EXISTS fisios_pessoa_idx ON fisios (pessoa_id);
+CREATE UNIQUE INDEX IF NOT EXISTS fisios_pessoa_clinica_uniq ON fisios (pessoa_id, clinica_id) WHERE excluido_em IS NULL;
+CREATE TABLE IF NOT EXISTS convites_clinica (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+  pessoa_id uuid NOT NULL,
+  email text NOT NULL,
+  convidado_por uuid REFERENCES usuarios(id) ON DELETE SET NULL,
+  status text NOT NULL DEFAULT 'pendente',
+  criado_em timestamptz NOT NULL DEFAULT now(),
+  respondido_em timestamptz
+);
+CREATE UNIQUE INDEX IF NOT EXISTS convites_pendente_uniq ON convites_clinica (clinica_id, pessoa_id) WHERE status = 'pendente';
 CREATE TABLE IF NOT EXISTS posts_sociais (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
@@ -268,7 +310,10 @@ async function slugUnico(tabela, nome, id) {
   const base = slugificar(nome) || tabela;
   let slug = base, n = 1;
   // acrescenta -2, -3... até achar um livre
-  while ((await pool.query(`SELECT 1 FROM ${tabela} WHERE slug=$1 AND id<>$2`, [slug, id])).rowCount)
+  // em fisios, o endereço antigo de outro profissional também está ocupado (ele redireciona para o dono)
+  const ocupado = async s => (await pool.query(`SELECT 1 FROM ${tabela} WHERE slug=$1 AND id<>$2`, [s, id])).rowCount > 0
+    || (tabela === 'fisios' && (await pool.query('SELECT 1 FROM fisio_slugs_antigos WHERE slug=$1', [s])).rowCount > 0);
+  while (await ocupado(slug))
     slug = `${base}-${++n}`;
   return slug;
 }
@@ -339,8 +384,9 @@ const HOSTS_SISTEMA = new Set(
   [HOST_APP, HOST_SITE, HOST_APEX, HOST_CURTO, `www.${HOST_CURTO}`,
    'localhost', '127.0.0.1', 'perfisio.com.br', 'www.perfisio.com.br'].filter(Boolean));
 const ehHostCurto = h => soHost(h) === HOST_CURTO || soHost(h) === `www.${HOST_CURTO}`;
-// para onde o CNAME das clínicas aponta: a página delas é conteúdo do site público
-const ALVO_CNAME = HOST_SITE || HOST_APP;
+// para onde o CNAME das clínicas aponta — fica no host do app, que é o domínio cadastrado no Railway
+// (ligar o SITE_HOST não pode mudar a instrução de DNS de quem já configurou)
+const ALVO_CNAME = HOST_APP;
 
 const soHost = h => String(h || '').split(':')[0].toLowerCase().replace(/\.$/, '');
 const hostDoSistema = h => HOSTS_SISTEMA.has(soHost(h)) || soHost(h).endsWith('.up.railway.app');
@@ -520,7 +566,214 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
 
 app.use(express.json({ limit: '12mb' })); // fotos de prontuário sobem em base64
 
+// respostas da API não são páginas: o Google pode buscá-las (as fotos precisam), mas não indexa o JSON
+app.use('/api/', (req, res, next) => {
+  if (!/foto|logo|galeria|imagem|capa/i.test(req.path)) res.setHeader('X-Robots-Tag', 'noindex');
+  next();
+});
+
 const sign = u => jwt.sign({ uid: u.id, cid: u.clinica_id, sa: !!u.superadmin }, JWT_SECRET, { expiresIn: '30d' });
+
+/* ---------- LIMITE DO PERFIL "FISIOTERAPEUTA" ----------
+   Ele acessa só duas coisas: a própria agenda (somente leitura) e o prontuário
+   dos pacientes dele (leitura e escrita). Todo o resto — financeiro, CRM,
+   marketing, equipe, configurações — responde 403. A interface esconde os
+   módulos, mas quem garante é isto aqui: o perfil vem do banco, não do token.   */
+const REGRAS_FISIO = [
+  { m: 'GET', re: /^\/api\/(me|clinica|fisios|pacotes|convenios)$/ },
+  { m: 'GET', re: /^\/api\/sessoes$/, agenda: true },              // trava no próprio fisio
+  { m: 'GET', re: /^\/api\/(pacientes|tratamentos|evolucoes)$/, escopo: true },
+  { m: 'GET', re: /^\/api\/anexos$/, pacienteEm: 'query' },
+  { m: 'GET', re: /^\/api\/anexos\/[\w-]+\/arquivo$/, dono: 'anexos', idNaPosicao: 3 },
+  { m: 'POST', re: /^\/api\/(evolucoes|anexos|tratamentos)$/, pacienteEm: 'body' },
+  // cadastra paciente e marca sessão — sempre no nome dele
+  { m: 'POST', re: /^\/api\/pacientes$/, forcarFisio: true },
+  { m: 'POST', re: /^\/api\/sessoes$/, forcarFisio: true, pacienteEm: 'body', pacienteOpcional: true },
+  // o próprio link curto (username)
+  { m: 'GET', re: /^\/api\/fisios\/slug-disponivel$/ },
+  { m: 'PUT', re: /^\/api\/fisios\/[\w-]+\/slug$/, proprioFisio: true },
+  { m: 'PUT', re: /^\/api\/(evolucoes|tratamentos)\/[\w-]+$/, dono: true },
+  { m: 'PUT', re: /^\/api\/pacientes\/[\w-]+$/, donoPaciente: true },
+  { m: 'DELETE', re: /^\/api\/(evolucoes|anexos)\/[\w-]+$/, dono: true },
+  // convites de outras clínicas e horários ocupados fora desta
+  { m: 'GET', re: /^\/api\/convites$/ },
+  { m: 'POST', re: /^\/api\/convites\/[\w-]+\/(aceitar|recusar)$/ },
+  { m: 'GET', re: /^\/api\/sessoes\/ocupadas$/, agenda: true },
+];
+
+/* ---------- PROFISSIONAL EM MAIS DE UMA CLÍNICA ----------
+   Cada clínica tem a sua ficha da pessoa; as fichas compartilham fisios.pessoa_id e o login é
+   um só. Fora da clínica de origem, a pessoa entra pelo cabeçalho X-Clinica (ou ?c= nas <img>)
+   e ali vale sempre o perfil fisioterapeuta, qualquer que seja o perfil dela em casa.        */
+const FICHA_VIVA = alias => `${alias}.excluido_em IS NULL`;
+async function vinculoNaClinica(fisioId, clinicaId) {
+  if (!fisioId || !/^[0-9a-f-]{36}$/i.test(String(clinicaId || ''))) return null;
+  const r = await pool.query(`
+    SELECT f.id FROM fisios eu
+    JOIN fisios f ON f.pessoa_id = eu.pessoa_id AND ${FICHA_VIVA('f')}
+    JOIN clinicas c ON c.id = f.clinica_id AND c.ativa AND c.excluida_em IS NULL
+    WHERE eu.id = $1 AND f.clinica_id = $2`, [fisioId, clinicaId]);
+  return r.rowCount ? r.rows[0].id : null;
+}
+async function vinculosDaPessoa(fisioId) {
+  if (!fisioId) return [];
+  const r = await pool.query(`
+    SELECT f.id AS fisio_id, f.clinica_id, c.nome AS clinica_nome, f.cor, f.ativo
+    FROM fisios eu
+    JOIN fisios f ON f.pessoa_id = eu.pessoa_id AND ${FICHA_VIVA('f')}
+    JOIN clinicas c ON c.id = f.clinica_id AND c.ativa AND c.excluida_em IS NULL
+    WHERE eu.id = $1 ORDER BY f.criado_em, f.id`, [fisioId]);
+  return r.rows;
+}
+// clínica pedida pelo navegador → { cid, fisio_id } ou null (é a de origem ou não pediu nada)
+async function contextoPedido(req, payload, fisioId) {
+  const pedida = req.headers['x-clinica'] || req.query.c;
+  if (!pedida || pedida === payload.cid) return null;
+  const fid = await vinculoNaClinica(fisioId, pedida);
+  return fid ? { cid: String(pedida), fisio_id: fid } : false;
+}
+
+// a agenda é da pessoa: a primeira sessão dela que encosta neste horário
+// (só nas outras clínicas — dentro da mesma, a recepção decide — ou em todas, com todasClinicas)
+const minutosDe = h => { const [a, b] = String(h || '').split(':').map(Number); return (a || 0) * 60 + (b || 0); };
+const duracaoEmMin = d => {
+  const s = String(d || ''); const n = parseInt((s.match(/\d+/) || [])[0], 10);
+  if (!n) return 50;
+  return /h/i.test(s) && !/min/i.test(s) ? n * 60 : n;
+};
+const diaISO = d => d instanceof Date ? d.toISOString().slice(0, 10) : String(d || '').slice(0, 10);
+async function choqueNaAgenda({ fisioId, data, hora, duracao, ignorar, todasClinicas }) {
+  if (!fisioId || !data || !hora) return null;
+  const r = await pool.query(`
+    SELECT s.hora, s.duracao FROM fisios eu
+    JOIN fisios f ON f.pessoa_id = eu.pessoa_id${todasClinicas ? '' : ' AND f.clinica_id <> eu.clinica_id'}
+    JOIN sessoes s ON s.fisio_id = f.id
+    WHERE eu.id = $1 AND s.data = $2::date AND s.status <> 'cancelada' AND s.id <> $3`,
+    [fisioId, diaISO(data), ignorar || '00000000-0000-0000-0000-000000000000']);
+  const ini = minutosDe(hora), fim = ini + duracaoEmMin(duracao);
+  return r.rows.find(s => { const i = minutosDe(s.hora); return i < fim && ini < i + duracaoEmMin(s.duracao); }) || null;
+}
+const avisoChoque = (data, hora) =>
+  `O profissional já tem atendimento em outra clínica em ${diaISO(data).split('-').reverse().join('/')} perto das ${String(hora).slice(0, 5)}. Escolha outro horário.`;
+
+// o perfil público é um só: fica na ficha mais antiga da pessoa
+const FICHA_DO_PERFIL = alias =>
+  `(SELECT g.id FROM fisios g WHERE g.pessoa_id = ${alias}.pessoa_id AND g.excluido_em IS NULL ORDER BY g.criado_em, g.id LIMIT 1)`;
+async function ehFichaDoPerfil(fisioId) {
+  const r = await pool.query(`SELECT f.id = ${FICHA_DO_PERFIL('f')} AS ok FROM fisios f WHERE f.id = $1`, [fisioId]);
+  return !r.rowCount || r.rows[0].ok !== false;
+}
+// colunas extras da lista da Equipe: em quantas outras clínicas atende, onde está o perfil, login próprio
+const vinculoFisioSQL = comLogin => `,
+  (SELECT count(*)::int FROM fisios o JOIN clinicas oc ON oc.id = o.clinica_id
+    WHERE o.pessoa_id = fisios.pessoa_id AND o.id <> fisios.id AND o.excluido_em IS NULL AND oc.excluida_em IS NULL) AS outras_clinicas,
+  (fisios.id = ${FICHA_DO_PERFIL('fisios')}) AS ficha_do_perfil,
+  (SELECT oc.nome FROM fisios o JOIN clinicas oc ON oc.id = o.clinica_id WHERE o.id = ${FICHA_DO_PERFIL('fisios')}) AS clinica_do_perfil
+  ${comLogin ? `, (SELECT u.email FROM usuarios u JOIN fisios o ON o.id = u.fisio_id
+      WHERE o.pessoa_id = fisios.pessoa_id AND o.clinica_id <> fisios.clinica_id LIMIT 1) AS login_de_fora` : ''}`;
+const cachePerfil = new Map(); // uid → { perfil, fisio_id, ate }
+
+async function perfilDoUsuario(uid) {
+  const guardado = cachePerfil.get(uid);
+  if (guardado && guardado.ate > Date.now()) return guardado;
+  const r = await pool.query(
+    `SELECT u.perfil, u.fisio_id, u.clinica_id, (f.excluido_em IS NOT NULL) AS excluido, (c.excluida_em IS NOT NULL) AS clinica_excluida
+     FROM usuarios u LEFT JOIN fisios f ON f.id = u.fisio_id LEFT JOIN clinicas c ON c.id = u.clinica_id
+     WHERE u.id=$1`, [uid]);
+  const dado = {
+    perfil: r.rows[0] ? r.rows[0].perfil : null,
+    fisio_id: r.rows[0] ? r.rows[0].fisio_id : null,
+    clinica_id: r.rows[0] ? r.rows[0].clinica_id : null,
+    excluido: r.rows[0] ? r.rows[0].excluido : false,
+    clinica_excluida: r.rows[0] ? r.rows[0].clinica_excluida : false,
+    ate: Date.now() + 30_000,
+  };
+  cachePerfil.set(uid, dado);
+  return dado;
+}
+const esquecerPerfil = uid => cachePerfil.delete(uid);
+
+const NADA = '00000000-0000-0000-0000-000000000000'; // sem ficha na equipe → agenda vazia
+
+/* "paciente dele" = a ficha está no nome dele ou ele já atendeu o paciente */
+const filtroPacienteDoFisio = (alias, i) =>
+  `(${alias}.fisio_id = $${i} OR EXISTS (SELECT 1 FROM sessoes s WHERE s.paciente_id = ${alias}.id AND s.fisio_id = $${i}))`;
+
+async function pacienteEhDoFisio(pacienteId, cid, fisioId) {
+  if (!pacienteId || !fisioId) return false;
+  const r = await pool.query(
+    `SELECT 1 FROM pacientes p WHERE p.id=$1 AND p.clinica_id=$2 AND ${filtroPacienteDoFisio('p', 3)}`,
+    [pacienteId, cid, fisioId]);
+  return r.rowCount > 0;
+}
+
+/* de qual paciente é esta linha? (evolucoes, tratamentos e anexos têm paciente_id) */
+async function pacienteDaLinha(tabela, id, cid) {
+  if (!['evolucoes', 'tratamentos', 'anexos'].includes(tabela)) return null;
+  const r = await pool.query(`SELECT paciente_id FROM ${tabela} WHERE id=$1 AND clinica_id=$2`, [id, cid]);
+  return r.rowCount ? r.rows[0].paciente_id : null;
+}
+
+app.use(async (req, res, next) => {
+  const rota = req.path;
+  if (!rota.startsWith('/api/')) return next();
+  if (rota.startsWith('/api/public/') || rota.startsWith('/api/conta/') || rota.startsWith('/api/auth/')) return next();
+  const h = req.headers.authorization || '';
+  const bruto = h.startsWith('Bearer ') ? h.slice(7) : req.query.t; // ?t= é usado pelas <img> do prontuário
+  if (!bruto) return next();
+  let p;
+  try { p = jwt.verify(bruto, JWT_SECRET); } catch { return next(); }
+  if (!p.uid || p.sa) return next();
+  let u = await perfilDoUsuario(p.uid);
+  // o login pode ter mudado de clínica (saiu da equipe de origem e seguiu na outra): vale o banco, não o token
+  if (u.clinica_id && u.clinica_id !== p.cid) { req.cidReal = u.clinica_id; p.cid = u.clinica_id; }
+  const contexto = await contextoPedido(req, p, u.fisio_id);
+  if (contexto === false) return res.status(403).json({ erro: 'Você não atende mais nesta clínica', codigo: 'sem_vinculo' });
+  if (contexto) {
+    // em outra clínica a pessoa é sempre "fisioterapeuta" dali, com a ficha dali
+    req.contexto = contexto;
+    p.cid = contexto.cid;
+    u = { ...u, perfil: 'fisio', fisio_id: contexto.fisio_id, excluido: false, clinica_excluida: false };
+  }
+  // clínica excluída pelo superadmin: todo mundo dela cai fora na próxima requisição
+  if (u.clinica_excluida) return res.status(401).json({ erro: 'Esta clínica foi desativada. Fale com o suporte do PerFisio.' });
+  if (u.perfil !== 'fisio') return next();
+  // profissional excluído pelo superadmin: a sessão que estava aberta cai na próxima requisição
+  if (u.excluido) return res.status(401).json({ erro: 'Seu acesso foi desativado. Fale com a clínica.' });
+
+  const fisio = u.fisio_id || NADA;
+  req.perfilFisio = true;
+  const regra = REGRAS_FISIO.find(r => r.m === req.method && r.re.test(rota));
+  if (!regra) return res.status(403).json({
+    erro: req.method === 'GET'
+      ? 'Seu acesso é limitado à sua agenda e aos prontuários dos seus pacientes'
+      : 'Seu perfil não pode fazer esta alteração',
+  });
+
+  if (regra.agenda) req.query.fisio_id = fisio; // agenda travada no próprio, filtro adulterado não passa
+  if (regra.escopo) req.escopoFisio = fisio;    // o CRUD genérico filtra pelos pacientes dele
+  if (regra.donoPaciente && req.body)           // pode corrigir a ficha, não remanejar nem mexer em pacote
+    ['fisio_id', 'pacote_nome', 'sessoes_total', 'sessoes_feitas'].forEach(c => delete req.body[c]);
+
+  if (regra.forcarFisio && req.body) req.body.fisio_id = fisio; // nada de agendar no nome do colega
+
+  const negar = () => res.status(403).json({ erro: 'Este paciente não é seu' });
+  if (regra.pacienteEm) {
+    const pid = regra.pacienteEm === 'query' ? req.query.paciente_id : (req.body || {}).paciente_id;
+    const podeSemPaciente = regra.pacienteOpcional && !pid; // bloqueio de horário / turma
+    if (!podeSemPaciente && !await pacienteEhDoFisio(pid, p.cid, fisio)) return negar();
+  }
+  const partes = rota.split('/'); // ['', 'api', tabela, id, ...]
+  if (regra.proprioFisio && partes[3] !== fisio)
+    return res.status(403).json({ erro: 'Você só pode editar o seu próprio link' });
+  if (regra.donoPaciente && !await pacienteEhDoFisio(partes[3], p.cid, fisio)) return negar();
+  if (regra.dono) {
+    const tabela = typeof regra.dono === 'string' ? regra.dono : partes[2];
+    const pid = await pacienteDaLinha(tabela, partes[regra.idNaPosicao || 3], p.cid);
+    if (!await pacienteEhDoFisio(pid, p.cid, fisio)) return negar();
+  }
+  next();
+});
 
 function auth(req, res, next) {
   const h = req.headers.authorization || '';
@@ -530,7 +783,10 @@ function auth(req, res, next) {
     const p = jwt.verify(token, JWT_SECRET);
     // conta de paciente não acessa o sistema da clínica
     if (p.tipo === 'conta') return res.status(403).json({ erro: 'Esta conta é de paciente' });
-    req.auth = p; next();
+    // outra clínica da mesma pessoa, ou login que mudou de clínica depois de emitido o token
+    const cid = req.contexto ? req.contexto.cid : req.cidReal;
+    req.auth = cid ? { ...p, cid } : p;
+    next();
   } catch { return res.status(401).json({ erro: 'Sessão expirada' }); }
 }
 
@@ -622,7 +878,7 @@ app.post('/api/conta/google', async (req, res) => {
 app.get('/api/public/qrcode/:slug.svg', async (req, res) => {
   const f = await acharFisioPublico(req.params.slug);
   if (!f) return res.status(404).send('<svg xmlns="http://www.w3.org/2000/svg"/>');
-  const alvo = `https://${HOST_CURTO}/${req.params.slug}`;
+  const alvo = `https://${HOST_CURTO}/${f.slug || req.params.slug}`; // sempre o username atual
   const svg = await require('qrcode').toString(alvo, {
     type: 'svg', margin: 1, errorCorrectionLevel: 'M',
     color: { dark: '#0F2A2E', light: '#FFFFFF' },
@@ -839,16 +1095,26 @@ app.post('/api/auth/login', async (req, res) => {
   const u = r.rows[0];
   if (!u || !bcrypt.compareSync(senha || '', u.senha_hash)) return res.status(401).json({ erro: 'E-mail ou senha inválidos' });
   if (!u.superadmin && u.clinica_ativa === false) return res.status(403).json({ erro: 'Clínica desativada. Fale com o suporte do PerFisio.' });
+  if (u.perfil === 'fisio' && u.fisio_id) {
+    const f = await pool.query('SELECT excluido_em FROM fisios WHERE id=$1', [u.fisio_id]);
+    if (f.rowCount && f.rows[0].excluido_em) return res.status(403).json({ erro: 'Seu acesso foi desativado. Fale com a clínica.' });
+  }
   pool.query('UPDATE usuarios SET ultimo_acesso=now() WHERE id=$1', [u.id]).catch(() => {});
-  res.json({ token: sign(u), usuario: { id: u.id, clinica_id: u.clinica_id, nome: u.nome, email: u.email, perfil: u.perfil, clinica_nome: u.clinica_nome, superadmin: u.superadmin, email_verificado: u.email_verificado } });
+  res.json({ token: sign(u), usuario: { id: u.id, clinica_id: u.clinica_id, nome: u.nome, email: u.email, perfil: u.perfil, fisio_id: u.fisio_id, clinica_nome: u.clinica_nome, superadmin: u.superadmin, email_verificado: u.email_verificado } });
 });
 
 app.get('/api/me', auth, async (req, res) => {
   const r = await pool.query(
-    `SELECT u.id, u.clinica_id, u.nome, u.email, u.perfil, u.superadmin, u.email_verificado, c.nome AS clinica_nome FROM usuarios u LEFT JOIN clinicas c ON c.id=u.clinica_id WHERE u.id=$1`,
+    `SELECT u.id, u.clinica_id, u.nome, u.email, u.perfil, u.fisio_id, u.superadmin, u.email_verificado, c.nome AS clinica_nome FROM usuarios u LEFT JOIN clinicas c ON c.id=u.clinica_id WHERE u.id=$1`,
     [req.auth.uid]);
   if (!r.rowCount) return res.status(401).json({ erro: 'Usuário não encontrado' });
-  res.json(r.rows[0]);
+  const eu = { ...r.rows[0], clinica_origem: r.rows[0].clinica_id };
+  eu.vinculos = await vinculosDaPessoa(eu.fisio_id);
+  if (req.contexto) { // visto de outra clínica: dados de lá, perfil fisioterapeuta
+    const v = eu.vinculos.find(x => x.clinica_id === req.contexto.cid);
+    Object.assign(eu, { clinica_id: v.clinica_id, clinica_nome: v.clinica_nome, perfil: 'fisio', fisio_id: v.fisio_id });
+  }
+  res.json(eu);
 });
 
 /* ---------- CLÍNICA (config + perfil público) ---------- */
@@ -874,18 +1140,450 @@ app.put('/api/clinica', auth, async (req, res) => {
 
 /* ---------- USUÁRIOS ---------- */
 app.get('/api/usuarios', auth, async (req, res) => {
-  const r = await pool.query('SELECT id, nome, email, perfil, ultimo_acesso, criado_em FROM usuarios WHERE clinica_id=$1 ORDER BY criado_em', [req.auth.cid]);
+  const r = await pool.query(
+    `SELECT u.id, u.nome, u.email, u.perfil, u.fisio_id, f.nome AS fisio_nome, u.ultimo_acesso, u.criado_em
+     FROM usuarios u LEFT JOIN fisios f ON f.id = u.fisio_id AND f.clinica_id = u.clinica_id
+     WHERE u.clinica_id=$1 ORDER BY u.criado_em`, [req.auth.cid]);
   res.json(r.rows);
 });
 app.post('/api/usuarios', auth, async (req, res) => {
-  const { nome, email, senha, perfil } = req.body || {};
+  const { nome, email, senha, perfil, fisio_id } = req.body || {};
   if (!nome || !email || !senha) return res.status(400).json({ erro: 'Preencha nome, e-mail e senha' });
+  let fid = null;
+  if (fisio_id) {
+    const f = await pool.query('SELECT id FROM fisios WHERE id=$1 AND clinica_id=$2', [fisio_id, req.auth.cid]);
+    if (!f.rowCount) return res.status(400).json({ erro: 'Profissional não encontrado' });
+    const ja = await pool.query('SELECT 1 FROM usuarios WHERE fisio_id=$1', [fisio_id]);
+    if (ja.rowCount) return res.status(409).json({ erro: 'Este profissional já tem um acesso vinculado' });
+    fid = fisio_id;
+  }
+  const papel = perfil || 'fisio';
+  const client = await pool.connect();
   try {
-    const r = await pool.query(
-      'INSERT INTO usuarios (clinica_id,nome,email,senha_hash,perfil) VALUES ($1,$2,$3,$4,$5) RETURNING id, nome, email, perfil',
-      [req.auth.cid, nome, email.toLowerCase(), bcrypt.hashSync(senha, 10), perfil || 'fisio']);
-    res.json(r.rows[0]);
-  } catch { res.status(409).json({ erro: 'E-mail já cadastrado' }); }
+    await client.query('BEGIN');
+    const r = await client.query(
+      // criado pelo gestor da clínica: já entra verificado, sem o aviso de confirmar e-mail
+      `INSERT INTO usuarios (clinica_id,nome,email,senha_hash,perfil,fisio_id,email_verificado,verificado_em)
+       VALUES ($1,$2,$3,$4,$5,$6,true,now()) RETURNING id, nome, email, perfil, fisio_id`,
+      [req.auth.cid, nome, email.toLowerCase(), bcrypt.hashSync(senha, 10), papel, fid]);
+    const u = r.rows[0];
+    /* usuário com perfil de fisioterapeuta também entra na Equipe — senão ele
+       teria login mas nenhuma ficha, agenda ou comissão                        */
+    if (papel === 'fisio' && !fid) {
+      u.fisio_id = await criarFichaFisio(client, req.auth.cid, u.id, nome);
+      u.fisio_criado = true;
+    }
+    await client.query('COMMIT');
+    if (u.fisio_criado) await preencherSlugs();
+    res.json(u);
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    res.status(409).json({ erro: 'E-mail já cadastrado' });
+  } finally { client.release(); }
+});
+
+const CORES_FISIO = ['#0DA189', '#2D7DD2', '#7C5CBF', '#D9820B', '#C2456B'];
+/* cria a ficha do profissional na Equipe e amarra ao usuário que acabou de nascer */
+async function criarFichaFisio(exec, cid, usuarioId, nome) {
+  const f = await exec.query(
+    'INSERT INTO fisios (clinica_id, nome, cor, ativo) VALUES ($1,$2,$3,true) RETURNING id',
+    [cid, nome, CORES_FISIO[Math.floor(Math.random() * CORES_FISIO.length)]]);
+  await exec.query('UPDATE usuarios SET fisio_id=$2 WHERE id=$1', [usuarioId, f.rows[0].id]);
+  esquecerPerfil(usuarioId);
+  return f.rows[0].id;
+}
+
+/* ---------- ACESSO DO PROFISSIONAL (usuários & permissões) ----------
+   Todo fisioterapeuta cadastrado com e-mail vira também um usuário do sistema,
+   com perfil "fisio" e vinculado ao seu registro na equipe — assim ele entra
+   no app e cai direto na própria agenda.                                      */
+const ALFABETO_SENHA = 'abcdefghjkmnpqrstuvwxyz23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+const senhaProvisoria = (n = 8) =>
+  [...crypto.randomBytes(n)].map(b => ALFABETO_SENHA[b % ALFABETO_SENHA.length]).join('');
+
+const EMAIL_OK = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+function erroHttp(status, msg) { const e = new Error(msg); e.status = status; return e; }
+
+/* cria (ou atualiza) o login do profissional. `exec` é o pool ou um client de transação */
+async function darAcessoAoFisio(exec, { cid, fisioId, nome, email, senha }) {
+  const mail = String(email || '').trim().toLowerCase();
+  if (!EMAIL_OK.test(mail)) throw erroHttp(400, 'Informe um e-mail de acesso válido');
+  if (senha && String(senha).length < 6) throw erroHttp(400, 'A senha provisória precisa de pelo menos 6 caracteres');
+
+  const atual = (await exec.query(
+    'SELECT id, email, perfil FROM usuarios WHERE fisio_id=$1 AND clinica_id=$2 LIMIT 1', [fisioId, cid])).rows[0];
+  const emUso = (await exec.query('SELECT id FROM usuarios WHERE email=$1', [mail])).rows[0];
+  if (emUso && (!atual || emUso.id !== atual.id))
+    throw erroHttp(409, 'Este e-mail já está em uso por outro usuário do sistema');
+
+  const nova = senha || (atual ? null : senhaProvisoria());
+
+  if (atual) {
+    await exec.query(
+      `UPDATE usuarios SET email=$2, nome=COALESCE($3, nome),
+       senha_hash=COALESCE($4, senha_hash), email_verificado=true, verificado_em=COALESCE(verificado_em, now())
+       WHERE id=$1`,
+      [atual.id, mail, nome || null, nova ? bcrypt.hashSync(nova, 10) : null]);
+    esquecerPerfil(atual.id);
+    return { criado: false, usuario_id: atual.id, email: mail, senha: nova, perfil: atual.perfil };
+  }
+
+  const r = await exec.query(
+    `INSERT INTO usuarios (clinica_id, nome, email, senha_hash, perfil, fisio_id, email_verificado, verificado_em)
+     VALUES ($1,$2,$3,$4,'fisio',$5,true,now()) RETURNING id`,
+    [cid, nome || mail, mail, bcrypt.hashSync(nova, 10), fisioId]);
+  return { criado: true, usuario_id: r.rows[0].id, email: mail, senha: nova, perfil: 'fisio' };
+}
+
+/* rota específica: precisa vir ANTES do CRUD genérico /api/:table */
+// cidade do profissional só entra se for um município do IBGE, gravada como "Cidade/UF"
+// (é dela que saem os endereços /fisioterapeuta-{cidade}/{username})
+const MUNICIPIOS = (() => {
+  const lista = JSON.parse(require('fs').readFileSync(path.join(__dirname, '..', 'assets', 'data', 'municipios-br.json'), 'utf8'));
+  const chave = s => String(s || '').normalize('NFD').replace(new RegExp("[" + String.fromCharCode(0x300) + "-" + String.fromCharCode(0x36f) + "]", "g"), '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const mapa = new Map();
+  for (const uf in lista) for (const nome of lista[uf]) mapa.set(`${chave(nome)}|${uf}`, `${nome}/${uf}`);
+  return { chave, mapa };
+})();
+function normalizarCidade(bruto) {
+  const txt = String(bruto == null ? '' : bruto).trim();
+  if (!txt) return null;
+  const m = txt.match(/^(.*?)\s*[\/,\-–]\s*([A-Za-z]{2})$/);
+  const achada = m && MUNICIPIOS.mapa.get(`${MUNICIPIOS.chave(m[1])}|${m[2].toUpperCase()}`);
+  if (!achada) throw new Error('Escolha o estado e a cidade na lista');
+  return achada;
+}
+app.use((req, res, next) => {
+  if (!['POST', 'PUT'].includes(req.method) || !/^\/api\/(admin\/)?fisios(\/[\w-]+)?$/.test(req.path)) return next();
+  if (!req.body || req.body.cidade === undefined) return next();
+  try { req.body.cidade = normalizarCidade(req.body.cidade); next(); }
+  catch (e) { res.status(400).json({ erro: e.message }); }
+});
+
+app.post('/api/fisios', auth, async (req, res) => {
+  if (!req.body || !String(req.body.nome || '').trim())
+    return res.status(400).json({ erro: 'Informe o nome do profissional' });
+  const cols = TABLES.fisios.filter(c => req.body[c] !== undefined);
+  const vals = cols.map(c => req.body[c] === '' ? null : req.body[c]);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const novo = await client.query(
+      `INSERT INTO fisios (clinica_id, ${cols.join(',')}) VALUES ($1, ${cols.map((_, i) => `$${i + 2}`).join(',')}) RETURNING id`,
+      [req.auth.cid, ...vals]);
+    const id = novo.rows[0].id;
+    let acesso = null;
+    if (String(req.body.email || '').trim())
+      acesso = await darAcessoAoFisio(client, {
+        cid: req.auth.cid, fisioId: id, nome: req.body.nome, email: req.body.email, senha: req.body.senha,
+      });
+    await client.query('COMMIT');
+    await preencherSlugs();
+    const f = await pool.query(`SELECT ${SELECT_COLS.fisios} FROM fisios WHERE id=$1`, [id]);
+    res.json({ ...f.rows[0], acesso });
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    if (!e.status) console.error(e);
+    res.status(e.status || 400).json({ erro: e.status ? e.message : 'Dados inválidos' });
+  } finally { client.release(); }
+});
+
+app.post('/api/fisios/:id/acesso', auth, async (req, res) => {
+  const f = (await pool.query('SELECT id, nome FROM fisios WHERE id=$1 AND clinica_id=$2',
+    [req.params.id, req.auth.cid])).rows[0];
+  if (!f) return res.status(404).json({ erro: 'Profissional não encontrado' });
+  // quem atende em mais de uma clínica tem um login só, cuidado pela clínica de onde ele veio
+  const deFora = await pool.query(`
+    SELECT 1 FROM fisios eu JOIN fisios o ON o.pessoa_id = eu.pessoa_id AND o.id <> eu.id
+    JOIN usuarios u ON u.fisio_id = o.id WHERE eu.id = $1 LIMIT 1`, [f.id]);
+  if (deFora.rowCount) return res.status(400).json({ erro: 'Este profissional já tem login próprio no PerFisio — ele usa o mesmo acesso em todas as clínicas' });
+  try {
+    const acesso = await darAcessoAoFisio(pool, {
+      cid: req.auth.cid, fisioId: f.id, nome: f.nome,
+      email: (req.body || {}).email, senha: (req.body || {}).senha,
+    });
+    res.json(acesso);
+  } catch (e) {
+    if (!e.status) console.error(e);
+    res.status(e.status || 400).json({ erro: e.status ? e.message : 'Não foi possível criar o acesso' });
+  }
+});
+
+app.delete('/api/fisios/:id/acesso', auth, async (req, res) => {
+  const u = (await pool.query('SELECT id, perfil FROM usuarios WHERE fisio_id=$1 AND clinica_id=$2',
+    [req.params.id, req.auth.cid])).rows[0];
+  if (!u) return res.json({ ok: true, removido: false });
+  if (u.id === req.auth.uid) return res.status(400).json({ erro: 'Você não pode remover o seu próprio acesso' });
+  if (u.perfil === 'gestor') return res.status(400).json({ erro: 'Este acesso é de um gestor — remova em Configurações → Usuários' });
+  const outras = await pool.query(`
+    SELECT 1 FROM fisios eu JOIN fisios o ON o.pessoa_id = eu.pessoa_id AND o.id <> eu.id AND o.excluido_em IS NULL
+    WHERE eu.id = $1 LIMIT 1`, [req.params.id]);
+  if (outras.rowCount) return res.status(400).json({
+    erro: 'Este profissional também atende em outra clínica com este login. Para desligá-lo daqui, exclua-o da equipe — o acesso às outras clínicas continua.',
+  });
+  await pool.query('DELETE FROM usuarios WHERE id=$1 AND clinica_id=$2', [u.id, req.auth.cid]);
+  res.json({ ok: true, removido: true });
+});
+
+/* ---------- USERNAME DO PROFISSIONAL (perfis.io/username) ----------
+   O próprio profissional, a clínica ou o superadmin podem trocar o endereço. O antigo
+   nunca é liberado para outra pessoa: vira apelido e redireciona para o novo — assim
+   cartão de visita e cartaz com QR code já impressos continuam levando ao lugar certo. */
+const SLUGS_RESERVADOS = new Set(['api', 'assets', 'admin', 'app', 'www', 'login', 'entrar', 'sair', 'cadastro', 'registro',
+  'conta', 'contas', 'perfisio', 'perfis', 'perfil', 'perfil-curto', 'fisioterapeuta', 'fisioterapeutas', 'fisio', 'clinica',
+  'clinicas', 'blog', 'planos', 'precos', 'agenda', 'agendar', 'reserva', 'reservas', 'suporte', 'ajuda', 'contato', 'sobre',
+  'termos', 'privacidade', 'sitemap', 'robots', 'favicon', 'verificar-email', 'cidade', 'cidades', 'busca', 'buscar', 'site',
+  'novo', 'nova', 'editar', 'config', 'configuracoes', 'dashboard']);
+
+function validarUsername(bruto) {
+  const s = String(bruto || '').trim().toLowerCase();
+  if (s.length < 3 || s.length > 40) return { erro: 'Use de 3 a 40 caracteres' };
+  if (!/^[a-z0-9-]+$/.test(s)) return { erro: 'Use só letras sem acento, números e hífen' };
+  if (s.startsWith('-') || s.endsWith('-') || s.includes('--')) return { erro: 'O hífen não pode ficar no começo, no fim nem repetido' };
+  if (SLUGS_RESERVADOS.has(s)) return { erro: 'Este endereço é reservado pelo PerFisio' };
+  return { slug: s };
+}
+
+// por que este endereço não pode ser deste profissional (null = pode)
+async function slugIndisponivel(bruto, fisioId) {
+  const v = validarUsername(bruto);
+  if (v.erro) return v.erro;
+  if ((await pool.query('SELECT 1 FROM fisios WHERE slug=$1 AND id<>$2', [v.slug, fisioId])).rowCount)
+    return 'Este endereço já está em uso';
+  const apelido = (await pool.query('SELECT fisio_id FROM fisio_slugs_antigos WHERE slug=$1', [v.slug])).rows[0];
+  if (apelido && apelido.fisio_id !== fisioId) return 'Este endereço já está em uso';
+  return null;
+}
+
+async function trocarSlugFisio(fisioId, bruto, cid) {
+  const v = validarUsername(bruto);
+  if (v.erro) throw erroHttp(400, v.erro);
+  const f = (await pool.query(
+    `SELECT id, slug FROM fisios WHERE id=$1 AND excluido_em IS NULL${cid ? ' AND clinica_id=$2' : ''}`,
+    cid ? [fisioId, cid] : [fisioId])).rows[0];
+  if (!f) throw erroHttp(404, 'Profissional não encontrado');
+  if (f.slug === v.slug) return { slug: v.slug, mudou: false };
+  const motivo = await slugIndisponivel(v.slug, f.id);
+  if (motivo) throw erroHttp(409, motivo);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM fisio_slugs_antigos WHERE slug=$1 AND fisio_id=$2', [v.slug, f.id]); // retomou um antigo
+    if (f.slug) await client.query(
+      'INSERT INTO fisio_slugs_antigos (slug, fisio_id) VALUES ($1,$2) ON CONFLICT (slug) DO NOTHING', [f.slug, f.id]);
+    await client.query('UPDATE fisios SET slug=$2 WHERE id=$1', [f.id, v.slug]);
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    if (e.code === '23505') throw erroHttp(409, 'Este endereço já está em uso');
+    throw e;
+  } finally { client.release(); }
+  return { slug: v.slug, mudou: true, anterior: f.slug };
+}
+
+// endereço antigo → endereço atual do mesmo profissional
+async function slugAtualPorApelido(slug) {
+  const r = await pool.query(
+    'SELECT f.slug FROM fisio_slugs_antigos a JOIN fisios f ON f.id = a.fisio_id WHERE a.slug=$1', [String(slug || '')]);
+  return r.rowCount ? r.rows[0].slug : null;
+}
+
+app.get('/api/fisios/slug-disponivel', auth, async (req, res) => {
+  const motivo = await slugIndisponivel(req.query.slug, req.query.id || NADA);
+  res.json({ disponivel: !motivo, motivo, slug: String(req.query.slug || '').trim().toLowerCase() });
+});
+
+app.put('/api/fisios/:id/slug', auth, async (req, res) => {
+  try { res.json(await trocarSlugFisio(req.params.id, (req.body || {}).slug, req.auth.cid)); }
+  catch (e) { if (!e.status) throw e; res.status(e.status).json({ erro: e.message }); }
+});
+
+/* ---------- PACOTES DA CLÍNICA NO PERFIL DO PROFISSIONAL ----------
+   A clínica cria pacotes e planos (Financeiro → Pacotes & Planos); cada profissional liga ou
+   desliga os que oferece. Sem escolha salva vale o padrão: pacotes e planos aparecem, avulsas
+   não — a consulta individual do perfil usa o valor da consulta do próprio profissional. */
+const PACOTE_ATIVO_SQL = `COALESCE(fp.ativo, p.tipo <> 'avulsa')`;
+
+app.get('/api/fisios/:id/pacotes', auth, async (req, res) => {
+  const f = await pool.query('SELECT id FROM fisios WHERE id=$1 AND clinica_id=$2', [req.params.id, req.auth.cid]);
+  if (!f.rowCount) return res.status(404).json({ erro: 'Profissional não encontrado' });
+  const r = await pool.query(`
+    SELECT p.id, p.nome, p.descricao, p.valor, p.sessoes, p.tipo, ${PACOTE_ATIVO_SQL} AS ativo
+    FROM pacotes p LEFT JOIN fisio_pacotes fp ON fp.pacote_id = p.id AND fp.fisio_id = $2
+    WHERE p.clinica_id = $1 ORDER BY p.valor`, [req.auth.cid, req.params.id]);
+  res.json(r.rows.map(x => ({ ...x, valor: Number(x.valor) })));
+});
+
+app.put('/api/fisios/:id/pacotes', auth, async (req, res) => {
+  const ativos = new Set(Array.isArray((req.body || {}).ativos) ? req.body.ativos.map(String) : []);
+  const f = await pool.query('SELECT id FROM fisios WHERE id=$1 AND clinica_id=$2', [req.params.id, req.auth.cid]);
+  if (!f.rowCount) return res.status(404).json({ erro: 'Profissional não encontrado' });
+  const pacs = await pool.query('SELECT id FROM pacotes WHERE clinica_id=$1', [req.auth.cid]);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const p of pacs.rows)
+      await client.query(
+        `INSERT INTO fisio_pacotes (fisio_id, pacote_id, ativo) VALUES ($1,$2,$3)
+         ON CONFLICT (fisio_id, pacote_id) DO UPDATE SET ativo = EXCLUDED.ativo`,
+        [req.params.id, p.id, ativos.has(p.id)]);
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw e;
+  } finally { client.release(); }
+  res.json({ ok: true, ativos: pacs.rows.filter(p => ativos.has(p.id)).length, total: pacs.rowCount });
+});
+
+/* exclusão do profissional: solta o vínculo do login antes de apagar.
+   Se a pessoa atende em outras clínicas, sai só desta: o login passa a apontar para a ficha de
+   outra clínica e, se esta ficha era a do perfil público, endereço, foto e textos vão junto.   */
+const CAMPOS_PERFIL = ['publico', 'especialidades', 'domiciliar', 'bairro', 'cidade', 'lat', 'lng', 'bio',
+  'whatsapp', 'tratamentos', 'regioes', 'instagram', 'foto', 'foto_mime'];
+app.delete('/api/fisios/:id', auth, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const f = (await client.query('SELECT * FROM fisios WHERE id=$1 AND clinica_id=$2 FOR UPDATE',
+      [req.params.id, req.auth.cid])).rows[0];
+    if (!f) { await client.query('ROLLBACK'); return res.json({ ok: false }); }
+    const vivas = (await client.query(
+      'SELECT id, clinica_id FROM fisios WHERE pessoa_id=$1 AND excluido_em IS NULL ORDER BY criado_em, id', [f.pessoa_id])).rows;
+    const outras = vivas.filter(x => x.id !== f.id);
+    if (outras.length) {
+      const herdeira = outras[0];
+      if (vivas[0].id === f.id) {
+        await client.query('UPDATE fisios SET slug=NULL WHERE id=$1', [f.id]);
+        await client.query(
+          `UPDATE fisios SET slug=$2, ${CAMPOS_PERFIL.map((c, i) => `${c}=$${i + 3}`).join(', ')} WHERE id=$1`,
+          [herdeira.id, f.slug, ...CAMPOS_PERFIL.map(c => f[c])]);
+        await client.query('UPDATE fisio_slugs_antigos SET fisio_id=$2 WHERE fisio_id=$1', [f.id, herdeira.id]);
+        await client.query('UPDATE fisio_fotos SET fisio_id=$2 WHERE fisio_id=$1', [f.id, herdeira.id]);
+      }
+      const logins = (await client.query('SELECT id, perfil FROM usuarios WHERE fisio_id=$1', [f.id])).rows;
+      for (const u of logins) {
+        if (u.perfil === 'fisio') // o login do fisioterapeuta muda de casa
+          await client.query('UPDATE usuarios SET fisio_id=$2, clinica_id=$3 WHERE id=$1', [u.id, herdeira.id, herdeira.clinica_id]);
+        else // gestor/recepção continua na clínica dele, ligado à ficha que sobrou
+          await client.query('UPDATE usuarios SET fisio_id=$2 WHERE id=$1', [u.id, herdeira.id]);
+        esquecerPerfil(u.id);
+      }
+    } else {
+      const soltos = await client.query(
+        'UPDATE usuarios SET fisio_id=NULL WHERE fisio_id=$1 AND clinica_id=$2 RETURNING id', [f.id, req.auth.cid]);
+      soltos.rows.forEach(u => esquecerPerfil(u.id));
+    }
+    const r = await client.query('DELETE FROM fisios WHERE id=$1 AND clinica_id=$2', [f.id, req.auth.cid]);
+    await client.query('COMMIT');
+    res.json({ ok: r.rowCount > 0, continua_em: outras.length });
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw e;
+  } finally { client.release(); }
+});
+
+/* ---------- CONVITE: profissional que já atende em outra clínica ----------
+   A clínica convida pelo e-mail de login; a pessoa aceita no app dela. Ao aceitar nasce a
+   ficha desta clínica (sem perfil público próprio) ligada às outras pelo pessoa_id.          */
+app.get('/api/fisios/convites', auth, async (req, res) => {
+  const r = await pool.query(`
+    SELECT cv.id, cv.email, cv.status, cv.criado_em, cv.respondido_em,
+      (SELECT f.nome FROM fisios f WHERE f.pessoa_id = cv.pessoa_id ORDER BY f.criado_em LIMIT 1) AS nome
+    FROM convites_clinica cv
+    WHERE cv.clinica_id = $1 AND (cv.status = 'pendente' OR cv.respondido_em > now() - interval '15 days')
+    ORDER BY cv.criado_em DESC`, [req.auth.cid]);
+  res.json(r.rows);
+});
+
+app.post('/api/fisios/convites', auth, async (req, res) => {
+  const mail = String((req.body || {}).email || '').trim().toLowerCase();
+  if (!EMAIL_OK.test(mail)) return res.status(400).json({ erro: 'Informe o e-mail que o profissional usa para entrar no PerFisio' });
+  const alvo = (await pool.query(`
+    SELECT f.pessoa_id, f.nome FROM usuarios u
+    JOIN fisios f ON f.id = u.fisio_id AND f.excluido_em IS NULL
+    WHERE u.email = $1 AND NOT u.superadmin`, [mail])).rows[0];
+  if (!alvo) return res.status(404).json({
+    erro: 'Nenhum fisioterapeuta com login no PerFisio usa este e-mail. Se ele ainda não tem conta, cadastre em "+ Novo profissional".',
+  });
+  const ja = await pool.query('SELECT 1 FROM fisios WHERE pessoa_id=$1 AND clinica_id=$2 AND excluido_em IS NULL',
+    [alvo.pessoa_id, req.auth.cid]);
+  if (ja.rowCount) return res.status(409).json({ erro: `${alvo.nome} já faz parte da sua equipe` });
+  const r = await pool.query(
+    `INSERT INTO convites_clinica (clinica_id, pessoa_id, email, convidado_por) VALUES ($1,$2,$3,$4)
+     ON CONFLICT (clinica_id, pessoa_id) WHERE status = 'pendente' DO NOTHING RETURNING id`,
+    [req.auth.cid, alvo.pessoa_id, mail, req.auth.uid]);
+  if (!r.rowCount) return res.status(409).json({ erro: `Já existe um convite esperando a resposta de ${alvo.nome}` });
+  const clinica = (await pool.query('SELECT nome FROM clinicas WHERE id=$1', [req.auth.cid])).rows[0];
+  let email_enviado = false;
+  try {
+    const envio = await enviarEmail({
+      para: mail,
+      assunto: `${clinica.nome} convidou você para a equipe no PerFisio`,
+      html: `<p>Olá, ${esc(alvo.nome.split(' ')[0])}!</p>
+        <p><b>${esc(clinica.nome)}</b> quer ter você na equipe pelo PerFisio.</p>
+        <p>Sua agenda continua uma só: você vê os atendimentos de todas as clínicas juntos, e cada clínica
+        enxerga apenas os próprios pacientes — dos outros horários, só que estão ocupados.</p>
+        <p><a href="${urlBase(req)}/login.html">Entre no PerFisio</a> para aceitar ou recusar o convite.</p>`,
+    });
+    email_enviado = !!(envio && envio.enviado !== false);
+  } catch (e) { console.error('convite: e-mail não enviado —', e.message); }
+  res.json({ ok: true, id: r.rows[0].id, nome: alvo.nome, email_enviado });
+});
+
+app.delete('/api/fisios/convites/:id', auth, async (req, res) => {
+  const r = await pool.query(
+    `UPDATE convites_clinica SET status='cancelado', respondido_em=now() WHERE id=$1 AND clinica_id=$2 AND status='pendente'`,
+    [req.params.id, req.auth.cid]);
+  res.json({ ok: r.rowCount > 0 });
+});
+
+// lado do profissional: convites pendentes para a pessoa deste login
+app.get('/api/convites', auth, async (req, res) => {
+  const r = await pool.query(`
+    SELECT cv.id, cv.criado_em, c.nome AS clinica_nome, c.endereco AS clinica_endereco, quem.nome AS convidado_por
+    FROM convites_clinica cv
+    JOIN clinicas c ON c.id = cv.clinica_id AND c.ativa AND c.excluida_em IS NULL
+    JOIN usuarios u ON u.id = $1
+    JOIN fisios eu ON eu.id = u.fisio_id AND eu.pessoa_id = cv.pessoa_id
+    LEFT JOIN usuarios quem ON quem.id = cv.convidado_por
+    WHERE cv.status = 'pendente' ORDER BY cv.criado_em`, [req.auth.uid]);
+  res.json(r.rows);
+});
+
+app.post('/api/convites/:id/:acao', auth, async (req, res) => {
+  const { id, acao } = req.params;
+  if (!['aceitar', 'recusar'].includes(acao)) return res.status(404).json({ erro: 'Ação inválida' });
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return res.status(404).json({ erro: 'Convite não encontrado' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const cv = (await client.query(`
+      SELECT cv.id, cv.clinica_id, cv.pessoa_id, c.nome AS clinica_nome, eu.id AS eu_id
+      FROM convites_clinica cv
+      JOIN clinicas c ON c.id = cv.clinica_id AND c.ativa AND c.excluida_em IS NULL
+      JOIN usuarios u ON u.id = $2
+      JOIN fisios eu ON eu.id = u.fisio_id AND eu.pessoa_id = cv.pessoa_id
+      WHERE cv.id = $1 AND cv.status = 'pendente' FOR UPDATE OF cv`, [id, req.auth.uid])).rows[0];
+    if (!cv) { await client.query('ROLLBACK'); return res.status(404).json({ erro: 'Convite não encontrado ou já respondido' }); }
+    let ficha = null;
+    if (acao === 'aceitar') {
+      const existente = (await client.query(
+        'SELECT id FROM fisios WHERE pessoa_id=$1 AND clinica_id=$2 AND excluido_em IS NULL', [cv.pessoa_id, cv.clinica_id])).rows[0];
+      ficha = existente ? existente.id : (await client.query(`
+        INSERT INTO fisios (clinica_id, pessoa_id, nome, crefito, esp, cor, especialidades, cidade, bairro, domiciliar, ativo, publico)
+        SELECT $1, pessoa_id, nome, crefito, esp, cor, especialidades, cidade, bairro, domiciliar, true, false
+        FROM fisios WHERE id = $2 RETURNING id`, [cv.clinica_id, cv.eu_id])).rows[0].id;
+    }
+    await client.query('UPDATE convites_clinica SET status=$2, respondido_em=now() WHERE id=$1',
+      [cv.id, acao === 'aceitar' ? 'aceito' : 'recusado']);
+    await client.query('COMMIT');
+    if (ficha) await preencherSlugs();
+    esquecerPerfil(req.auth.uid);
+    res.json({ ok: true, clinica_id: cv.clinica_id, clinica_nome: cv.clinica_nome, fisio_id: ficha });
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw e;
+  } finally { client.release(); }
 });
 
 /* ---------- ANEXOS (fotos/arquivos do prontuário, bytea no Postgres) ---------- */
@@ -921,7 +1619,9 @@ app.get('/api/anexos/:id/arquivo', async (req, res) => {
   let payload;
   try { payload = jwt.verify(token || '', JWT_SECRET); }
   catch { return res.status(401).json({ erro: 'Não autenticado' }); }
-  const r = await pool.query('SELECT nome, mime, dados FROM anexos WHERE id=$1 AND clinica_id=$2', [req.params.id, payload.cid]);
+  // ?c= : anexo de paciente de outra clínica onde a mesma pessoa atende (validado no middleware)
+  const cid = req.contexto ? req.contexto.cid : (req.cidReal || payload.cid);
+  const r = await pool.query('SELECT nome, mime, dados FROM anexos WHERE id=$1 AND clinica_id=$2', [req.params.id, cid]);
   if (!r.rowCount) return res.status(404).json({ erro: 'Anexo não encontrado' });
   const a = r.rows[0];
   res.set('Content-Type', a.mime);
@@ -1042,7 +1742,7 @@ app.get('/api/financeiro/comissoes', auth, async (req, res) => {
     SELECT f.id, f.nome, f.cor, f.comissao,
       count(s.id)::int AS sessoes,
       COALESCE(SUM(
-        CASE WHEN s.id IS NULL THEN 0 WHEN pac.sessoes > 0 THEN pac.valor / pac.sessoes ELSE COALESCE(av.valor, 0) END
+        CASE WHEN s.id IS NULL THEN 0 WHEN pac.sessoes > 0 THEN pac.valor / pac.sessoes ELSE COALESCE(f.valor_consulta, av.valor, 0) END
       ), 0)::numeric AS base,
       (SELECT d.id FROM despesas d
         WHERE d.clinica_id = f.clinica_id AND d.categoria = 'comissao'
@@ -1071,7 +1771,7 @@ app.post('/api/financeiro/comissoes/gerar', auth, async (req, res) => {
   if (!mes) return res.status(400).json({ erro: 'Informe a competência (YYYY-MM)' });
   const base = await pool.query(`
     SELECT f.id, f.nome, f.comissao,
-      COALESCE(SUM(CASE WHEN s.id IS NULL THEN 0 WHEN pac.sessoes > 0 THEN pac.valor / pac.sessoes ELSE COALESCE(av.valor, 0) END), 0)::numeric AS base,
+      COALESCE(SUM(CASE WHEN s.id IS NULL THEN 0 WHEN pac.sessoes > 0 THEN pac.valor / pac.sessoes ELSE COALESCE(f.valor_consulta, av.valor, 0) END), 0)::numeric AS base,
       count(s.id)::int AS sessoes
     FROM fisios f
     LEFT JOIN sessoes s ON s.fisio_id = f.id AND s.clinica_id = f.clinica_id
@@ -1468,7 +2168,7 @@ app.post('/api/billing/sincronizar', auth, async (req, res) => {
 const TABLES = {
   fisios: ['nome', 'crefito', 'esp', 'cor', 'comissao', 'ativo',
     'publico', 'especialidades', 'domiciliar', 'bairro', 'cidade', 'lat', 'lng', 'preco', 'bio',
-    'whatsapp', 'tratamentos', 'regioes', 'instagram'],
+    'whatsapp', 'tratamentos', 'regioes', 'instagram', 'valor_consulta'],
   pacientes: ['nome', 'nascimento', 'cpf', 'telefone', 'email', 'endereco', 'sexo', 'convenio', 'queixa', 'obs', 'fisio_id', 'status', 'pacote_nome', 'sessoes_total', 'sessoes_feitas', 'avaliacao'],
   leads: ['nome', 'telefone', 'origem', 'interesse', 'obs', 'valor', 'fisio_id', 'col'],
   sessoes: ['paciente_id', 'tratamento_id', 'fisio_id', 'titulo', 'tipo', 'data', 'hora', 'duracao', 'obs', 'status'],
@@ -1487,7 +2187,7 @@ const ORDER = {
 
 const SELECT_COLS = {
   fisios: `id, clinica_id, slug, nome, crefito, esp, cor, comissao, ativo, publico, especialidades,
-    domiciliar, bairro, cidade, lat, lng, preco, bio, whatsapp, tratamentos, regioes, instagram,
+    domiciliar, bairro, cidade, lat, lng, preco, valor_consulta, bio, whatsapp, tratamentos, regioes, instagram,
     (foto IS NOT NULL) AS tem_foto, foto_mime, criado_em`,
 };
 
@@ -1500,6 +2200,7 @@ app.get('/api/:table', auth, tableGuard, async (req, res) => {
   const t = req.params.table;
   const cols = TABLES[t];
   const where = ['clinica_id=$1']; const vals = [req.auth.cid];
+  if (t === 'fisios') where.push('fisios.excluido_em IS NULL'); // excluídos pelo superadmin somem da clínica
   for (const [k, v] of Object.entries(req.query)) {
     if (cols.includes(k)) { vals.push(v); where.push(`${k}=$${vals.length}`); }
   }
@@ -1507,12 +2208,24 @@ app.get('/api/:table', auth, tableGuard, async (req, res) => {
     if (req.query.from) { vals.push(req.query.from); where.push(`data >= $${vals.length}`); }
     if (req.query.to) { vals.push(req.query.to); where.push(`data <= $${vals.length}`); }
   }
-  const r = await pool.query(`SELECT ${SELECT_COLS[t] || '*'} FROM ${t} WHERE ${where.join(' AND ')} ORDER BY ${ORDER[t] || 'criado_em'}`, vals);
+  /* perfil fisioterapeuta: só os pacientes dele (e o que pende deles) */
+  if (req.escopoFisio && ['pacientes', 'tratamentos', 'evolucoes'].includes(t)) {
+    vals.push(req.escopoFisio);
+    const i = vals.length;
+    where.push(t === 'pacientes'
+      ? filtroPacienteDoFisio(t, i)
+      : `paciente_id IN (SELECT p.id FROM pacientes p WHERE p.clinica_id = $1 AND ${filtroPacienteDoFisio('p', i)})`);
+  }
+  const extra = t === 'fisios' ? vinculoFisioSQL(!req.perfilFisio) : '';
+  const r = await pool.query(`SELECT ${SELECT_COLS[t] || '*'}${extra} FROM ${t} WHERE ${where.join(' AND ')} ORDER BY ${ORDER[t] || 'criado_em'}`, vals);
   res.json(r.rows);
 });
 
 app.post('/api/:table', auth, tableGuard, async (req, res) => {
   const t = req.params.table;
+  if (t === 'sessoes' && req.body.status !== 'cancelada' &&
+      await choqueNaAgenda({ fisioId: req.body.fisio_id, data: req.body.data, hora: req.body.hora, duracao: req.body.duracao }))
+    return res.status(409).json({ erro: avisoChoque(req.body.data, req.body.hora) });
   const cols = TABLES[t].filter(c => req.body[c] !== undefined);
   if (!cols.length) return res.status(400).json({ erro: 'Nenhum campo válido' });
   const vals = cols.map(c => JSONB_COLS.has(c) ? JSON.stringify(req.body[c]) : (req.body[c] === '' ? null : req.body[c]));
@@ -1527,8 +2240,18 @@ app.post('/api/:table', auth, tableGuard, async (req, res) => {
 
 app.put('/api/:table/:id', auth, tableGuard, async (req, res) => {
   const t = req.params.table;
+  // quem veio de outra clínica usa o perfil público de lá — a ficha daqui não vira um segundo perfil
+  if (t === 'fisios' && req.body.publico === true && !await ehFichaDoPerfil(req.params.id)) req.body.publico = false;
   const cols = TABLES[t].filter(c => req.body[c] !== undefined);
   if (!cols.length) return res.status(400).json({ erro: 'Nenhum campo válido' });
+  if (t === 'sessoes') {
+    const atual = (await pool.query('SELECT fisio_id, data, hora, duracao, status FROM sessoes WHERE id=$1 AND clinica_id=$2',
+      [req.params.id, req.auth.cid])).rows[0];
+    const n = atual && { ...atual, ...Object.fromEntries(cols.map(c => [c, req.body[c]])) };
+    if (n && n.status !== 'cancelada' &&
+        await choqueNaAgenda({ fisioId: n.fisio_id, data: n.data, hora: n.hora, duracao: n.duracao, ignorar: req.params.id }))
+      return res.status(409).json({ erro: avisoChoque(n.data, n.hora) });
+  }
   const vals = cols.map(c => JSONB_COLS.has(c) ? JSON.stringify(req.body[c]) : (req.body[c] === '' ? null : req.body[c]));
   const sets = cols.map((c, i) => `${c}=$${i + 3}`).join(',');
   const extra = t === 'leads' ? ', atualizado_em=now()' : '';
@@ -1545,6 +2268,30 @@ app.delete('/api/:table/:id', auth, tableGuard, async (req, res) => {
 });
 
 /* ---------- AÇÕES ESPECIAIS ---------- */
+// horários dos profissionais desta clínica que estão ocupados em OUTRAS clínicas — sem paciente,
+// sem título e sem dizer onde; só a própria pessoa (ex.: gestora que também atende) vê a clínica
+app.get('/api/sessoes/ocupadas', auth, async (req, res) => {
+  const { from, to } = req.query;
+  if (!from || !to) return res.status(400).json({ erro: 'Informe o período' });
+  const vals = [req.auth.cid, from, to, req.auth.uid];
+  let filtro = '';
+  if (req.query.fisio_id) { vals.push(req.query.fisio_id); filtro = ` AND meu.id = $${vals.length}`; }
+  const r = await pool.query(`
+    SELECT meu.id AS fisio_id, to_char(s.data, 'YYYY-MM-DD') AS data, s.hora, s.duracao, c.nome AS clinica_nome,
+           EXISTS (SELECT 1 FROM usuarios u JOIN fisios x ON x.id = u.fisio_id
+                   WHERE u.id = $4 AND x.pessoa_id = meu.pessoa_id) AS proprio
+    FROM fisios meu
+    JOIN fisios outro ON outro.pessoa_id = meu.pessoa_id AND outro.clinica_id <> meu.clinica_id
+    JOIN sessoes s ON s.fisio_id = outro.id AND s.status <> 'cancelada' AND s.data BETWEEN $2::date AND $3::date
+    JOIN clinicas c ON c.id = outro.clinica_id
+    WHERE meu.clinica_id = $1 AND meu.excluido_em IS NULL${filtro}
+    ORDER BY s.data, s.hora`, vals);
+  res.json(r.rows.map(x => ({
+    fisio_id: x.fisio_id, data: x.data, hora: x.hora.slice(0, 5), duracao: x.duracao,
+    ...(x.proprio ? { clinica_nome: x.clinica_nome } : {}),
+  })));
+});
+
 // marcar sessão realizada/falta — incrementa contagem do paciente
 app.patch('/api/sessoes/:id/status', auth, async (req, res) => {
   const { status } = req.body || {};
@@ -1552,6 +2299,9 @@ app.patch('/api/sessoes/:id/status', auth, async (req, res) => {
   const cur = await pool.query('SELECT * FROM sessoes WHERE id=$1 AND clinica_id=$2', [req.params.id, req.auth.cid]);
   if (!cur.rowCount) return res.status(404).json({ erro: 'Sessão não encontrada' });
   const s = cur.rows[0];
+  if (s.status === 'cancelada' && status !== 'cancelada' &&
+      await choqueNaAgenda({ fisioId: s.fisio_id, data: s.data, hora: s.hora, duracao: s.duracao, ignorar: s.id }))
+    return res.status(409).json({ erro: avisoChoque(s.data, s.hora) });
   const r = await pool.query('UPDATE sessoes SET status=$3 WHERE id=$1 AND clinica_id=$2 RETURNING *', [req.params.id, req.auth.cid, status]);
   if (s.paciente_id && status === 'realizada' && s.status !== 'realizada')
     await pool.query('UPDATE pacientes SET sessoes_feitas = sessoes_feitas + 1 WHERE id=$1', [s.paciente_id]);
@@ -1588,7 +2338,7 @@ function superauth(req, res, next) {
 
 app.get('/api/admin/clinicas', superauth, async (req, res) => {
   const r = await pool.query(`
-    SELECT c.id, c.nome, c.email, c.endereco, c.ativa, c.plano_social, c.criado_em,
+    SELECT c.id, c.nome, c.email, c.endereco, c.ativa, c.plano_social, c.criado_em, c.excluida_em,
       c.assinatura_status, c.licencas, (c.stripe_subscription_id IS NOT NULL) AS assinante,
       c.dominio, c.dominio_status,
       (c.perfil->>'visivel')::boolean AS visivel,
@@ -1607,9 +2357,9 @@ app.get('/api/admin/clinicas', superauth, async (req, res) => {
 
 app.get('/api/admin/metricas', superauth, async (req, res) => {
   const tot = (await pool.query(`SELECT
-    (SELECT count(*)::int FROM clinicas) AS clinicas,
+    (SELECT count(*)::int FROM clinicas WHERE excluida_em IS NULL) AS clinicas,
     (SELECT count(*)::int FROM clinicas WHERE ativa) AS clinicas_ativas,
-    (SELECT count(*)::int FROM clinicas WHERE (perfil->>'visivel')::boolean IS TRUE) AS no_diretorio,
+    (SELECT count(*)::int FROM clinicas WHERE ativa AND (perfil->>'visivel')::boolean IS TRUE) AS no_diretorio,
     (SELECT count(*)::int FROM pacientes) AS pacientes,
     (SELECT count(*)::int FROM sessoes WHERE data >= CURRENT_DATE - 30) AS sessoes_30d,
     (SELECT count(*)::int FROM leads WHERE origem = 'Site PerFisio') AS leads_site,
@@ -1654,13 +2404,13 @@ app.post('/api/admin/clinicas', superauth, async (req, res) => {
 app.get('/api/admin/clinicas/:id', superauth, async (req, res) => {
   const c = await pool.query(`SELECT id, nome, cnpj, email, telefone, endereco, horario, ativa, plano_social, perfil,
     assinatura_status, licencas, assinatura_fim, (stripe_subscription_id IS NOT NULL) AS assinante,
-    dominio, dominio_status, criado_em
+    dominio, dominio_status, criado_em, excluida_em
     FROM clinicas WHERE id=$1`, [req.params.id]);
   if (!c.rowCount) return res.status(404).json({ erro: 'Clínica não encontrada' });
   const fisios = await pool.query(`
     SELECT id, nome, crefito, esp, cor, comissao, ativo, publico, especialidades, domiciliar,
-           bairro, cidade, preco, whatsapp, (foto IS NOT NULL) AS tem_foto
-    FROM fisios WHERE clinica_id=$1 ORDER BY nome`, [req.params.id]);
+           bairro, cidade, preco, whatsapp, excluido_em, (foto IS NOT NULL) AS tem_foto
+    FROM fisios WHERE clinica_id=$1 ORDER BY (excluido_em IS NOT NULL), nome`, [req.params.id]);
   const usuarios = await pool.query(
     'SELECT id, nome, email, perfil, ultimo_acesso FROM usuarios WHERE clinica_id=$1 ORDER BY criado_em', [req.params.id]);
   res.json({ ...c.rows[0], fisios: fisios.rows, usuarios: usuarios.rows });
@@ -1678,16 +2428,53 @@ app.put('/api/admin/clinicas/:id', superauth, async (req, res) => {
 
 // fisioterapeutas de todas as clínicas
 const ADMIN_FISIO_COLS = ['nome', 'crefito', 'esp', 'cor', 'comissao', 'ativo', 'publico', 'especialidades',
-  'domiciliar', 'bairro', 'cidade', 'lat', 'lng', 'preco', 'bio', 'whatsapp', 'tratamentos', 'regioes', 'instagram'];
+  'domiciliar', 'bairro', 'cidade', 'lat', 'lng', 'preco', 'bio', 'whatsapp', 'tratamentos', 'regioes', 'instagram', 'valor_consulta'];
 
 app.get('/api/admin/fisios', superauth, async (req, res) => {
   const r = await pool.query(`
     SELECT f.id, f.clinica_id, f.nome, f.crefito, f.esp, f.cor, f.comissao, f.ativo, f.publico,
-           f.especialidades, f.domiciliar, f.bairro, f.cidade, f.preco, f.whatsapp, f.bio,
-           f.tratamentos, f.regioes, f.instagram, f.lat, f.lng,
-           (f.foto IS NOT NULL) AS tem_foto, c.nome AS clinica_nome
+           f.especialidades, f.domiciliar, f.bairro, f.cidade, f.preco, f.valor_consulta, f.whatsapp, f.bio,
+           f.tratamentos, f.regioes, f.instagram, f.lat, f.lng, f.excluido_em, f.slug,
+           (c.excluida_em IS NOT NULL) AS clinica_excluida, c.ativa AS clinica_ativa,
+           (f.foto IS NOT NULL) AS tem_foto, c.nome AS clinica_nome,
+           (SELECT count(*)::int FROM sessoes s WHERE s.fisio_id = f.id AND s.status = 'agendada' AND s.data >= CURRENT_DATE) AS sessoes_futuras
     FROM fisios f JOIN clinicas c ON c.id = f.clinica_id ORDER BY c.nome, f.nome`);
-  res.json(r.rows);
+  // endereços prontos para o painel: perfil no site público (www) e link curto (perfis.io)
+  const sitePublico = HOST_SITE || 'www.perfisio.com.br';
+  res.json(r.rows.map(f => ({
+    ...f,
+    url_publica: f.slug ? `https://${sitePublico}${caminhoPerfil(f)}` : null,
+    url_curta: f.slug ? `https://${HOST_CURTO}/${f.slug}` : null,
+  })));
+});
+
+/* exclusão lógica: tira do diretório, da equipe e do login, mas guarda a ficha —
+   sessões, prontuários e comissões antigas continuam apontando para ela */
+app.delete('/api/admin/fisios/:id', superauth, async (req, res) => {
+  const r = await pool.query(
+    `UPDATE fisios SET excluido_em = now(), ativo = false, publico = false
+     WHERE id = $1 AND excluido_em IS NULL RETURNING id, nome`, [req.params.id]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Profissional não encontrado ou já excluído' });
+  const logins = await pool.query("SELECT id FROM usuarios WHERE fisio_id = $1 AND perfil = 'fisio'", [req.params.id]);
+  logins.rows.forEach(u => esquecerPerfil(u.id)); // derruba o acesso na hora, sem esperar o cache
+  res.json({ ok: true, nome: r.rows[0].nome, logins_bloqueados: logins.rowCount });
+});
+
+app.post('/api/admin/fisios/:id/restaurar', superauth, async (req, res) => {
+  // volta ativo na equipe; o perfil público fica desligado até alguém religar de propósito
+  const r = await pool.query(
+    `UPDATE fisios SET excluido_em = NULL, ativo = true
+     WHERE id = $1 AND excluido_em IS NOT NULL RETURNING id, nome`, [req.params.id]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Profissional não está nos excluídos' });
+  const logins = await pool.query("SELECT id FROM usuarios WHERE fisio_id = $1 AND perfil = 'fisio'", [req.params.id]);
+  logins.rows.forEach(u => esquecerPerfil(u.id));
+  res.json({ ok: true, nome: r.rows[0].nome });
+});
+
+// superadmin troca o username (link curto) de qualquer profissional
+app.put('/api/admin/fisios/:id/slug', superauth, async (req, res) => {
+  try { res.json(await trocarSlugFisio(req.params.id, (req.body || {}).slug, null)); }
+  catch (e) { if (!e.status) throw e; res.status(e.status).json({ erro: e.message }); }
 });
 
 app.post('/api/admin/fisios', superauth, async (req, res) => {
@@ -1703,6 +2490,7 @@ app.post('/api/admin/fisios', superauth, async (req, res) => {
 });
 
 app.put('/api/admin/fisios/:id', superauth, async (req, res) => {
+  if (req.body && req.body.publico === true && !await ehFichaDoPerfil(req.params.id)) req.body.publico = false;
   const cols = ADMIN_FISIO_COLS.filter(c => req.body[c] !== undefined);
   if (!cols.length) return res.status(400).json({ erro: 'Nada a atualizar' });
   const sets = cols.map((c, i) => `${c}=$${i + 2}`).join(',');
@@ -1716,12 +2504,22 @@ app.put('/api/admin/fisios/:id', superauth, async (req, res) => {
 app.post('/api/admin/usuarios', superauth, async (req, res) => {
   const { clinica_id, nome, email, senha, perfil } = req.body || {};
   if (!clinica_id || !nome || !email || !senha) return res.status(400).json({ erro: 'Preencha todos os campos' });
+  const papel = perfil || 'fisio';
+  const client = await pool.connect();
   try {
-    const r = await pool.query(
+    await client.query('BEGIN');
+    const r = await client.query(
       'INSERT INTO usuarios (clinica_id, nome, email, senha_hash, perfil) VALUES ($1,$2,$3,$4,$5) RETURNING id, nome, email',
-      [clinica_id, nome, email.toLowerCase(), bcrypt.hashSync(senha, 10), perfil || 'fisio']);
+      [clinica_id, nome, email.toLowerCase(), bcrypt.hashSync(senha, 10), papel]);
+    // mesma regra do painel da clínica: perfil de fisio nasce com ficha na Equipe
+    if (papel === 'fisio') await criarFichaFisio(client, clinica_id, r.rows[0].id, nome);
+    await client.query('COMMIT');
+    if (papel === 'fisio') await preencherSlugs();
     res.json(r.rows[0]);
-  } catch { res.status(409).json({ erro: 'E-mail já cadastrado' }); }
+  } catch {
+    await client.query('ROLLBACK').catch(() => {});
+    res.status(409).json({ erro: 'E-mail já cadastrado' });
+  } finally { client.release(); }
 });
 
 app.put('/api/admin/usuarios/:id/senha', superauth, async (req, res) => {
@@ -1736,10 +2534,11 @@ app.put('/api/admin/usuarios/:id/senha', superauth, async (req, res) => {
 // entrar como a clínica (impersonation): gera sessão do gestor
 app.post('/api/admin/clinicas/:id/impersonar', superauth, async (req, res) => {
   const r = await pool.query(`
-    SELECT u.*, c.nome AS clinica_nome, c.ativa FROM usuarios u JOIN clinicas c ON c.id = u.clinica_id
+    SELECT u.*, c.nome AS clinica_nome, c.ativa, c.excluida_em FROM usuarios u JOIN clinicas c ON c.id = u.clinica_id
     WHERE u.clinica_id = $1 ORDER BY (u.perfil = 'gestor') DESC, u.criado_em LIMIT 1`, [req.params.id]);
   if (!r.rowCount) return res.status(404).json({ erro: 'Esta clínica não tem usuários' });
   const u = r.rows[0];
+  if (u.excluida_em) return res.status(400).json({ erro: 'Clínica excluída — restaure antes de entrar' });
   if (!u.ativa) return res.status(400).json({ erro: 'Clínica desativada — reative antes de entrar' });
   res.json({
     token: sign(u),
@@ -1750,9 +2549,35 @@ app.post('/api/admin/clinicas/:id/impersonar', superauth, async (req, res) => {
 app.patch('/api/admin/clinicas/:id', superauth, async (req, res) => {
   const { ativa } = req.body || {};
   if (typeof ativa !== 'boolean') return res.status(400).json({ erro: 'Informe ativa: true/false' });
-  const r = await pool.query('UPDATE clinicas SET ativa=$2 WHERE id=$1 RETURNING id, nome, ativa', [req.params.id, ativa]);
-  if (!r.rowCount) return res.status(404).json({ erro: 'Clínica não encontrada' });
+  const r = await pool.query('UPDATE clinicas SET ativa=$2 WHERE id=$1 AND excluida_em IS NULL RETURNING id, nome, ativa', [req.params.id, ativa]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Clínica não encontrada (se foi excluída, restaure primeiro)' });
   res.json(r.rows[0]);
+});
+
+/* exclusão lógica da clínica: some do diretório, do domínio próprio e do login de toda a equipe,
+   mas pacientes, prontuários e financeiro ficam guardados para uma eventual restauração */
+app.delete('/api/admin/clinicas/:id', superauth, async (req, res) => {
+  const r = await pool.query(
+    `UPDATE clinicas SET excluida_em = now(), ativa = false
+     WHERE id = $1 AND excluida_em IS NULL
+     RETURNING id, nome, (stripe_subscription_id IS NOT NULL) AS assinante, assinatura_status`, [req.params.id]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Clínica não encontrada ou já excluída' });
+  const us = await pool.query('SELECT id FROM usuarios WHERE clinica_id = $1', [req.params.id]);
+  us.rows.forEach(u => esquecerPerfil(u.id)); // derruba quem estiver logado, sem esperar o cache
+  limparCacheHost();                           // domínio próprio para de responder na hora
+  res.json({ ok: true, nome: r.rows[0].nome, usuarios_bloqueados: us.rowCount,
+    assinante: r.rows[0].assinante, assinatura_status: r.rows[0].assinatura_status });
+});
+
+app.post('/api/admin/clinicas/:id/restaurar', superauth, async (req, res) => {
+  const r = await pool.query(
+    `UPDATE clinicas SET excluida_em = NULL, ativa = true
+     WHERE id = $1 AND excluida_em IS NOT NULL RETURNING id, nome`, [req.params.id]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Clínica não está nas excluídas' });
+  const us = await pool.query('SELECT id FROM usuarios WHERE clinica_id = $1', [req.params.id]);
+  us.rows.forEach(u => esquecerPerfil(u.id));
+  limparCacheHost();
+  res.json({ ok: true, nome: r.rows[0].nome });
 });
 
 /* ---------- BLOG ---------- */
@@ -1833,7 +2658,7 @@ app.get('/api/public/profissionais', async (req, res) => {
   }
   const r = await pool.query(`
     SELECT f.id, f.slug, f.nome, f.crefito, f.esp, f.cor, f.especialidades, f.domiciliar,
-           f.bairro, f.cidade, f.preco, f.bio, f.lat, f.lng,
+           f.bairro, f.cidade, f.preco, f.valor_consulta, f.bio, f.lat, f.lng,
            (f.foto IS NOT NULL) AS tem_foto,
            c.id AS clinica_id, c.slug AS clinica_slug, c.nome AS clinica_nome, c.endereco AS clinica_endereco,
            (c.perfil->>'agenda_online') AS agenda_online,
@@ -1852,6 +2677,8 @@ app.get('/api/public/profissionais', async (req, res) => {
     lat: p.lat === null ? null : Number(p.lat),
     lng: p.lng === null ? null : Number(p.lng),
     distancia: p.distancia === null ? null : Math.round(Number(p.distancia)),
+    preco: precoExibido(p),
+    url: caminhoPerfil(p),
     especialidades: (p.especialidades || '').split(',').map(s => s.trim()).filter(Boolean),
   })));
 });
@@ -1860,7 +2687,7 @@ app.get('/api/public/profissionais', async (req, res) => {
 app.get('/api/public/profissionais/:id', async (req, res) => {
   const r = await pool.query(`
     SELECT f.id, f.slug, f.nome, f.crefito, f.esp, f.cor, f.especialidades, f.domiciliar,
-           f.bairro, f.cidade, f.preco, f.bio, f.lat, f.lng,
+           f.bairro, f.cidade, f.preco, f.valor_consulta, f.bio, f.lat, f.lng,
            f.whatsapp, f.tratamentos, f.regioes, f.instagram,
            (f.foto IS NOT NULL) AS tem_foto,
            c.id AS clinica_id, c.slug AS clinica_slug, c.nome AS clinica_nome, c.endereco AS clinica_endereco,
@@ -1871,22 +2698,42 @@ app.get('/api/public/profissionais/:id', async (req, res) => {
   if (!r.rowCount) return res.status(404).json({ erro: 'Profissional não encontrado' });
   const p = r.rows[0];
   const colegas = await pool.query(`
-    SELECT id, slug, nome, esp, cor, especialidades, bairro, preco, domiciliar, (foto IS NOT NULL) AS tem_foto
+    SELECT id, slug, nome, esp, cor, especialidades, bairro, cidade, preco, valor_consulta, domiciliar, (foto IS NOT NULL) AS tem_foto
     FROM fisios WHERE clinica_id = $1 AND id <> $2 AND publico AND ativo ORDER BY nome LIMIT 6`,
     [p.clinica_id, p.id]);
-  const pacotes = await pool.query(
-    'SELECT nome, descricao, valor, sessoes, tipo FROM pacotes WHERE clinica_id = $1 ORDER BY valor LIMIT 4',
-    [p.clinica_id]);
+  // só os pacotes da clínica ligados para este profissional
+  const pacotes = await pool.query(`
+    SELECT p.nome, p.descricao, p.valor, p.sessoes, p.tipo
+    FROM pacotes p LEFT JOIN fisio_pacotes fp ON fp.pacote_id = p.id AND fp.fisio_id = $2
+    WHERE p.clinica_id = $1 AND ${PACOTE_ATIVO_SQL}
+    ORDER BY p.valor`, [p.clinica_id, p.id]);
   const galeria = await pool.query(
     'SELECT id, nome FROM fisio_fotos WHERE fisio_id = $1 ORDER BY criado_em', [p.id]);
+  // todas as clínicas onde a pessoa atende (a do perfil primeiro) — o paciente escolhe onde agendar
+  const locais = await pool.query(`
+    SELECT f.id AS fisio_id, f.valor_consulta, c.id AS clinica_id, c.nome, c.slug, c.endereco, c.telefone, c.horario
+    FROM fisios eu
+    JOIN fisios f ON f.pessoa_id = eu.pessoa_id AND f.ativo AND f.excluido_em IS NULL
+    JOIN clinicas c ON c.id = f.clinica_id AND c.ativa AND c.excluida_em IS NULL
+    WHERE eu.id = $1 ORDER BY (f.id = $1) DESC, c.nome`, [p.id]);
   res.json({
     ...p,
+    preco: precoExibido(p),
+    url: caminhoPerfil(p),
     lat: p.lat === null ? null : Number(p.lat), lng: p.lng === null ? null : Number(p.lng),
     especialidades: (p.especialidades || '').split(',').map(s => s.trim()).filter(Boolean),
     tratamentos: (p.tratamentos || '').split(',').map(s => s.trim()).filter(Boolean),
-    colegas: colegas.rows.map(c => ({ ...c, especialidades: (c.especialidades || '').split(',').map(s => s.trim()).filter(Boolean) })),
-    pacotes: pacotes.rows.map(x => ({ ...x, valor: Number(x.valor) })),
+    colegas: colegas.rows.map(c => ({ ...c, preco: precoExibido(c), url: caminhoPerfil(c), especialidades: (c.especialidades || '').split(',').map(s => s.trim()).filter(Boolean) })),
+    // a consulta individual vem do profissional; depois, os pacotes/planos da clínica ligados no perfil
+    pacotes: [
+      ...(p.valor_consulta != null ? [{
+        nome: 'Consulta individual', tipo: 'consulta', valor: Number(p.valor_consulta), sessoes: 1,
+        descricao: `Consulta com ${p.nome.split(' ')[0]}`,
+      }] : []),
+      ...pacotes.rows.map(x => ({ ...x, valor: Number(x.valor) })),
+    ],
     galeria: galeria.rows,
+    locais: locais.rows.map(l => ({ ...l, valor_consulta: l.valor_consulta == null ? null : Number(l.valor_consulta) })),
   });
 });
 
@@ -1897,13 +2744,20 @@ app.get('/api/public/clinicas/:id', async (req, res) => {
      WHERE (slug = $1 OR ($2::boolean AND id::text = $1)) AND ativa`,
     [req.params.id, UUID.test(req.params.id)]);
   if (!c.rowCount) return res.status(404).json({ erro: 'Clínica não encontrada' });
+  // quem veio de outra clínica aparece com o perfil público dele (que é um só)
   const equipe = await pool.query(`
-    SELECT id, slug, nome, crefito, esp, cor, especialidades, domiciliar, bairro, cidade, preco, bio, lat, lng, (foto IS NOT NULL) AS tem_foto
-    FROM fisios WHERE clinica_id = $1 AND publico AND ativo ORDER BY nome`, [c.rows[0].id]);
+    SELECT DISTINCT ON (pf.id) pf.id, pf.slug, pf.nome, pf.crefito, pf.esp, pf.cor, pf.especialidades, pf.domiciliar,
+           pf.bairro, pf.cidade, pf.preco, COALESCE(aqui.valor_consulta, pf.valor_consulta) AS valor_consulta,
+           pf.bio, pf.lat, pf.lng, (pf.foto IS NOT NULL) AS tem_foto
+    FROM fisios aqui
+    JOIN fisios pf ON pf.pessoa_id = aqui.pessoa_id AND pf.publico AND pf.ativo AND pf.excluido_em IS NULL
+    WHERE aqui.clinica_id = $1 AND aqui.ativo AND aqui.excluido_em IS NULL
+    ORDER BY pf.id`, [c.rows[0].id]);
+  equipe.rows.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   res.json({
     ...c.rows[0],
     equipe: equipe.rows.map(f => ({
-      ...f, lat: f.lat === null ? null : Number(f.lat), lng: f.lng === null ? null : Number(f.lng),
+      ...f, preco: precoExibido(f), url: caminhoPerfil(f), lat: f.lat === null ? null : Number(f.lat), lng: f.lng === null ? null : Number(f.lng),
       especialidades: (f.especialidades || '').split(',').map(s => s.trim()).filter(Boolean),
     })),
   });
@@ -1915,20 +2769,25 @@ app.get('/api/public/clinicas/:id', async (req, res) => {
 async function acharFisioPublico(valor) {
   if (!valor) return null;
   const r = await pool.query(
-    `SELECT f.id, f.nome, f.clinica_id FROM fisios f JOIN clinicas c ON c.id = f.clinica_id
+    `SELECT f.id, f.nome, f.clinica_id, f.slug FROM fisios f JOIN clinicas c ON c.id = f.clinica_id
      WHERE (f.slug = $1 OR ($2::boolean AND f.id::text = $1)) AND f.publico AND f.ativo AND c.ativa`,
     [String(valor), UUID.test(String(valor))]);
-  return r.rowCount ? r.rows[0] : null;
+  if (r.rowCount) return r.rows[0];
+  // username antigo (QR e cartão impressos) continua achando o profissional
+  const novo = await slugAtualPorApelido(valor);
+  return novo && novo !== String(valor) ? acharFisioPublico(novo) : null;
 }
 
 app.get('/api/public/agenda/:fisioId', async (req, res) => {
   const f = await acharFisioPublico(req.params.fisioId);
   if (!f) return res.status(404).json({ erro: 'Profissional não encontrado' });
+  // a agenda é da pessoa: horários ocupados em todas as clínicas onde ela atende
   const r = await pool.query(
-    `SELECT to_char(data, 'YYYY-MM-DD') AS data, hora FROM sessoes
-     WHERE fisio_id=$1 AND status <> 'cancelada' AND data >= $2::date AND data <= $3::date`,
+    `SELECT to_char(s.data, 'YYYY-MM-DD') AS data, s.hora, s.duracao
+     FROM fisios eu JOIN fisios f ON f.pessoa_id = eu.pessoa_id JOIN sessoes s ON s.fisio_id = f.id
+     WHERE eu.id=$1 AND s.status <> 'cancelada' AND s.data >= $2::date AND s.data <= $3::date`,
     [f.id, req.query.from, req.query.to]);
-  res.json(r.rows.map(s => ({ data: s.data, hora: s.hora.slice(0, 5) })));
+  res.json(r.rows.map(s => ({ data: s.data, hora: s.hora.slice(0, 5), duracao: s.duracao })));
 });
 
 const gerarCodigo = () => 'PF-' + Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -1943,8 +2802,19 @@ app.post('/api/public/agendar', authConta, async (req, res) => {
   if (!cq.rowCount) return res.status(401).json({ erro: 'Conta não encontrada' });
   const conta = cq.rows[0];
   const nome = conta.nome, telefone = req.body?.telefone || conta.telefone;
-  const fisio = await acharFisioPublico(fisio_id);
-  if (!fisio) return res.status(404).json({ erro: 'Profissional não encontrado' });
+  const perfil = await acharFisioPublico(fisio_id);
+  if (!perfil) return res.status(404).json({ erro: 'Profissional não encontrado' });
+  // quem atende em mais de uma clínica: o paciente escolhe o local (a ficha daquela clínica)
+  let fisio = perfil;
+  if (req.body.local && req.body.local !== perfil.id) {
+    const l = await pool.query(`
+      SELECT f.id, f.nome, f.clinica_id, f.slug FROM fisios eu
+      JOIN fisios f ON f.pessoa_id = eu.pessoa_id AND f.ativo AND f.excluido_em IS NULL
+      JOIN clinicas c ON c.id = f.clinica_id AND c.ativa AND c.excluida_em IS NULL
+      WHERE eu.id = $1 AND f.id = $2`, [perfil.id, req.body.local]);
+    if (!l.rowCount) return res.status(400).json({ erro: 'Escolha um local de atendimento válido' });
+    fisio = l.rows[0];
+  }
 
   // acha o paciente desta clínica pela conta; senão pelo telefone; senão cria
   let pacienteId = null;
@@ -1980,10 +2850,9 @@ app.post('/api/public/agendar', authConta, async (req, res) => {
   const criadas = [], conflitos = [];
   for (let i = 0; i < datas.length; i++) {
     const dt = datas[i];
-    const ocupado = await pool.query(
-      `SELECT 1 FROM sessoes WHERE fisio_id=$1 AND data=$2::date AND hora=$3 AND status <> 'cancelada'`,
-      [fisio.id, dt, hora]);
-    if (ocupado.rowCount) { conflitos.push(dt); continue; }
+    if (await choqueNaAgenda({ fisioId: fisio.id, data: dt, hora, duracao: '50 min', todasClinicas: true })) {
+      conflitos.push(dt); continue;
+    }
     await pool.query(
       `INSERT INTO sessoes (clinica_id, paciente_id, fisio_id, tipo, data, hora, status, obs, reserva)
        VALUES ($1,$2,$3,$4,$5::date,$6,'agendada',$7,$8)`,
@@ -2013,13 +2882,11 @@ app.post('/api/public/reserva/:codigo/remarcar', async (req, res) => {
   if (!sessao_id || !data || !hora) return res.status(400).json({ erro: 'Informe a sessão e o novo horário' });
   if (data < new Date().toISOString().slice(0, 10)) return res.status(400).json({ erro: 'Escolha uma data futura' });
   const s = await pool.query(
-    `SELECT id, fisio_id FROM sessoes WHERE id=$1 AND reserva=$2 AND status='agendada'`,
+    `SELECT id, fisio_id, duracao FROM sessoes WHERE id=$1 AND reserva=$2 AND status='agendada'`,
     [sessao_id, req.params.codigo.toUpperCase()]);
   if (!s.rowCount) return res.status(404).json({ erro: 'Sessão não encontrada para este código' });
-  const ocupado = await pool.query(
-    `SELECT 1 FROM sessoes WHERE fisio_id=$1 AND data=$2::date AND hora=$3 AND status <> 'cancelada' AND id <> $4`,
-    [s.rows[0].fisio_id, data, hora, sessao_id]);
-  if (ocupado.rowCount) return res.status(409).json({ erro: 'Este horário acabou de ser ocupado. Escolha outro.' });
+  if (await choqueNaAgenda({ fisioId: s.rows[0].fisio_id, data, hora, duracao: s.rows[0].duracao, ignorar: sessao_id, todasClinicas: true }))
+    return res.status(409).json({ erro: 'Este horário acabou de ser ocupado. Escolha outro.' });
   await pool.query(`UPDATE sessoes SET data=$2::date, hora=$3 WHERE id=$1`, [sessao_id, data, hora]);
   res.json({ ok: true, data, hora });
 });
@@ -2055,7 +2922,7 @@ app.get('/api/public/perfis', async (req, res) => {
 app.post('/api/public/leads', async (req, res) => {
   const { clinica_id, nome, telefone, interesse, obs } = req.body || {};
   if (!clinica_id || !nome) return res.status(400).json({ erro: 'Informe seu nome' });
-  const ok = await pool.query('SELECT 1 FROM clinicas WHERE id=$1', [clinica_id]);
+  const ok = await pool.query('SELECT 1 FROM clinicas WHERE id=$1 AND ativa', [clinica_id]);
   if (!ok.rowCount) return res.status(404).json({ erro: 'Clínica não encontrada' });
   await pool.query(
     'INSERT INTO leads (clinica_id,nome,telefone,origem,interesse,obs) VALUES ($1,$2,$3,$4,$5,$6)',
@@ -2071,7 +2938,8 @@ const ROOT = path.join(__dirname, '..');
    app.perfisio.com.br  → login, painel da clínica e superadmin
    Como os links entre as páginas continuam relativos, é aqui que cada host manda
    o visitante para o lugar certo. Sem SITE_HOST definido nada disso roda. */
-const ehDoSistema = p => p === '/login.html' || p.startsWith('/app/') || p.startsWith('/admin');
+const ehDoSistema = p => p === '/login.html' || p === '/login' || p === '/verificar-email.html'
+  || p.startsWith('/app/') || p.startsWith('/admin');
 const passaDireto = p => p.startsWith('/api/') || p.startsWith('/assets/') || p.startsWith('/.well-known');
 
 if (HOST_SITE) {
@@ -2126,6 +2994,20 @@ async function lerPagina(arq) {
 }
 const esc = s => String(s == null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+// preço mostrado nas páginas públicas: valor da consulta do profissional; texto antigo como reserva
+const reaisBR = v => 'R$ ' + Number(v).toLocaleString('pt-BR',
+  { minimumFractionDigits: Number(v) % 1 ? 2 : 0, maximumFractionDigits: 2 });
+const precoExibido = f => (f.valor_consulta != null && f.valor_consulta !== ''
+  ? `${reaisBR(f.valor_consulta)} por consulta` : (f.preco || ''));
+
+// endereço do perfil pensado para SEO local: /fisioterapeuta-{cidade}/{username}
+// (sem cidade cadastrada, fica /fisioterapeuta/{username})
+const caminhoPerfil = f => {
+  const c = slugificar(f && f.cidade);
+  return c ? `/fisioterapeuta-${c}/${f.slug}` : `/fisioterapeuta/${f.slug}`;
+};
+const cidadeTitulo = c => String(c || '').trim().replace(/\s*\/\s*/, ' - '); // "Caruaru/PE" → "Caruaru - PE"
+
 const resumir = (t, n = 155) => {
   const s = String(t || '').replace(/\s+/g, ' ').trim();
   return s.length <= n ? s : s.slice(0, n - 1).replace(/\s\S*$/, '') + '…';
@@ -2177,16 +3059,19 @@ app.use(async (req, res, next) => {
   if (!/^[a-z0-9-]{2,70}$/.test(slug)) return res.redirect(302, destinoSite);
   try {
     const r = await pool.query(`
-      SELECT f.id, f.slug, f.nome, f.esp, f.bio, f.cidade, f.bairro, f.preco, (f.foto IS NOT NULL) AS tem_foto
+      SELECT f.id, f.slug, f.nome, f.esp, f.bio, f.cidade, f.bairro, f.preco, f.valor_consulta, (f.foto IS NOT NULL) AS tem_foto
       FROM fisios f JOIN clinicas c ON c.id = f.clinica_id
       WHERE f.slug = $1 AND f.publico AND f.ativo AND c.ativa`, [slug]);
-    if (!r.rowCount) return res.redirect(302, destinoSite);
+    if (!r.rowCount) {
+      const novo = await slugAtualPorApelido(slug); // username trocado → 301 para o atual
+      return novo ? res.redirect(301, `/${novo}`) : res.redirect(302, destinoSite);
+    }
     const f = r.rows[0];
     const onde = [f.bairro, f.cidade].filter(Boolean).join(', ');
     return await servirSeo(res, 'perfil-curto.html', {
       titulo: `${f.nome} — agende sua sessão | PerFisio`,
-      descricao: resumir(f.bio || `Agende online com ${f.nome}${onde ? ', ' + onde : ''}. ${f.preco || ''}`),
-      url: `https://${HOST_CANONICO}/fisioterapeuta/${f.slug}`, // canonical = perfil completo
+      descricao: resumir(f.bio || `Agende online com ${f.nome}${onde ? ', ' + onde : ''}. ${precoExibido(f)}`),
+      url: `https://${HOST_CANONICO}${caminhoPerfil(f)}`, // canonical = perfil completo
       tipo: 'profile',
       imagem: f.tem_foto ? `https://${HOST_CANONICO}/api/public/fisio-foto/${f.id}` : null,
       dados: { slug: f.slug, curto: true },
@@ -2219,6 +3104,86 @@ app.get('/planos.html', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+/* ---------- CONTEÚDO DO SITE (landing do profissional + blog) ----------
+   Slugs iguais aos do site antigo em WordPress, para não perder o que já ranqueia. */
+const POSTS = [
+  {
+    slug: 'porque-eu-criei-o-perfisio',
+    titulo: 'Porque eu criei o Perfisio, site para Fisioterapeutas',
+    descricao: 'A história por trás do PerFisio: o que eu vi trabalhando com fisioterapeutas, por que quase todos precisavam da mesma coisa e como a distância afasta paciente e profissional.',
+    data: '2024-07-09', capa: '/assets/img/blog/post03.jpg',
+  },
+  {
+    slug: 'fisioterapeuta-precisa-de-site',
+    titulo: 'Você é fisioterapeuta e precisa de um site profissional?',
+    descricao: 'Sete motivos para ter presença online como fisioterapeuta — visibilidade, credibilidade, agendamento e SEO — e por que um site tradicional quase nunca é a melhor resposta.',
+    data: '2024-07-09', capa: '/assets/img/blog/post02.jpg',
+  },
+  {
+    slug: 'queremos-conectar-pacientes-e-profissionais',
+    titulo: 'Queremos conectar pacientes e profissionais',
+    descricao: 'A distância entre o paciente e o fisioterapeuta muitas vezes inviabiliza o atendimento. O PerFisio nasceu para ser a ponte entre os dois.',
+    data: '2024-07-09', capa: '/assets/img/blog/post01.jpg',
+  },
+];
+
+/* o WordPress usava barra no fim; manda pra URL canônica sem barra
+   (senão os links relativos da página quebram e o Google vê duas URLs) */
+const ROTAS_CONTEUDO = new Set(['/site-para-fisioterapeutas', '/blog', ...POSTS.map(p => `/${p.slug}`)]);
+app.get(/^\/[a-z0-9-]+\/$/, (req, res, next) => {
+  const semBarra = req.path.slice(0, -1);
+  return ROTAS_CONTEUDO.has(semBarra) ? res.redirect(301, semBarra) : next();
+});
+
+app.get('/site-para-fisioterapeutas', async (req, res, next) => {
+  try {
+    await servirSeo(res, 'site-para-fisioterapeutas.html', {
+      titulo: 'Site para fisioterapeutas — crie seu perfil profissional | PerFisio',
+      descricao: 'Crie seu perfil de fisioterapeuta em poucos minutos: currículo, especialidades, álbum de fotos, avaliações, agenda online e link curto para divulgar. De graça.',
+      url: urlPublica(req, '/site-para-fisioterapeutas'),
+    });
+  } catch (e) { next(e); }
+});
+
+app.get('/blog', async (req, res, next) => {
+  try {
+    await servirSeo(res, 'blog.html', {
+      titulo: 'Blog — fisioterapia, presença online e pacientes | PerFisio',
+      descricao: 'Por que criamos o PerFisio, o que aprendemos trabalhando com fisioterapeutas e como ser encontrado por quem precisa de você.',
+      url: urlPublica(req, '/blog'),
+      jsonld: {
+        '@context': 'https://schema.org', '@type': 'Blog', name: 'Blog do PerFisio',
+        url: urlPublica(req, '/blog'), inLanguage: 'pt-BR',
+        blogPost: POSTS.map(p => ({
+          '@type': 'BlogPosting', headline: p.titulo, datePublished: p.data,
+          url: urlPublica(req, `/${p.slug}`),
+        })),
+      },
+    });
+  } catch (e) { next(e); }
+});
+
+for (const post of POSTS) {
+  app.get(`/${post.slug}`, async (req, res, next) => {
+    try {
+      await servirSeo(res, `${post.slug}.html`, {
+        titulo: `${post.titulo} | PerFisio`,
+        descricao: post.descricao,
+        url: urlPublica(req, `/${post.slug}`),
+        tipo: 'article',
+        imagem: urlPublica(req, post.capa),
+        jsonld: {
+          '@context': 'https://schema.org', '@type': 'BlogPosting',
+          headline: post.titulo, description: post.descricao, image: urlPublica(req, post.capa),
+          datePublished: post.data, dateModified: post.data, inLanguage: 'pt-BR',
+          mainEntityOfPage: urlPublica(req, `/${post.slug}`),
+          publisher: { '@type': 'Organization', name: 'PerFisio', url: `https://${HOST_CANONICO}/` },
+        },
+      });
+    } catch (e) { next(e); }
+  });
+}
+
 // listagem por cidade — a página que queremos ranqueando no Google
 app.get('/fisioterapeutas-em-:cidade', async (req, res, next) => {
   try {
@@ -2240,32 +3205,47 @@ app.get('/fisioterapeutas-em-:cidade', async (req, res, next) => {
 });
 
 // perfil do profissional
-app.get('/fisioterapeuta/:slug', async (req, res, next) => {
+async function servirPerfilFisio(req, res, next) {
   try {
     const r = await pool.query(`
-      SELECT f.nome, f.esp, f.bio, f.cidade, f.bairro, f.preco, f.especialidades, f.slug, f.id,
+      SELECT f.nome, f.esp, f.bio, f.cidade, f.bairro, f.preco, f.valor_consulta, f.especialidades, f.slug, f.id,
              (f.foto IS NOT NULL) AS tem_foto, c.nome AS clinica_nome
       FROM fisios f JOIN clinicas c ON c.id = f.clinica_id
       WHERE f.slug = $1 AND f.publico AND f.ativo AND c.ativa`, [req.params.slug]);
-    if (!r.rowCount) return next();
+    if (!r.rowCount) {
+      const novo = await slugAtualPorApelido(req.params.slug); // username trocado → 301 para o atual
+      if (!novo) return next();
+      const atual = (await pool.query('SELECT slug, cidade FROM fisios WHERE slug=$1', [novo])).rows[0];
+      return res.redirect(301, caminhoPerfil(atual));
+    }
     const f = r.rows[0];
-    const onde = [f.bairro, f.cidade].filter(Boolean).join(', ');
+    // endereço certo é /fisioterapeuta-{cidade}/{username}: o antigo /fisioterapeuta/{username},
+    // cidade desatualizada ou barra no fim levam 301 para ele
+    const canonico = caminhoPerfil(f);
+    if (req.path !== canonico) {
+      const q = req.originalUrl.split('?')[1];
+      return res.redirect(301, canonico + (q ? '?' + q : ''));
+    }
+    const onde = cidadeTitulo(f.cidade) || f.bairro || '';
     await servirSeo(res, 'fisio.html', {
-      titulo: `${f.nome} — ${f.esp || 'Fisioterapeuta'}${onde ? ' em ' + onde : ''} | PerFisio`,
-      descricao: resumir(f.bio || `${f.nome}, ${f.esp || 'fisioterapeuta'}${onde ? ' em ' + onde : ''}. ${f.preco || ''} Agende sua sessão online pelo PerFisio.`),
-      url: urlPublica(req, `/fisioterapeuta/${f.slug}`),
+      titulo: onde ? `Fisioterapeuta em ${onde} — ${f.nome} | PerFisio` : `${f.nome} — Fisioterapeuta | PerFisio`,
+      descricao: resumir(`${f.nome}, fisioterapeuta${f.esp ? ' de ' + f.esp : ''}${onde ? ' em ' + onde : ''}. `
+        + (f.bio || `${precoExibido(f) ? precoExibido(f) + '. ' : ''}Agende sua sessão online pelo PerFisio.`)),
+      url: urlPublica(req, canonico),
       tipo: 'profile',
       imagem: f.tem_foto ? urlPublica(req, `/api/public/fisio-foto/${f.id}`) : null,
       jsonld: {
         '@context': 'https://schema.org', '@type': 'Physician',
         name: f.nome, medicalSpecialty: 'Physiotherapy',
-        url: urlPublica(req, `/fisioterapeuta/${f.slug}`),
+        url: urlPublica(req, canonico),
         ...(f.clinica_nome ? { worksFor: { '@type': 'Organization', name: f.clinica_nome } } : {}),
         ...(onde ? { address: { '@type': 'PostalAddress', addressLocality: f.cidade || onde } } : {}),
       },
     });
   } catch (e) { next(e); }
-});
+}
+app.get('/fisioterapeuta-:cidade/:slug', servirPerfilFisio); // canônico
+app.get('/fisioterapeuta/:slug', servirPerfilFisio);         // antigo → 301
 
 // página da clínica
 app.get('/clinica/:slug', async (req, res, next) => {
@@ -2299,19 +3279,28 @@ const redirLegado = (tabela, prefixo) => async (req, res, next) => {
   if (!r.rowCount || !r.rows[0].slug) return next();
   res.redirect(301, `${prefixo}/${r.rows[0].slug}`);
 };
-app.get('/fisio.html', redirLegado('fisios', '/fisioterapeuta'));
+// link antigo fisio.html?id= vai direto para o endereço com a cidade (um 301 só)
+app.get('/fisio.html', async (req, res, next) => {
+  const id = req.query.id;
+  if (!id || !UUID.test(id)) return next();
+  const r = await pool.query('SELECT slug, cidade FROM fisios WHERE id = $1', [id]);
+  if (!r.rowCount || !r.rows[0].slug) return next();
+  res.redirect(301, caminhoPerfil(r.rows[0]));
+});
 app.get('/clinica.html', redirLegado('clinicas', '/clinica'));
 
 app.get('/robots.txt', (req, res) => {
   res.type('text/plain').send(
-    `User-agent: *\nAllow: /\nDisallow: /app/\nDisallow: /admin/\nDisallow: /api/\n\nSitemap: https://${HOST_CANONICO}/sitemap.xml\n`);
+    // /app/ e /admin/ não são bloqueados aqui: saem do índice pelo X-Robots-Tag noindex,
+    // que o Google só enxerga se puder buscar a página (bloqueio gerava "Bloqueada pelo robots.txt")
+    `User-agent: *\nAllow: /\nAllow: /api/public/\nDisallow: /api/\n\nSitemap: https://${HOST_CANONICO}/sitemap.xml\n`);
 });
 
 app.get('/sitemap.xml', async (req, res) => {
   try {
     const [cidades, fisios, clinicas] = await Promise.all([
       cidadesPublicas(),
-      pool.query(`SELECT f.slug FROM fisios f JOIN clinicas c ON c.id = f.clinica_id
+      pool.query(`SELECT f.slug, f.cidade FROM fisios f JOIN clinicas c ON c.id = f.clinica_id
                   WHERE f.publico AND f.ativo AND c.ativa AND coalesce(f.slug,'') <> ''`),
       pool.query(`SELECT slug FROM clinicas WHERE ativa AND coalesce(slug,'') <> ''
                   AND (perfil->>'visivel')::boolean IS TRUE`),
@@ -2319,8 +3308,11 @@ app.get('/sitemap.xml', async (req, res) => {
     const urls = [
       { loc: '/', prio: '1.0' },
       { loc: '/planos.html', prio: '0.8' },
+      { loc: '/site-para-fisioterapeutas', prio: '0.9' },
+      { loc: '/blog', prio: '0.6' },
+      ...POSTS.map(p => ({ loc: `/${p.slug}`, prio: '0.6' })),
       ...cidades.map(c => ({ loc: `/fisioterapeutas-em-${c.slug}`, prio: '0.9' })),
-      ...fisios.rows.map(f => ({ loc: `/fisioterapeuta/${f.slug}`, prio: '0.8' })),
+      ...fisios.rows.map(f => ({ loc: caminhoPerfil(f), prio: '0.8' })),
       ...clinicas.rows.map(c => ({ loc: `/clinica/${c.slug}`, prio: '0.7' })),
     ];
     res.type('application/xml').send(
@@ -2330,7 +3322,26 @@ app.get('/sitemap.xml', async (req, res) => {
   } catch (e) { res.status(500).type('text/plain').send('erro ao gerar sitemap'); }
 });
 
-app.use(express.static(ROOT, { extensions: ['html'] }));
+/* Cada página pública tem UM endereço. As variantes que o express.static também serviria
+   (/index.html, /blog.html, /planos…) levam 301 para a versão com canonical. */
+const HTML_CANONICO = new Map([
+  ['/index.html', '/'], ['/planos', '/planos.html'],
+  ['/site-para-fisioterapeutas.html', '/site-para-fisioterapeutas'], ['/blog.html', '/blog'],
+  ...POSTS.map(p => [`/${p.slug}.html`, `/${p.slug}`]),
+]);
+app.use((req, res, next) => {
+  const alvo = (req.method === 'GET' || req.method === 'HEAD') && HTML_CANONICO.get(req.path);
+  if (!alvo) return next();
+  const q = req.originalUrl.indexOf('?');
+  res.redirect(301, alvo + (q >= 0 ? req.originalUrl.slice(q) : ''));
+});
+
+// HTML servido direto do disco é modelo (fisio.html sem id, cidade.html…), login ou painel:
+// as páginas indexáveis passam pelas rotas de SEO acima, com canonical
+app.use(express.static(ROOT, {
+  extensions: ['html'],
+  setHeaders: (res, arquivo) => { if (arquivo.endsWith('.html')) res.setHeader('X-Robots-Tag', 'noindex'); },
+}));
 
 app.use(async (req, res) => {
   if (!hostDoSistema(req.headers.host)) {
@@ -2346,7 +3357,8 @@ app.use(async (req, res) => {
 app.use((err, req, res, next) => {
   console.error('erro em', req.method, req.originalUrl, '·', err.message);
   if (res.headersSent) return;
-  const dadoRuim = err.code === '22P02' || err.code === '22007' || err.code === '22008';
+  const dadoRuim = err.code === '22P02' || err.code === '22007' || err.code === '22008'
+    || err.type === 'entity.parse.failed'; // JSON malformado no corpo do POST
   res.status(dadoRuim ? 400 : 500)
     .json({ erro: dadoRuim ? 'Dados inválidos na requisição' : 'Erro interno do servidor' });
 });

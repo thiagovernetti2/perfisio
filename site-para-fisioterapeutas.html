@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Site para fisioterapeutas — crie seu perfil profissional | PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="assets/img/simbolo-perfisio.svg">
+  <link rel="stylesheet" href="assets/css/app.css">
+  <link rel="stylesheet" href="assets/css/site.css">
+  <style>
+    .pf-hero { padding: 70px 6vw 52px; text-align: center; background: linear-gradient(180deg, #F0FAF7 0%, #fff 100%); }
+    .pf-hero .kicker { font-size: .78rem; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; color: var(--primary-dark); }
+    .pf-hero h1 { font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 900; color: var(--ink); letter-spacing: -1.2px; margin-top: 12px; line-height: 1.12; }
+    .pf-hero h1 em { color: var(--primary); font-style: normal; }
+    .pf-hero .lead { color: var(--ink); font-size: 1.12rem; font-weight: 600; margin: 16px auto 0; max-width: 620px; line-height: 1.6; }
+    .pf-hero p.sub { color: var(--text-soft); font-size: 1rem; margin: 12px auto 0; max-width: 620px; line-height: 1.7; }
+    .pf-hero .acoes { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 28px; }
+
+    .sec { max-width: 1080px; margin: 0 auto; padding: 60px 6vw 0; }
+    .sec h2 { font-size: clamp(1.4rem, 3vw, 1.9rem); font-weight: 900; color: var(--ink); letter-spacing: -.6px; text-align: center; }
+    .sec .sub { color: var(--text-soft); text-align: center; margin: 12px auto 0; font-size: .98rem; max-width: 640px; line-height: 1.75; }
+
+    .func-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 36px; }
+    .func { border: 1px solid var(--line); border-radius: 16px; padding: 24px; background: #fff; box-shadow: var(--shadow); }
+    .func .ico { width: 44px; height: 44px; border-radius: 12px; background: var(--primary-soft); display: grid; place-items: center; font-size: 1.25rem; margin-bottom: 14px; }
+    .func h3 { font-size: 1rem; font-weight: 800; color: var(--ink); }
+    .func p { color: var(--text-soft); font-size: .88rem; line-height: 1.65; margin-top: 7px; }
+
+    .comunidade { display: grid; grid-template-columns: 1.05fr .95fr; gap: 40px; align-items: center;
+      max-width: 1080px; margin: 70px auto 0; padding: 0 6vw; }
+    .comunidade h2 { font-size: clamp(1.4rem, 3vw, 1.9rem); font-weight: 900; color: var(--ink); letter-spacing: -.6px; line-height: 1.25; text-align: left; }
+    .comunidade p { color: var(--text-soft); font-size: .98rem; line-height: 1.75; margin-top: 14px; }
+    .usos { list-style: none; padding: 0; margin: 26px 0 0; display: flex; flex-direction: column; gap: 12px; }
+    .usos li { display: flex; gap: 12px; align-items: flex-start; font-size: .95rem; color: var(--ink); font-weight: 600; }
+    .usos li .ck { width: 24px; height: 24px; border-radius: 50%; background: var(--primary-soft); color: var(--primary-dark);
+      display: grid; place-items: center; font-size: .78rem; font-weight: 900; flex-shrink: 0; }
+    .mock { border: 1px solid var(--line); border-radius: 18px; background: #fff; box-shadow: var(--shadow-lg); padding: 22px; }
+    .mock .linha { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+    .mock .linha:last-child { border-bottom: none; }
+    .mock .av { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: .82rem; flex-shrink: 0; }
+    .mock .nm { font-weight: 700; color: var(--ink); font-size: .9rem; }
+    .mock .sb { font-size: .76rem; color: var(--text-soft); margin-top: 2px; }
+    .mock .nota { margin-left: auto; font-size: .78rem; font-weight: 700; color: var(--primary-dark); white-space: nowrap; }
+
+    .cta-final { margin: 76px 0 0; padding: 60px 6vw; background: var(--ink); color: #fff; text-align: center; }
+    .cta-final h2 { font-size: clamp(1.5rem, 3.4vw, 2rem); font-weight: 900; letter-spacing: -.6px; }
+    .cta-final p { color: #9DB3B0; margin: 14px auto 24px; max-width: 560px; line-height: 1.7; }
+
+    @media (max-width: 900px) {
+      .func-grid { grid-template-columns: 1fr 1fr; }
+      .comunidade { grid-template-columns: 1fr; gap: 30px; }
+    }
+    @media (max-width: 620px) { .func-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="lp-header">
+    <a class="logo" href="/"><img src="assets/img/logo-perfisio.svg" alt="PerFisio" width="176" height="30"></a>
+    <nav>
+      <a href="/#profissionais">Encontrar fisioterapeuta</a>
+      <a href="site-para-fisioterapeutas" style="color:var(--ink);">Para fisioterapeutas</a>
+      <a href="planos.html">Planos</a>
+      <a href="blog">Blog</a>
+      <a href="login.html" class="btn btn-ghost btn-sm">Entrar</a>
+      <a href="login.html#registro" class="btn btn-primary btn-sm">Criar perfil grátis</a>
+    </nav>
+  </header>
+
+  <section class="pf-hero">
+    <div class="kicker">Para fisioterapeutas</div>
+    <h1>É fisioterapeuta?<br><em>Crie seu perfil em poucos minutos.</em></h1>
+    <div class="lead">Junte-se a fisioterapeutas de todo o Brasil.</div>
+    <p class="sub">Dê visibilidade ao seu perfil e invista em marketing digital para promover os seus serviços
+       de reabilitação física 💚</p>
+    <div class="acoes">
+      <a class="btn btn-primary" href="login.html#registro" style="padding:13px 26px;">Criar perfil</a>
+      <a class="btn btn-soft" href="#funcionalidades" style="padding:13px 26px;">Ver funcionalidades</a>
+    </div>
+  </section>
+
+  <section class="sec" id="funcionalidades">
+    <h2>Construa confiança, aumente a conversão</h2>
+    <p class="sub">Obter novos agendamentos exige a confiança de quem está buscando atendimento.
+       Colete avaliações dos seus pacientes, mostre seu CREFITO verificado e muito mais.</p>
+
+    <div class="func-grid">
+      <div class="func">
+        <div class="ico">📋</div>
+        <h3>Currículo</h3>
+        <p>Seu currículo pode incluir informações de contato, formação acadêmica, experiência profissional,
+           especialidades, cursos e formações.</p>
+      </div>
+      <div class="func">
+        <div class="ico">👥</div>
+        <h3>Redes sociais</h3>
+        <p>Construa relacionamento com pacientes e prospects pelas redes sociais e outros canais.
+           Coloque seu link em QR codes, cartões de visita e onde mais quiser.</p>
+      </div>
+      <div class="func">
+        <div class="ico">🖼️</div>
+        <h3>Álbum de fotos</h3>
+        <p>Fotos profissionais são importantes para transmitir uma boa imagem do seu trabalho,
+           do consultório e dos equipamentos.</p>
+      </div>
+      <div class="func">
+        <div class="ico">🔗</div>
+        <h3>Link otimizado</h3>
+        <p>Anuncie seus serviços em sites e redes sociais e crie campanhas de tráfego pago com um
+           link curto e direto: <b>perfis.io/seu-nome</b>.</p>
+      </div>
+      <div class="func">
+        <div class="ico">🩺</div>
+        <h3>Especialidades e patologias</h3>
+        <p>Mostre quais são suas especialidades, que tipos de patologias e sintomas você tem experiência
+           em tratar e quais são os seus interesses.</p>
+      </div>
+      <div class="func">
+        <div class="ico">📍</div>
+        <h3>Geolocalização</h3>
+        <p>O PerFisio tem busca por localização, o que ajuda os pacientes a encontrarem profissionais
+           perto de onde estão.</p>
+      </div>
+      <div class="func">
+        <div class="ico">🏖️</div>
+        <h3>Modo férias</h3>
+        <p>Sabemos que não é só de trabalho que se vive — e se as coisas estão indo bem, bora pra praia.
+           Tire o perfil do ar em um clique e devolva quando voltar.</p>
+      </div>
+      <div class="func">
+        <div class="ico">⭐</div>
+        <h3>Avaliações</h3>
+        <p>Um perfil bem organizado transmite confiança e credibilidade, e ajuda a atrair novos pacientes
+           que estão procurando um profissional.</p>
+      </div>
+      <div class="func">
+        <div class="ico">👓</div>
+        <h3>Site acessível</h3>
+        <p>Nossas páginas são otimizadas para pessoas com limitações motoras ou visuais que buscam
+           reabilitação física.</p>
+      </div>
+      <div class="func">
+        <div class="ico">🔍</div>
+        <h3>Otimizado pra buscadores</h3>
+        <p>Imagine alguém encontrando você nos buscadores pela sua atividade na sua cidade.
+           Por exemplo: <i>fisioterapeuta em Campinas</i>.</p>
+      </div>
+      <div class="func">
+        <div class="ico">✅</div>
+        <h3>Perfil verificado</h3>
+        <p>Com o CREFITO no perfil você é listado nas páginas de listagem por cidade e encontrado
+           por quem procura você na busca.</p>
+      </div>
+      <div class="func">
+        <div class="ico">📅</div>
+        <h3>Agenda online</h3>
+        <p>O paciente vê seus horários livres e agenda sozinho, direto do perfil — e a sessão
+           já cai na sua agenda do PerFisio.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="comunidade">
+    <div>
+      <h2>Uma comunidade de fisioterapeutas de todo o Brasil</h2>
+      <p>O PerFisio foi desenvolvido para fisioterapeutas e clínicas de fisioterapia: clínicas,
+         profissionais de pilates e quem atua com reabilitação física e motora.</p>
+      <ul class="usos">
+        <li><span class="ck">✓</span> Divulgue sua página nas redes sociais</li>
+        <li><span class="ck">✓</span> Seja encontrado em sites de pesquisa</li>
+        <li><span class="ck">✓</span> Utilize como landing page em campanhas de marketing</li>
+      </ul>
+      <a class="btn btn-primary" href="login.html#registro" style="margin-top:26px;padding:13px 26px;">Criar perfil</a>
+    </div>
+    <div class="mock" aria-hidden="true">
+      <div class="linha">
+        <div class="av" style="background:#0DA189;">ML</div>
+        <div><div class="nm">Mariane Lapinski</div><div class="sb">Ortopedia · São Paulo/SP</div></div>
+        <div class="nota">★ 5,0</div>
+      </div>
+      <div class="linha">
+        <div class="av" style="background:#2D7DD2;">RC</div>
+        <div><div class="nm">Rafael Costa</div><div class="sb">Esportiva · atende em domicílio</div></div>
+        <div class="nota">★ 4,9</div>
+      </div>
+      <div class="linha">
+        <div class="av" style="background:#7C5CBF;">JA</div>
+        <div><div class="nm">Julia Amaral</div><div class="sb">Pilates clínico · RPG</div></div>
+        <div class="nota">★ 4,8</div>
+      </div>
+      <div class="linha">
+        <div class="av" style="background:#D9820B;">PS</div>
+        <div><div class="nm">Paulo Serra</div><div class="sb">Neurofuncional · Pelotas/RS</div></div>
+        <div class="nota">★ 5,0</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-final">
+    <h2>Seu perfil no ar hoje, sem burocracia</h2>
+    <p>Crie seu perfil de graça e comece a receber agendamentos. Quando a agenda estiver girando,
+       o sistema completo custa R$ 40 por profissional/mês.</p>
+    <a class="btn btn-primary" href="login.html#registro" style="padding:13px 28px;">Criar meu perfil grátis</a>
+    <a class="btn btn-ghost" href="planos.html" style="padding:13px 28px;color:#fff;border-color:#3A4B49;">Ver planos</a>
+  </section>
+
+  <footer class="lp-footer">
+    <b style="color:var(--ink);">PerFisio</b> © 2026 — Conectando pacientes e fisioterapeutas ·
+    <a href="/">Início</a> · <a href="blog">Blog</a> · <a href="planos.html">Planos</a>
+  </footer>
+</body>
+</html>

@@ -319,8 +319,20 @@
     const STATUS_TXT = { tratamento: 'Em tratamento', avaliacao: 'Em avaliação', alta: 'Alta', inativo: 'Inativo' };
     const REGIAO_ICO = Object.fromEntries(Object.entries(BodyMap.REGIOES).map(([k, v]) => [k, v.ico]));
 
+    let SO_CLINICO = false; // perfil fisioterapeuta: só os pacientes dele, sem os outros módulos
+
     async function boot() {
-      [PACS, FISIOS] = await Promise.all([PF.get('pacientes'), PF.get('fisios')]);
+      const [pacs, fisios, eu] = await Promise.all([
+        PF.get('pacientes'), PF.get('fisios'), PF.api('/api/me').catch(() => PF.user() || {}),
+      ]);
+      PACS = pacs; FISIOS = fisios;
+      SO_CLINICO = eu.perfil === 'fisio';
+      if (SO_CLINICO) {
+        /* ele não tem o módulo Pacientes: cadastra pela agenda, junto com a sessão */
+        document.getElementById('vazio').innerHTML =
+          '<div class="empty">Nenhum paciente seu por aqui ainda.<br><br>'
+          + '<a class="btn btn-primary" href="agenda.html">+ Agendar a primeira sessão</a></div>';
+      }
       const fisioOpts = FISIOS.filter(f => f.ativo).map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
       document.getElementById('evFisio').innerHTML = fisioOpts;
       document.getElementById('tFisio').innerHTML = fisioOpts;
@@ -489,7 +501,8 @@
             <td>${BADGE[s.status] || s.status}</td>
           </tr>`;
         }).join('') ||
-        `<tr><td colspan="5" class="empty">Nenhuma sessão vinculada a esta ocorrência.<br><a href="agenda.html?p=${sel}&t=${tratSel}" style="color:var(--primary);font-weight:600;">Agendar a primeira →</a></td></tr>`;
+        `<tr><td colspan="5" class="empty">Nenhuma sessão vinculada a esta ocorrência.<br>
+          <a href="agenda.html?p=${sel}&t=${tratSel}" style="color:var(--primary);font-weight:600;">Agendar a primeira →</a></td></tr>`;
     }
 
     /* ---------- Mapa corporal no modal ---------- */
@@ -676,7 +689,8 @@
     }
 
     /* ---------- Anexos (por paciente) ---------- */
-    const urlAnexo = id => `/api/anexos/${id}/arquivo?t=${encodeURIComponent(PF.token())}`;
+    const urlAnexo = id => `/api/anexos/${id}/arquivo?t=${encodeURIComponent(PF.token())}`
+      + (PF.clinica() ? '&c=' + encodeURIComponent(PF.clinica()) : ''); // paciente de outra clínica onde atende
 
     async function carregarAnexos() {
       const anexos = await PF.get('anexos', { paciente_id: sel });
