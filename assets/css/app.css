@@ -9,6 +9,12 @@
 .i { width: 1.15em; height: 1.15em; fill: currentColor; vertical-align: -.22em; flex: none; }
 .i.vazia { opacity: .32; }
 
+/* ícone que se desenha: contorno, luz correndo e o preenchimento no fim
+   (assets/js/icones-animados.js — a página funciona sem ele, com o ícone parado) */
+.i-anima .i-traco { fill: none; stroke: currentColor; stroke-width: 40; stroke-linecap: round; stroke-linejoin: round; }
+.i-anima .i-luz { fill: none; stroke: #fff; stroke-width: 46; stroke-linecap: round; opacity: 0; filter: drop-shadow(0 0 7px #fff); }
+.i-anima .i-cheio { fill: currentColor; }
+
 :root {
   /* Cores */
   --primary: #0DA189;
