@@ -181,8 +181,8 @@
   <script src="/assets/js/conta.js"></script>
   <script>
     const LABEL = {
-      esportiva: '🏃 Esportiva', ortopedia: '🦴 Ortopedia', pilates: '🧘 Pilates', neuro: '🧠 Neuro',
-      rpg: '🧍 RPG', respiratoria: '🫁 Respiratória', pelvica: '🌸 Pélvica', geriatrica: '👵 Geriátrica',
+      esportiva: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#corrida"></use></svg> Esportiva', ortopedia: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#osso"></use></svg> Ortopedia', pilates: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#pilates"></use></svg> Pilates', neuro: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#neuro"></use></svg> Neuro',
+      rpg: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#postura"></use></svg> RPG', respiratoria: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#pulmao"></use></svg> Respiratória', pelvica: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#pelvica"></use></svg> Pélvica', geriatrica: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#idoso"></use></svg> Geriátrica',
     };
     const NOME_ESP = { esportiva: 'Esportiva', ortopedia: 'Ortopedia', pilates: 'Pilates', neuro: 'Neuro', rpg: 'RPG', respiratoria: 'Respiratória', pelvica: 'Pélvica', geriatrica: 'Geriátrica' };
     const TRAT_PADRAO = ['Articulares', 'Lesões do esporte', 'Musculares', 'Reabilitação funcional', 'Dores em geral'];
@@ -236,21 +236,21 @@
           <div class="pf-nome">${p.nome}</div>
           <div class="pf-sub">${subtitulo}</div>
           <div class="pf-badges">
-            ${p.crefito ? `<span class="badge green">✅ ${p.crefito}</span>` : ''}
-            ${p.domiciliar ? '<span class="badge amber">🏠 Atendimento domiciliar</span>' : ''}
-            ${p.clinica_nome ? `<span class="badge blue">🏥 Clínica parceira</span>` : ''}
-            <span class="badge primary">✨ Novo no PerFisio</span>
+            ${p.crefito ? `<span class="badge green"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#verificado"></use></svg> ${p.crefito}</span>` : ''}
+            ${p.domiciliar ? '<span class="badge amber"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#casa"></use></svg> Atendimento domiciliar</span>' : ''}
+            ${p.clinica_nome ? `<span class="badge blue"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#hospital"></use></svg> Clínica parceira</span>` : ''}
+            <span class="badge primary"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#brilho"></use></svg> Novo no PerFisio</span>
           </div>
           <div class="pf-cta">
             <span class="pf-preco">${p.preco || ''}</span>
-            ${numWpp ? `<a class="btn btn-wpp" href="${wpp(numWpp, msgPadrao)}" target="_blank" rel="noopener">💬 WhatsApp</a>` : ''}
+            ${numWpp ? `<a class="btn btn-wpp" href="${wpp(numWpp, msgPadrao)}" target="_blank" rel="noopener"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#whatsapp"></use></svg> WhatsApp</a>` : ''}
             <button class="btn btn-primary" style="padding:12px 24px;" onclick="irAgenda()">Agendar horário</button>
           </div>
         </div>
 
         <!-- AGENDAMENTO ONLINE -->
         <div class="pf-sec" id="secAgenda">
-          <h2>📅 Agende seu horário</h2>
+          <h2><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#agenda"></use></svg> Agende seu horário</h2>
           <div id="bkComponente"></div>
           <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:.8rem;">
             <span class="ler-mais" onclick="abrirRemarcar()">Já agendou? Remarcar ou cancelar →</span>
@@ -271,7 +271,7 @@
           <div class="trat-grid">
             ${trats.map(t => `<div class="trat-card">
               <b>${t}</b>
-              ${numWpp ? `<a class="btn btn-soft btn-sm" href="${wpp(numWpp, `Olá! Vi no PerFisio que ${p.nome} trata "${t}" e gostaria de mais informações.`)}" target="_blank" rel="noopener">💬 Mensagem</a>`
+              ${numWpp ? `<a class="btn btn-soft btn-sm" href="${wpp(numWpp, `Olá! Vi no PerFisio que ${p.nome} trata "${t}" e gostaria de mais informações.`)}" target="_blank" rel="noopener"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#whatsapp"></use></svg> Mensagem</a>`
                 : `<button class="btn btn-soft btn-sm" onclick="App.openModal('mAvaliacao')">Mensagem</button>`}
             </div>`).join('')}
           </div>
@@ -313,16 +313,16 @@
           <h2>Atendimento</h2>
           <div style="display:flex;gap:7px;flex-wrap:wrap;">
             ${p.especialidades.map(e => `<span class="badge primary">${LABEL[e] || e}</span>`).join('')}
-            ${p.domiciliar ? '<span class="badge amber">🏠 Domiciliar</span>' : ''}
-            <span class="badge gray">🏥 Na clínica</span>
+            ${p.domiciliar ? '<span class="badge amber"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#casa"></use></svg> Domiciliar</span>' : ''}
+            <span class="badge gray"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#hospital"></use></svg> Na clínica</span>
           </div>
-          ${p.clinica_horario ? `<p style="margin-top:12px;font-size:.84rem;">🕐 ${p.clinica_horario}</p>` : ''}
+          ${p.clinica_horario ? `<p style="margin-top:12px;font-size:.84rem;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#relogio"></use></svg> ${p.clinica_horario}</p>` : ''}
         </div>
 
         <!-- REGIÕES ATENDIDAS -->
         <div class="pf-sec">
           <h2>Regiões atendidas</h2>
-          <p>📍 ${p.regioes || [p.bairro, p.cidade].filter(Boolean).join(', ') || 'Consulte pelo WhatsApp'}</p>
+          <p><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#local"></use></svg> ${p.regioes || [p.bairro, p.cidade].filter(Boolean).join(', ') || 'Consulte pelo WhatsApp'}</p>
           <div id="mapaFisio"></div>
         </div>
 
@@ -339,7 +339,7 @@
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <a class="btn btn-ghost btn-sm" href="${l.slug ? '/clinica/' + l.slug : '/clinica.html?id=' + l.clinica_id}">Ver clínica</a>
-              ${l.telefone ? `<a class="btn btn-soft btn-sm" href="${wpp(l.telefone, 'Olá! Vim pelo PerFisio e gostaria de informações sobre a ' + l.nome + '.')}" target="_blank" rel="noopener">💬 Enviar mensagem</a>` : ''}
+              ${l.telefone ? `<a class="btn btn-soft btn-sm" href="${wpp(l.telefone, 'Olá! Vim pelo PerFisio e gostaria de informações sobre a ' + l.nome + '.')}" target="_blank" rel="noopener"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#whatsapp"></use></svg> Enviar mensagem</a>` : ''}
             </div>
           </div>`).join('')}
         </div>
@@ -348,8 +348,8 @@
         <div class="pf-sec">
           <h2>Redes sociais e planos</h2>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-            ${p.instagram ? `<a class="btn btn-ghost btn-sm" href="https://instagram.com/${p.instagram.replace('@', '')}" target="_blank" rel="noopener">📸 @${p.instagram.replace('@', '')}</a>` : ''}
-            ${numWpp ? `<a class="btn btn-soft btn-sm" href="${wpp(numWpp, `Olá! Gostaria de saber se ${p.nome} atende pelo meu plano de saúde.`)}" target="_blank" rel="noopener">🏥 Atende meu plano? Perguntar</a>` : ''}
+            ${p.instagram ? `<a class="btn btn-ghost btn-sm" href="https://instagram.com/${p.instagram.replace('@', '')}" target="_blank" rel="noopener"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#instagram"></use></svg> @${p.instagram.replace('@', '')}</a>` : ''}
+            ${numWpp ? `<a class="btn btn-soft btn-sm" href="${wpp(numWpp, `Olá! Gostaria de saber se ${p.nome} atende pelo meu plano de saúde.`)}" target="_blank" rel="noopener"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#hospital"></use></svg> Atende meu plano? Perguntar</a>` : ''}
           </div>
         </div>
 
@@ -366,7 +366,7 @@
 
       document.getElementById('avTitulo').textContent = 'Solicitar avaliação — ' + p.nome;
       document.getElementById('ctaFixa').innerHTML = `
-        ${numWpp ? `<a class="btn btn-wpp" href="${wpp(numWpp, msgPadrao)}" target="_blank" rel="noopener">💬 WhatsApp</a>` : ''}
+        ${numWpp ? `<a class="btn btn-wpp" href="${wpp(numWpp, msgPadrao)}" target="_blank" rel="noopener"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#whatsapp"></use></svg> WhatsApp</a>` : ''}
         <button class="btn btn-primary" onclick="irAgenda()">Agendar horário</button>`;
       iniciarMapa();
       bkInit();
@@ -374,7 +374,7 @@
     }
 
     /* ================= AVALIAÇÕES ================= */
-    const estrelas = n => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n);
+    const estrelas = n => ''.slice(0, n) + ''.slice(0, 5 - n);
     const ROTULO = { 5: 'Excelente', 4: 'Muito bom', 3: 'Bom', 2: 'Regular', 1: 'Ruim' };
     let MINHA = null;
 
@@ -414,7 +414,7 @@
               <div class="topo">
                 <span class="av">${a.foto_url ? `<img src="${a.foto_url}" alt="">` : a.primeiro_nome[0].toUpperCase()}</span>
                 <span class="nome">${a.primeiro_nome}</span>
-                ${a.paciente ? '<span class="badge green" style="font-size:.64rem;">✓ paciente</span>' : ''}
+                ${a.paciente ? '<span class="badge green" style="font-size:.64rem;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg> paciente</span>' : ''}
                 <span class="estrelas" style="font-size:.9rem;">${estrelas(a.nota)}</span>
                 <span class="quando" style="margin-left:auto;">${PF.fmtData(String(a.criado_em).slice(0, 10))}</span>
               </div>
@@ -425,7 +425,7 @@
       box.innerHTML = resumo + lista + `
         <div style="margin-top:18px;padding-top:16px;border-top:1px solid #F0F4F3;">
           <button class="btn btn-soft btn-sm" onclick="abrirFormAvaliacao()">
-            ${MINHA ? '✏️ Editar minha avaliação' : `⭐ Avaliar ${primeiro}`}</button>
+            ${MINHA ? '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#editar"></use></svg> Editar minha avaliação' : `<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#estrela"></use></svg> Avaliar ${primeiro}`}</button>
         </div>
         <div id="formAval" style="display:none;margin-top:16px;">
           <div style="font-size:.86rem;font-weight:700;color:var(--ink);margin-bottom:8px;">Sua nota</div>
@@ -443,7 +443,7 @@
     let notaSel = 0;
     function renderEstrelas() {
       document.getElementById('estrelasSel').innerHTML = [1, 2, 3, 4, 5]
-        .map(n => `<button type="button" class="estrela-btn${n <= notaSel ? ' on' : ''}" onclick="setNota(${n})" title="${ROTULO[n]}">★</button>`).join('')
+        .map(n => `<button type="button" class="estrela-btn${n <= notaSel ? ' on' : ''}" onclick="setNota(${n})" title="${ROTULO[n]}"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#estrela"></use></svg></button>`).join('')
         + `<span style="font-size:.82rem;color:var(--text-soft);margin-left:8px;">${notaSel ? ROTULO[notaSel] : ''}</span>`;
     }
     function setNota(n) { notaSel = n; renderEstrelas(); }
@@ -547,7 +547,7 @@
 
       /* aviso do modo remarcação */
       const aviso = bkModo === 'remarcar' && bkReserva && bkReserva.sessaoSel
-        ? `<div class="bk-aviso">🔁 Remarcando a sessão de <b>${fmtBR(bkReserva.sessoes.find(s => s.id === bkReserva.sessaoSel).data)} às ${bkReserva.sessoes.find(s => s.id === bkReserva.sessaoSel).hora}</b> — escolha o novo horário abaixo.
+        ? `<div class="bk-aviso"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#repetir"></use></svg> Remarcando a sessão de <b>${fmtBR(bkReserva.sessoes.find(s => s.id === bkReserva.sessaoSel).data)} às ${bkReserva.sessoes.find(s => s.id === bkReserva.sessaoSel).hora}</b> — escolha o novo horário abaixo.
            <span class="ler-mais" onclick="bkSairRemarcar()">cancelar</span></div>`
         : '';
 
@@ -597,7 +597,7 @@
         <div class="field" style="margin-bottom:14px;max-width:460px;">
           <label>Onde você quer ser atendido?</label>
           <select onchange="bkLocal=this.value;bkRender()">
-            ${locais.map(l => `<option value="${l.fisio_id}"${l.fisio_id === bkLocal ? ' selected' : ''}>${l.nome}${l.endereco ? ' — ' + l.endereco : ''}</option>`).join('')}
+            ${locais.map(l => ` 0 `).join('')}
           </select>
         </div>` : '';
       el.innerHTML = `${aviso}${seletorLocal}
@@ -636,12 +636,12 @@
         });
         document.getElementById('bkComponente').innerHTML = `
           <div class="bk-ok">
-            <div style="font-size:2.2rem;">✅</div>
+            <div style="font-size:2.2rem;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#verificado"></use></svg></div>
             <div style="font-size:1.05rem;font-weight:800;color:var(--ink);margin-top:6px;">Agendamento confirmado com ${r.fisio_nome.split(' ')[0]}!</div>
             <div class="cod">${r.codigo}</div>
             <div style="font-size:.82rem;color:var(--text-soft);">Guarde este código — com ele você remarca ou cancela quando precisar.</div>
             <div class="bk-preview" style="justify-content:center;margin-top:14px;">
-              ${r.criadas.map(d => `<span>📅 ${fmtBR(d)} às ${r.hora}</span>`).join('')}
+              ${r.criadas.map(d => `<span><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#agenda"></use></svg> ${fmtBR(d)} às ${r.hora}</span>`).join('')}
               ${r.conflitos.map(d => `<span class="conf">${fmtBR(d)} ocupado</span>`).join('')}
             </div>
             <div style="margin-top:18px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
@@ -671,11 +671,11 @@
     function bkRenderReserva() {
       const r = bkReserva;
       document.getElementById('bkComponente').innerHTML = `
-        <div class="bk-aviso">🔑 Reserva <b>${r.codigo}</b> · ${r.sessoes.length} sessão(ões) futura(s). Escolha uma para remarcar ou cancelar:</div>
+        <div class="bk-aviso"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#chave"></use></svg> Reserva <b>${r.codigo}</b> · ${r.sessoes.length} sessão(ões) futura(s). Escolha uma para remarcar ou cancelar:</div>
         ${r.sessoes.map(s => `
           <div class="bk-sessao">
             <span style="flex:1;font-size:.88rem;"><b>${fmtBR(s.data)}</b> às <b>${s.hora}</b> · ${s.tipo}</span>
-            <button class="btn btn-soft btn-sm" onclick="bkEscolherRemarcar('${s.id}')">🔁 Remarcar</button>
+            <button class="btn btn-soft btn-sm" onclick="bkEscolherRemarcar('${s.id}')"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#repetir"></use></svg> Remarcar</button>
             <button class="btn btn-danger btn-sm" onclick="bkCancelarSessao('${s.id}')">Cancelar</button>
           </div>`).join('')}
         <div style="margin-top:10px;"><span class="ler-mais" onclick="bkSairRemarcar()">← Voltar ao agendamento</span></div>`;
@@ -692,7 +692,7 @@
         const r = await PF.api(`/api/public/reserva/${bkReserva.codigo}/remarcar`, { method: 'POST', body: {
           sessao_id: bkReserva.sessaoSel, data: bkData, hora: bkHora,
         }});
-        App.toast(`Sessão remarcada para ${fmtBR(r.data)} às ${r.hora}! ✅`);
+        App.toast(`Sessão remarcada para ${fmtBR(r.data)} às ${r.hora}!`);
         await bkCarregarOcupados();
         const sessoes = await PF.api('/api/public/reserva/' + bkReserva.codigo);
         bkReserva = { ...bkReserva, sessoes, sessaoSel: null };
@@ -760,7 +760,7 @@
           fisio_id: PRO.id, nome: avNome.value.trim(), telefone: avTel.value.trim() || null, obs: avObs.value.trim() || null,
         }});
         App.closeModal('mAvaliacao');
-        App.toast('Solicitação enviada! ' + PRO.nome.split(' ')[0] + ' entrará em contato. ✅');
+        App.toast('Solicitação enviada! ' + PRO.nome.split(' ')[0] + ' entrará em contato.');
         avNome.value = ''; avTel.value = ''; avObs.value = '';
       } catch (e) { App.toast(e.message, 'error'); }
       btn.disabled = false;

@@ -89,8 +89,8 @@
   <script src="/assets/js/api.js"></script>
   <script>
     const LABEL = {
-      esportiva: '🏃 Esportiva', ortopedia: '🦴 Ortopedia', pilates: '🧘 Pilates', neuro: '🧠 Neuro',
-      rpg: '🧍 RPG', respiratoria: '🫁 Respiratória', pelvica: '🌸 Pélvica', geriatrica: '👵 Geriátrica',
+      esportiva: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#corrida"></use></svg> Esportiva', ortopedia: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#osso"></use></svg> Ortopedia', pilates: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#pilates"></use></svg> Pilates', neuro: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#neuro"></use></svg> Neuro',
+      rpg: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#postura"></use></svg> RPG', respiratoria: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#pulmao"></use></svg> Respiratória', pelvica: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#pelvica"></use></svg> Pélvica', geriatrica: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#idoso"></use></svg> Geriátrica',
     };
     /* aceita /clinica/{slug}, ?id= ou o domínio próprio da clínica */
     let clinicaId = location.pathname.startsWith('/clinica/')
@@ -124,17 +124,17 @@
           <div class="pf-nome">${perfil.titulo || c.nome}</div>
           <div class="pf-sub">${c.equipe.length} fisioterapeuta(s) no PerFisio</div>
           <div class="pf-meta">
-            ${c.endereco ? `<span>📍 ${c.endereco}</span>` : ''}
-            ${c.horario ? `<span>🕐 ${c.horario}</span>` : ''}
-            ${c.telefone ? `<span>📞 ${c.telefone}</span>` : ''}
+            ${c.endereco ? `<span><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#local"></use></svg> ${c.endereco}</span>` : ''}
+            ${c.horario ? `<span><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#relogio"></use></svg> ${c.horario}</span>` : ''}
+            ${c.telefone ? `<span><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#telefone"></use></svg> ${c.telefone}</span>` : ''}
           </div>
           <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:14px;">
             ${todasEsp.map(e => `<span class="badge primary">${LABEL[e] || e}</span>`).join('')}
-            ${c.equipe.some(f => f.domiciliar) ? '<span class="badge amber">🏠 Domiciliar</span>' : ''}
+            ${c.equipe.some(f => f.domiciliar) ? '<span class="badge amber"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#casa"></use></svg> Domiciliar</span>' : ''}
           </div>
           <div class="pf-cta">
             <span class="pf-preco">${perfil.faixa_preco || ''}</span>
-            <button class="btn btn-primary" style="padding:12px 26px;" onclick="irAgendar()">📅 Agendar horário</button>
+            <button class="btn btn-primary" style="padding:12px 26px;" onclick="irAgendar()"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#agenda"></use></svg> Agendar horário</button>
             <button class="btn btn-ghost" style="padding:12px 22px;" onclick="App.openModal('mAvaliacao')">Falar com a clínica</button>
           </div>
         </div>
@@ -156,13 +156,13 @@
                     <div class="eq-esp">${f.esp || 'Fisioterapeuta'}${f.bairro ? ' · ' + f.bairro : ''}</div>
                     <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;">
                       ${f.especialidades.slice(0, 3).map(e => `<span class="badge primary" style="font-size:.64rem;">${LABEL[e] || e}</span>`).join('')}
-                      ${f.domiciliar ? '<span class="badge amber" style="font-size:.64rem;">🏠</span>' : ''}
+                      ${f.domiciliar ? '<span class="badge amber" style="font-size:.64rem;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#casa"></use></svg></span>' : ''}
                     </div>
                     ${f.preco ? `<div style="font-size:.78rem;font-weight:700;color:var(--ink);margin-top:8px;">${f.preco}</div>` : ''}
                   </div>
                 </a>
                 <div style="padding:0 16px 16px;">
-                  <a class="btn btn-primary btn-sm" style="width:100%;justify-content:center;" href="${f.url || (f.slug ? '/fisioterapeuta/' + f.slug : '/fisio.html?id=' + f.id)}#agendar">📅 Agendar horário</a>
+                  <a class="btn btn-primary btn-sm" style="width:100%;justify-content:center;" href="${f.url || (f.slug ? '/fisioterapeuta/' + f.slug : '/fisio.html?id=' + f.id)}#agendar"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#agenda"></use></svg> Agendar horário</a>
                 </div>
               </div>`;
             }).join('') || '<p style="color:var(--text-soft);">Nenhum profissional público ainda.</p>'}
@@ -231,7 +231,7 @@
           interesse: 'Avaliação fisioterapêutica', obs: avObs.value.trim() || null,
         }});
         App.closeModal('mAvaliacao');
-        App.toast('Solicitação enviada! A clínica entrará em contato. ✅');
+        App.toast('Solicitação enviada! A clínica entrará em contato.');
         avNome.value = ''; avTel.value = ''; avObs.value = '';
       } catch (e) { App.toast(e.message, 'error'); }
       btn.disabled = false;

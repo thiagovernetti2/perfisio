@@ -22,7 +22,7 @@
 <body>
   <div class="box">
     <img class="logo" src="/assets/img/logo-perfisio.svg" alt="PerFisio">
-    <div class="ico" id="ico">⏳</div>
+    <div class="ico" id="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#ampulheta"></use></svg></div>
     <h1 id="titulo">Confirmando…</h1>
     <p id="texto"></p>
     <a class="btn btn-primary" id="acao" href="/login.html">Entrar no PerFisio</a>
@@ -31,13 +31,13 @@
   <script>
     const estado = (window.__PF && window.__PF.estado) || 'invalido';
     const TELAS = {
-      ok: ['✅', 'E-mail confirmado!',
+      ok: ['', 'E-mail confirmado!',
         'Tudo certo — sua conta está verificada. Agora é só entrar e começar a usar o PerFisio.',
         'Entrar no PerFisio', '/login.html'],
-      expirado: ['⌛', 'Este link expirou',
+      expirado: ['', 'Este link expirou',
         'Por segurança, o link de confirmação vale 48 horas. Entre na sua conta e clique em "reenviar" no aviso do topo para receber um novo.',
         'Ir para o login', '/login.html'],
-      invalido: ['🔍', 'Link inválido',
+      invalido: ['', 'Link inválido',
         'Não encontramos essa confirmação. O link pode ter sido usado, cortado pelo aplicativo de e-mail ou já confirmado antes — tente entrar normalmente.',
         'Ir para o login', '/login.html'],
     };

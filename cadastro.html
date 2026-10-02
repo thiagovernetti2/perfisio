@@ -68,10 +68,10 @@
       <div>
         <div class="tit">Sua página de fisioterapeuta e a <em>gestão da clínica</em> em poucos minutos.</div>
         <ul>
-          <li><span class="ck">✓</span><div><b>Perfil público</b> com CREFITO, especialidades, fotos e agendamento online.</div></li>
-          <li><span class="ck">✓</span><div><b>Link curto</b> (perfis.io/seu-nome) para a bio do Instagram e o WhatsApp.</div></li>
-          <li><span class="ck">✓</span><div><b>Agenda, prontuário e financeiro</b> no mesmo lugar.</div></li>
-          <li><span class="ck">✓</span><div>Grátis até 10 consultas por mês. Depois, R$ 40 por fisioterapeuta.</div></li>
+          <li><span class="ck"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg></span><div><b>Perfil público</b> com CREFITO, especialidades, fotos e agendamento online.</div></li>
+          <li><span class="ck"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg></span><div><b>Link curto</b> (perfis.io/seu-nome) para a bio do Instagram e o WhatsApp.</div></li>
+          <li><span class="ck"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg></span><div><b>Agenda, prontuário e financeiro</b> no mesmo lugar.</div></li>
+          <li><span class="ck"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg></span><div>Grátis até 10 consultas por mês. Depois, R$ 40 por fisioterapeuta.</div></li>
         </ul>
       </div>
       <div style="position:relative;z-index:1;font-size:.8rem;color:#8FA6A3;">Já tem conta? <a href="login.html" style="color:var(--accent);font-weight:700;">Entrar</a></div>
@@ -128,7 +128,7 @@
             <div class="field full"><label>Especialidades que aparecem no perfil</label>
               <div style="display:flex;gap:7px;flex-wrap:wrap;" id="cEspChips"></div>
             </div>
-            <div class="check-row full" style="padding-bottom:0;"><input type="checkbox" id="cDomiciliar"><label for="cDomiciliar" style="margin:0;font-weight:500;">🏠 Também atendo em domicílio</label></div>
+            <div class="check-row full" style="padding-bottom:0;"><input type="checkbox" id="cDomiciliar"><label for="cDomiciliar" style="margin:0;font-weight:500;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#casa"></use></svg> Também atendo em domicílio</label></div>
           </div>
           <div class="cad-acoes">
             <button class="btn btn-primary" id="btn2" onclick="salvarProfissional()">Continuar →</button>
@@ -157,12 +157,12 @@
           <h2>Seu link e sua apresentação</h2>
           <div class="sub">É o link que você coloca na bio do Instagram e manda no WhatsApp.</div>
           <div class="foto-linha">
-            <div class="foto-prev" id="cFotoPrev">📷</div>
+            <div class="foto-prev" id="cFotoPrev"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#camera"></use></svg></div>
             <div style="flex:1;">
               <div style="font-size:.84rem;font-weight:700;color:var(--ink);">Foto de perfil</div>
               <div style="font-size:.76rem;color:var(--text-soft);">Perfis com foto recebem bem mais contatos.</div>
             </div>
-            <label class="btn btn-soft btn-sm" style="cursor:pointer;">📤 Enviar<input type="file" id="cFoto" accept="image/jpeg,image/png,image/webp" style="display:none;"></label>
+            <label class="btn btn-soft btn-sm" style="cursor:pointer;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#upload"></use></svg> Enviar<input type="file" id="cFoto" accept="image/jpeg,image/png,image/webp" style="display:none;"></label>
           </div>
           <div class="field">
             <label>Endereço do seu link</label>
@@ -173,19 +173,19 @@
             <div class="aviso" id="slugAviso"></div>
           </div>
           <div class="field"><label>Apresentação (bio)</label><textarea id="cBio" placeholder="Ex.: Atendo corredores e pós-operatório de joelho, no consultório e em domicílio."></textarea></div>
-          <div class="check-row" style="padding-bottom:0;"><input type="checkbox" id="cPublico" checked><label for="cPublico" style="margin:0;font-weight:500;">🌐 Publicar meu perfil no diretório do PerFisio</label></div>
+          <div class="check-row" style="padding-bottom:0;"><input type="checkbox" id="cPublico" checked><label for="cPublico" style="margin:0;font-weight:500;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#globo"></use></svg> Publicar meu perfil no diretório do PerFisio</label></div>
           <div class="cad-acoes"><button class="btn btn-primary" id="btn4" onclick="finalizar()">Finalizar cadastro →</button></div>
         </section>
 
         <!-- FIM -->
         <section class="cad-passo" data-passo="5">
           <div class="cad-fim">
-            <div class="ok">✓</div>
+            <div class="ok"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg></div>
             <h2>Pronto, <span id="fimNome">tudo certo</span>!</h2>
             <div class="sub" id="fimSub">Seu perfil já está no ar. Divulgue o link abaixo.</div>
             <div class="link" id="fimLink">perfis.io/</div>
             <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
-              <button class="btn btn-soft" onclick="copiarLink()">📋 Copiar link</button>
+              <button class="btn btn-soft" onclick="copiarLink()"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#prontuario"></use></svg> Copiar link</button>
               <a class="btn btn-ghost" id="fimVer" href="#" target="_blank" rel="noopener">Ver meu perfil ↗</a>
               <a class="btn btn-primary" href="app/dashboard.html">Ir para o meu painel →</a>
             </div>
@@ -280,9 +280,9 @@
 
     /* ---------- passo 2: dados profissionais ---------- */
     const ESPECIALIDADES = [
-      ['esportiva', '🏃 Esportiva'], ['ortopedia', '🦴 Ortopedia'], ['pilates', '🧘 Pilates'],
-      ['neuro', '🧠 Neuro'], ['rpg', '🧍 RPG'], ['respiratoria', '🫁 Respiratória'],
-      ['pelvica', '🌸 Pélvica'], ['geriatrica', '👵 Geriátrica'],
+      ['esportiva', '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#corrida"></use></svg> Esportiva'], ['ortopedia', '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#osso"></use></svg> Ortopedia'], ['pilates', '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#pilates"></use></svg> Pilates'],
+      ['neuro', '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#neuro"></use></svg> Neuro'], ['rpg', '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#postura"></use></svg> RPG'], ['respiratoria', '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#pulmao"></use></svg> Respiratória'],
+      ['pelvica', '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#pelvica"></use></svg> Pélvica'], ['geriatrica', '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#idoso"></use></svg> Geriátrica'],
     ];
     const espSel = new Set();
     document.getElementById('cEspChips').innerHTML = ESPECIALIDADES.map(([k, l]) =>
@@ -341,7 +341,7 @@
           const r = await PF.api(`/api/fisios/slug-disponivel?slug=${encodeURIComponent(v)}&id=${FISIO_ID}`);
           if (cSlug.value !== v) return;
           slugOk = !!r.disponivel;
-          aviso(r.disponivel ? `✓ perfis.io/${r.slug} está livre` : r.motivo, r.disponivel ? 'ok' : 'erro');
+          aviso(r.disponivel ? `perfis.io/${r.slug} está livre` : r.motivo, r.disponivel ? 'ok' : 'erro');
         } catch (e) { aviso(e.message, 'erro'); }
       }, 350);
     }

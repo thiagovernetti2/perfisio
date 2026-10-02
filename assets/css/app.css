@@ -3,6 +3,12 @@
    Design System · teal + petróleo
    ============================================================ */
 
+/* ===== ícones (sprite em assets/img/icones.svg) =====
+   Sólidos e de cor única: herdam a cor do texto e acompanham o tamanho da fonte.
+   Uso: <svg class="i"><use href="/assets/img/icones.svg#casa"></use></svg> */
+.i { width: 1.15em; height: 1.15em; fill: currentColor; vertical-align: -.22em; flex: none; }
+.i.vazia { opacity: .32; }
+
 :root {
   /* Cores */
   --primary: #0DA189;

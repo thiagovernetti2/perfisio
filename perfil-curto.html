@@ -144,7 +144,7 @@
     }
 
     /* ================= AVALIAÇÕES ================= */
-    const estrelas = n => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n);
+    const estrelas = n => ''.slice(0, n) + ''.slice(0, 5 - n);
     const ROTULO = { 5: 'Excelente', 4: 'Muito bom', 3: 'Bom', 2: 'Regular', 1: 'Ruim' };
     let MINHA = null, notaSel = 0;
 
@@ -166,12 +166,12 @@
                  ${primeiro} ainda não tem avaliações.<br>Foi atendido por ${primeiro.toLowerCase() === primeiro ? primeiro : primeiro}? Conte como foi.
                </div>`}
           <button class="btn btn-soft btn-sm" onclick="abrirFormAvaliacao()">
-            ${MINHA ? '✏️ Editar minha avaliação' : '⭐ Avaliar'}</button>
+            ${MINHA ? '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#editar"></use></svg> Editar minha avaliação' : '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#estrela"></use></svg> Avaliar'}</button>
         </div>
         ${d.avaliacoes.slice(0, 4).map(a => `
           <div class="aval-item">
             <div class="cab"><b>${a.primeiro_nome}</b>
-              ${a.paciente ? '<span class="badge green" style="font-size:.62rem;">✓ paciente</span>' : ''}
+              ${a.paciente ? '<span class="badge green" style="font-size:.62rem;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg> paciente</span>' : ''}
               <span class="estrelas">${estrelas(a.nota)}</span>
               <span style="color:var(--text-soft);margin-left:auto;">${PF.fmtData(String(a.criado_em).slice(0, 10))}</span>
             </div>
@@ -191,7 +191,7 @@
 
     function renderEstrelas() {
       document.getElementById('estrelasSel').innerHTML = [1, 2, 3, 4, 5]
-        .map(n => `<button type="button" class="estrela-btn${n <= notaSel ? ' on' : ''}" onclick="setNota(${n})">★</button>`).join('')
+        .map(n => `<button type="button" class="estrela-btn${n <= notaSel ? ' on' : ''}" onclick="setNota(${n})"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#estrela"></use></svg></button>`).join('')
         + `<span style="font-size:.8rem;color:var(--text-soft);margin-left:8px;">${notaSel ? ROTULO[notaSel] : ''}</span>`;
     }
     function setNota(n) { notaSel = n; renderEstrelas(); }
@@ -235,15 +235,15 @@
         <h1>${P.nome}</h1>
         <div class="esp">${P.esp || 'Fisioterapeuta'}${P.clinica_nome ? ' · ' + P.clinica_nome : ''}</div>
         <div class="meta">
-          <div><span class="ic">🕐</span> 50 minutos</div>
-          ${P.preco ? `<div><span class="ic">💳</span> ${P.preco}</div>` : ''}
-          ${onde ? `<div><span class="ic">📍</span> ${onde}</div>` : ''}
-          ${P.domiciliar ? '<div><span class="ic">🏠</span> Também atende em domicílio</div>' : ''}
-          ${P.crefito ? `<div><span class="ic">✅</span> CREFITO ${P.crefito}</div>` : ''}
+          <div><span class="ic"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#relogio"></use></svg></span> 50 minutos</div>
+          ${P.preco ? `<div><span class="ic"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#cartao"></use></svg></span> ${P.preco}</div>` : ''}
+          ${onde ? `<div><span class="ic"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#local"></use></svg></span> ${onde}</div>` : ''}
+          ${P.domiciliar ? '<div><span class="ic"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#casa"></use></svg></span> Também atende em domicílio</div>' : ''}
+          ${P.crefito ? `<div><span class="ic"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#verificado"></use></svg></span> CREFITO ${P.crefito}</div>` : ''}
         </div>
         ${P.bio ? `<div class="bio">${P.bio.slice(0, 210)}${P.bio.length > 210 ? '…' : ''}</div>` : ''}
         <div class="links">
-          ${wpp ? `<a class="btn btn-soft btn-sm" href="https://wa.me/55${wpp}" target="_blank">💬 Falar no WhatsApp</a>` : ''}
+          ${wpp ? `<a class="btn btn-soft btn-sm" href="https://wa.me/55${wpp}" target="_blank"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#whatsapp"></use></svg> Falar no WhatsApp</a>` : ''}
           <a class="btn btn-ghost btn-sm" href="https://www.perfisio.com.br${P.url || '/fisioterapeuta/' + (P.slug || SLUG)}">Ver perfil completo →</a>
         </div>`;
     }
@@ -318,7 +318,7 @@
       horaSel = h;
       document.getElementById('painel').innerHTML = `
         <div class="confirmar">
-          <div class="resumo">📅 ${porExtenso(diaSel)} · ${h}</div>
+          <div class="resumo"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#agenda"></use></svg> ${porExtenso(diaSel)} · ${h}</div>
           <div class="field"><label>O que você está sentindo? (opcional)</label>
             <input type="text" id="cObs" placeholder="Ex.: dor no ombro ao levantar o braço"></div>
           <div id="quem" style="font-size:.8rem;color:var(--text-soft);margin-top:2px;"></div>
@@ -349,13 +349,13 @@
         const wpp = (P.whatsapp || '').replace(/\D/g, '');
         document.getElementById('painel').innerHTML = `
           <div class="ok-box">
-            <div class="ic">✅</div>
+            <div class="ic"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#verificado"></use></svg></div>
             <h2>Sessão agendada!</h2>
             <p>${porExtenso(r.criadas[0])} às ${r.hora}<br>com <b>${r.fisio_nome}</b></p>
             <div class="codigo">${r.codigo}</div>
             <p style="font-size:.8rem;color:var(--text-soft);margin-top:10px;">Guarde este código para remarcar ou cancelar.</p>
             <div style="display:flex;gap:8px;justify-content:center;margin-top:20px;flex-wrap:wrap;">
-              ${wpp ? `<a class="btn btn-soft btn-sm" target="_blank" href="https://wa.me/55${wpp}?text=${encodeURIComponent('Olá! Agendei uma sessão pelo PerFisio — código ' + r.codigo)}">💬 Avisar no WhatsApp</a>` : ''}
+              ${wpp ? `<a class="btn btn-soft btn-sm" target="_blank" href="https://wa.me/55${wpp}?text=${encodeURIComponent('Olá! Agendei uma sessão pelo PerFisio — código ' + r.codigo)}"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#whatsapp"></use></svg> Avisar no WhatsApp</a>` : ''}
               <a class="btn btn-ghost btn-sm" href="https://www.perfisio.com.br${P.url || '/fisioterapeuta/' + (P.slug || SLUG)}">Ver perfil completo</a>
             </div>
           </div>`;
