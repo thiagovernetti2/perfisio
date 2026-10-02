@@ -63,9 +63,9 @@
     const handle = (usuario.clinica_nome || 'clinica').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '');
 
     const BADGE = {
-      pendente: '<span class="badge amber">⏳ Aguardando sua aprovação</span>',
-      aprovado: '<span class="badge green">✓ Aprovado</span>',
-      ajustes: '<span class="badge blue">✎ Ajustes solicitados</span>',
+      pendente: '<span class="badge amber"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#ampulheta"></use></svg> Aguardando sua aprovação</span>',
+      aprovado: '<span class="badge green"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg> Aprovado</span>',
+      ajustes: '<span class="badge blue"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#editar"></use></svg> Ajustes solicitados</span>',
     };
 
     async function boot() {
@@ -74,7 +74,7 @@
     }
 
     function chips() {
-      const defs = [['pendente', '⏳ Pendentes'], ['aprovado', '✓ Aprovados'], ['ajustes', '✎ Com ajustes'], ['todos', 'Todos']];
+      const defs = [['pendente', '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#ampulheta"></use></svg> Pendentes'], ['aprovado', '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg> Aprovados'], ['ajustes', '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#editar"></use></svg> Com ajustes'], ['todos', 'Todos']];
       document.getElementById('filtroChips').innerHTML = defs.map(([k, l]) => {
         const n = k === 'todos' ? POSTS.length : POSTS.filter(p => p.status === k).length;
         return `<button class="chip${filtro === k ? ' active' : ''}" onclick="filtro='${k}';render()">${l} <span style="font-weight:400;">${n}</span></button>`;
@@ -105,7 +105,7 @@
                 ? `<img src="/api/social/${p.id}/imagem?t=${encodeURIComponent(PF.token())}" alt="">`
                 : `<div class="arte">${p.titulo || ''}</div><div class="marca">@${handle}</div>`}
             </div>
-            <div class="ig-acts"><span>♡</span><span>💬</span><span>✈️</span><span class="dir">🔖</span></div>
+            <div class="ig-acts"><span><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#coracao"></use></svg></span><span><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#conversa"></use></svg></span><span><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#aviao"></use></svg></span><span class="dir"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#marcador"></use></svg></span></div>
             <div class="ig-likes">128 curtidas</div>
             <div class="ig-cap"><b>${handle}</b> ${formatarLegenda(p.legenda)}</div>
             <div class="ig-time">${p.data_prevista ? 'Publicação prevista: ' + PF.fmtData(p.data_prevista.slice(0,10)) : 'Prévia do post'}</div>
@@ -116,15 +116,15 @@
             <div class="ap-status">${BADGE[p.status]}</div>
             <h3 style="font-size:1.05rem;font-weight:800;color:var(--ink);">${p.titulo || 'Post para o Instagram'}</h3>
             <div class="ap-meta">
-              <span>📱 ${p.plataforma.charAt(0).toUpperCase() + p.plataforma.slice(1)}</span>
-              ${p.data_prevista ? `<span>🗓 Previsto para ${PF.fmtData(p.data_prevista.slice(0,10))}</span>` : ''}
+              <span><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#celular"></use></svg> ${p.plataforma.charAt(0).toUpperCase() + p.plataforma.slice(1)}</span>
+              ${p.data_prevista ? `<span><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#agenda"></use></svg> Previsto para ${PF.fmtData(p.data_prevista.slice(0,10))}</span>` : ''}
               <span>Criado em ${PF.fmtData(p.criado_em.slice(0,10))}</span>
             </div>
             ${p.status === 'ajustes' && p.comentario ? `<div class="ap-coment"><b>Seu pedido de ajuste:</b><br>${p.comentario.replace(/\n/g, '<br>')}</div>` : ''}
             ${p.status !== 'aprovado' ? `
               <div class="ap-acoes">
-                <button class="btn btn-primary" onclick="aprovar('${p.id}')">✓ Aprovar post</button>
-                <button class="btn btn-ghost" onclick="toggleAjuste('${p.id}')">✎ Pedir ajustes</button>
+                <button class="btn btn-primary" onclick="aprovar('${p.id}')"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg> Aprovar post</button>
+                <button class="btn btn-ghost" onclick="toggleAjuste('${p.id}')"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#editar"></use></svg> Pedir ajustes</button>
               </div>
               <div class="ap-ajuste" id="aj-${p.id}">
                 <div class="field">
@@ -133,9 +133,9 @@
                 </div>
                 <button class="btn btn-soft" style="margin-top:8px;" onclick="enviarAjuste('${p.id}')">Enviar pedido de ajuste</button>
               </div>` : `
-              <div style="font-size:.84rem;color:var(--text-soft);">Post liberado para publicação. 🎉</div>
+              <div style="font-size:.84rem;color:var(--text-soft);">Post liberado para publicação. <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#brilho"></use></svg></div>
               <div class="ap-acoes" style="margin-top:12px;">
-                <button class="btn btn-ghost btn-sm" onclick="toggleAjuste('${p.id}')">✎ Mudei de ideia, pedir ajuste</button>
+                <button class="btn btn-ghost btn-sm" onclick="toggleAjuste('${p.id}')"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#editar"></use></svg> Mudei de ideia, pedir ajuste</button>
               </div>
               <div class="ap-ajuste" id="aj-${p.id}">
                 <div class="field"><label>O que você quer mudar?</label><textarea id="tx-${p.id}"></textarea></div>
@@ -144,7 +144,7 @@
           </div>
         </div>`;
       }).join('') || `<div class="card card-pad"><div class="empty">
-        ${filtro === 'pendente' ? 'Nenhum post aguardando aprovação no momento. 🎉<br><span style="font-size:.8rem;">Quando a equipe PerFisio criar conteúdo para sua clínica, ele aparece aqui para você revisar antes de ir ao ar.</span>' : 'Nada por aqui.'}
+        ${filtro === 'pendente' ? 'Nenhum post aguardando aprovação no momento. <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#brilho"></use></svg><br><span style="font-size:.8rem;">Quando a equipe PerFisio criar conteúdo para sua clínica, ele aparece aqui para você revisar antes de ir ao ar.</span>' : 'Nada por aqui.'}
       </div></div>`;
     }
 
@@ -161,7 +161,7 @@
     async function aprovar(id) {
       try {
         await PF.api(`/api/social/${id}/aprovar`, { method: 'POST' });
-        App.toast('Post aprovado! Ele será publicado na data prevista. 🎉');
+        App.toast('Post aprovado! Ele será publicado na data prevista.');
         POSTS = await PF.api('/api/social');
         render();
       } catch (e) { App.toast(e.message, 'error'); }
@@ -172,7 +172,7 @@
       if (!texto) { App.toast('Descreva o que quer mudar', 'error'); return; }
       try {
         await PF.api(`/api/social/${id}/ajustes`, { method: 'POST', body: { comentario: texto } });
-        App.toast('Pedido de ajuste enviado à equipe PerFisio! ✎');
+        App.toast('Pedido de ajuste enviado à equipe PerFisio!');
         POSTS = await PF.api('/api/social');
         render();
       } catch (e) { App.toast(e.message, 'error'); }

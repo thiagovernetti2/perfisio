@@ -277,6 +277,20 @@ CREATE UNIQUE INDEX IF NOT EXISTS convites_pendente_uniq ON convites_clinica (cl
 -- profissional que entra/cadastra com a conta Google (sem senha)
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS google_id text;
 CREATE UNIQUE INDEX IF NOT EXISTS usuarios_google_uk ON usuarios (google_id) WHERE google_id IS NOT NULL;
+-- avisos do sino: o que aconteceu enquanto a clínica não estava olhando
+-- (fisio_id nulo = aviso da clínica; com fisio_id = só o profissional vê)
+CREATE TABLE IF NOT EXISTS notificacoes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+  fisio_id uuid REFERENCES fisios(id) ON DELETE CASCADE,
+  tipo text NOT NULL DEFAULT 'info',
+  titulo text NOT NULL,
+  texto text,
+  link text,
+  lida boolean NOT NULL DEFAULT false,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS notificacoes_clinica_idx ON notificacoes (clinica_id, criado_em DESC);
 CREATE TABLE IF NOT EXISTS posts_sociais (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
@@ -598,6 +612,9 @@ const REGRAS_FISIO = [
   { m: 'PUT', re: /^\/api\/(evolucoes|tratamentos)\/[\w-]+$/, dono: true },
   { m: 'PUT', re: /^\/api\/pacientes\/[\w-]+$/, donoPaciente: true },
   { m: 'DELETE', re: /^\/api\/(evolucoes|anexos)\/[\w-]+$/, dono: true },
+  // sino de avisos: o filtro por fisio_id acontece na própria rota
+  { m: 'GET', re: /^\/api\/notificacoes$/ },
+  { m: 'POST', re: /^\/api\/notificacoes\/lidas$/ },
   // convites de outras clínicas e horários ocupados fora desta
   { m: 'GET', re: /^\/api\/convites$/ },
   { m: 'POST', re: /^\/api\/convites\/[\w-]+\/(aceitar|recusar)$/ },
@@ -952,6 +969,14 @@ app.post('/api/avaliacoes', authConta, async (req, res) => {
       SET nota = EXCLUDED.nota, comentario = EXCLUDED.comentario, atualizado_em = now()
     RETURNING id, nota, comentario`,
     [f.id, req.conta, n, (comentario || '').trim().slice(0, 600) || null]);
+  const quem = (await pool.query('SELECT nome FROM contas WHERE id=$1', [req.conta])).rows[0];
+  await notificar({
+    cid: f.clinica_id, fisioId: f.id, tipo: 'avaliacao',
+    titulo: `Nova avaliação: ${n} estrela${n > 1 ? 's' : ''}`,
+    texto: `${(quem && quem.nome) || 'Um paciente'} avaliou ${f.nome}` +
+      (comentario ? `: “${String(comentario).trim().slice(0, 120)}”` : '.'),
+    link: '/app/equipe.html',
+  });
   res.json(r.rows[0]);
 });
 
@@ -1542,6 +1567,46 @@ app.delete('/api/fisios/:id', auth, async (req, res) => {
     await client.query('ROLLBACK').catch(() => {});
     throw e;
   } finally { client.release(); }
+});
+
+/* ---------- SINO DE NOTIFICAÇÕES ----------
+   O que chegou enquanto ninguém olhava: agendamento pelo site, remarcação,
+   cancelamento, contato novo e avaliação de paciente. Quem tem perfil de
+   fisioterapeuta vê só os avisos dele; gestão e recepção veem os da clínica. */
+async function notificar({ cid, fisioId = null, tipo = 'info', titulo, texto, link }) {
+  if (!cid || !titulo) return;
+  try {
+    await pool.query(
+      `INSERT INTO notificacoes (clinica_id, fisio_id, tipo, titulo, texto, link) VALUES ($1,$2,$3,$4,$5,$6)`,
+      [cid, fisioId, tipo, String(titulo).slice(0, 140),
+       texto ? String(texto).slice(0, 400) : null, link ? String(link).slice(0, 160) : null]);
+  } catch (e) { console.error('aviso não gravado:', e.message); } // notificação nunca derruba o fluxo
+}
+
+// a ficha do profissional quando quem pede é um perfil fisioterapeuta (senão, null = clínica toda)
+async function fisioDoPedido(req) {
+  if (!req.perfilFisio) return null;
+  if (req.contexto) return req.contexto.fisio_id;
+  const u = await perfilDoUsuario(req.auth.uid);
+  return u.fisio_id || NADA;
+}
+
+app.get('/api/notificacoes', auth, async (req, res) => {
+  const meu = await fisioDoPedido(req);
+  const r = await pool.query(
+    `SELECT id, tipo, titulo, texto, link, lida, criado_em FROM notificacoes
+     WHERE clinica_id = $1 ${meu ? 'AND fisio_id = $2' : ''}
+     ORDER BY criado_em DESC LIMIT 30`,
+    meu ? [req.auth.cid, meu] : [req.auth.cid]);
+  res.json({ naoLidas: r.rows.filter(n => !n.lida).length, itens: r.rows });
+});
+
+app.post('/api/notificacoes/lidas', auth, async (req, res) => {
+  const meu = await fisioDoPedido(req);
+  await pool.query(
+    `UPDATE notificacoes SET lida = true WHERE clinica_id = $1 AND NOT lida ${meu ? 'AND fisio_id = $2' : ''}`,
+    meu ? [req.auth.cid, meu] : [req.auth.cid]);
+  res.json({ ok: true });
 });
 
 /* ---------- CONVITE: profissional que já atende em outra clínica ----------
@@ -2924,6 +2989,13 @@ app.post('/api/public/agendar', authConta, async (req, res) => {
     criadas.push(dt);
   }
   if (!criadas.length) return res.status(409).json({ erro: 'Os horários escolhidos acabaram de ser ocupados. Escolha outro.' });
+  await notificar({
+    cid: fisio.clinica_id, fisioId: fisio.id, tipo: 'agenda',
+    titulo: 'Novo agendamento pelo site',
+    texto: `${nome} marcou ${criadas.map(d => d.split('-').reverse().join('/')).join(', ')} às ${hora}` +
+      (criadas.length > 1 ? ` (${criadas.length} sessões)` : '') + ` com ${fisio.nome}.`,
+    link: '/app/agenda.html',
+  });
   res.json({ codigo, hora, criadas, conflitos, fisio_nome: fisio.nome });
 });
 
@@ -2950,6 +3022,15 @@ app.post('/api/public/reserva/:codigo/remarcar', async (req, res) => {
   if (await choqueNaAgenda({ fisioId: s.rows[0].fisio_id, data, hora, duracao: s.rows[0].duracao, ignorar: sessao_id, todasClinicas: true }))
     return res.status(409).json({ erro: 'Este horário acabou de ser ocupado. Escolha outro.' });
   await pool.query(`UPDATE sessoes SET data=$2::date, hora=$3 WHERE id=$1`, [sessao_id, data, hora]);
+  const dono = (await pool.query(
+    `SELECT s.clinica_id, s.fisio_id, p.nome FROM sessoes s LEFT JOIN pacientes p ON p.id = s.paciente_id WHERE s.id=$1`,
+    [sessao_id])).rows[0];
+  if (dono) await notificar({
+    cid: dono.clinica_id, fisioId: dono.fisio_id, tipo: 'agenda',
+    titulo: 'Paciente remarcou pelo site',
+    texto: `${dono.nome || 'Um paciente'} passou a sessão para ${data.split('-').reverse().join('/')} às ${hora}.`,
+    link: '/app/agenda.html',
+  });
   res.json({ ok: true, data, hora });
 });
 
@@ -2957,9 +3038,18 @@ app.post('/api/public/reserva/:codigo/remarcar', async (req, res) => {
 app.post('/api/public/reserva/:codigo/cancelar', async (req, res) => {
   const { sessao_id } = req.body || {};
   const r = await pool.query(
-    `UPDATE sessoes SET status='cancelada' WHERE id=$1 AND reserva=$2 AND status='agendada' RETURNING id`,
+    `UPDATE sessoes SET status='cancelada' WHERE id=$1 AND reserva=$2 AND status='agendada'
+     RETURNING id, clinica_id, fisio_id, to_char(data, 'DD/MM') AS dia, hora, paciente_id`,
     [sessao_id, req.params.codigo.toUpperCase()]);
   if (!r.rowCount) return res.status(404).json({ erro: 'Sessão não encontrada para este código' });
+  const s = r.rows[0];
+  const pac = s.paciente_id && (await pool.query('SELECT nome FROM pacientes WHERE id=$1', [s.paciente_id])).rows[0];
+  await notificar({
+    cid: s.clinica_id, fisioId: s.fisio_id, tipo: 'cancelamento',
+    titulo: 'Paciente cancelou pelo site',
+    texto: `${(pac && pac.nome) || 'Um paciente'} cancelou a sessão de ${s.dia} às ${s.hora.slice(0, 5)}. O horário está livre de novo.`,
+    link: '/app/agenda.html',
+  });
   res.json({ ok: true });
 });
 
@@ -2973,6 +3063,12 @@ app.post('/api/public/leads-profissional', async (req, res) => {
     `INSERT INTO leads (clinica_id, nome, telefone, origem, interesse, obs, fisio_id)
      VALUES ($1,$2,$3,'Site PerFisio',$4,$5,$6)`,
     [f.clinica_id, nome, telefone || null, 'Avaliação fisioterapêutica', obs || null, f.id]);
+  await notificar({
+    cid: f.clinica_id, fisioId: f.id, tipo: 'lead',
+    titulo: 'Novo contato pelo seu perfil',
+    texto: `${nome} pediu uma avaliação${telefone ? ` · ${telefone}` : ''}.`,
+    link: '/app/crm.html',
+  });
   res.json({ ok: true });
 });
 
@@ -2989,6 +3085,12 @@ app.post('/api/public/leads', async (req, res) => {
   await pool.query(
     'INSERT INTO leads (clinica_id,nome,telefone,origem,interesse,obs) VALUES ($1,$2,$3,$4,$5,$6)',
     [clinica_id, nome, telefone, 'Site PerFisio', interesse, obs]);
+  await notificar({
+    cid: clinica_id, tipo: 'lead',
+    titulo: 'Novo contato pelo site da clínica',
+    texto: `${nome}${interesse ? ` · ${interesse}` : ''}${telefone ? ` · ${telefone}` : ''}`,
+    link: '/app/crm.html',
+  });
   res.json({ ok: true });
 });
 

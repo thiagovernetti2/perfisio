@@ -12,12 +12,12 @@
 
   <div class="page-head">
     <div style="font-size:.85rem;color:var(--text-soft);" id="periodo"></div>
-    <button class="btn btn-ghost" onclick="window.print()">🖨 Imprimir / PDF</button>
+    <button class="btn btn-ghost" onclick="window.print()"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#imprimir"></use></svg> Imprimir / PDF</button>
   </div>
 
   <div class="stats-grid">
     <div class="stat-card">
-      <div class="s-top"><span class="s-label">Sessões realizadas (6m)</span><div class="s-ico" style="background:var(--primary-soft);">📅</div></div>
+      <div class="s-top"><span class="s-label">Sessões realizadas (6m)</span><div class="s-ico" style="background:var(--primary-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#agenda"></use></svg></div></div>
       <div class="s-value" id="stSessoes">—</div>
       <div class="s-delta"><span class="muted" id="stSessoesSub"></span></div>
     </div>
@@ -27,12 +27,12 @@
       <div class="s-delta"><span class="muted" id="stNovosSub"></span></div>
     </div>
     <div class="stat-card">
-      <div class="s-top"><span class="s-label">Taxa de faltas</span><div class="s-ico" style="background:var(--amber-soft);">🚫</div></div>
+      <div class="s-top"><span class="s-label">Taxa de faltas</span><div class="s-ico" style="background:var(--amber-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#fechar"></use></svg></div></div>
       <div class="s-value" id="stFaltas">—</div>
       <div class="s-delta"><span class="muted" id="stFaltasSub"></span></div>
     </div>
     <div class="stat-card">
-      <div class="s-top"><span class="s-label">Receita total (6m)</span><div class="s-ico" style="background:var(--green-soft);">💰</div></div>
+      <div class="s-top"><span class="s-label">Receita total (6m)</span><div class="s-ico" style="background:var(--green-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#dinheiro"></use></svg></div></div>
       <div class="s-value" id="stReceita">—</div>
       <div class="s-delta"><span class="muted" id="stReceitaSub"></span></div>
     </div>
@@ -137,7 +137,7 @@
       }).sort((a, b) => b[1] - a[1]), v => App.money(v));
 
       /* origem dos leads */
-      const ORIG_ICO = { 'Site PerFisio': '🌐', 'Instagram': '📸', 'Google': '🔎', 'Indicação médica': '🩺', 'Indicação de paciente': '🤝', 'Convênio': '🏥' };
+      const ORIG_ICO = { 'Site PerFisio': '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#globo"></use></svg>', 'Instagram': '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#instagram"></use></svg>', 'Google': '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#lupa"></use></svg>', 'Indicação médica': '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#estetoscopio"></use></svg>', 'Indicação de paciente': '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#pessoas"></use></svg>', 'Convênio': '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#cartao"></use></svg>' };
       const origens = {};
       leads.forEach(l => { origens[l.origem || 'Outro'] = (origens[l.origem || 'Outro'] || 0) + 1; });
       hbars('chartOrigem', Object.entries(origens).map(([n, v]) => [(ORIG_ICO[n] || '•') + ' ' + n, v]).sort((a, b) => b[1] - a[1]), v => v + ' lead(s)');

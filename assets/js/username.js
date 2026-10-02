@@ -38,7 +38,7 @@
         try {
           const r = await PF.api(`/api/fisios/slug-disponivel?slug=${encodeURIComponent(v)}&id=${fisioId}`);
           if (input.value !== v || v === base) return; // já digitou outra coisa, ou acabou de salvar este
-          aviso(r.disponivel ? `✓ perfis.io/${r.slug} está livre` : r.motivo, r.disponivel ? 'ok' : 'erro');
+          aviso(r.disponivel ? `perfis.io/${r.slug} está livre` : r.motivo, r.disponivel ? 'ok' : 'erro');
           botao.disabled = !r.disponivel;
         } catch (e) { aviso(e.message, 'erro'); }
       }, 350);
@@ -51,7 +51,7 @@
         const r = await PF.api(`/api/fisios/${fisioId}/slug`, { method: 'PUT', body: { slug: input.value } });
         base = r.slug; input.value = r.slug;
         aviso(r.mudou
-          ? `✓ Link salvo: perfis.io/${r.slug}` + (r.anterior ? ` — perfis.io/${r.anterior} continua levando para ele` : '')
+          ? `Link salvo: perfis.io/${r.slug}` + (r.anterior ? ` — perfis.io/${r.anterior} continua levando para ele` : '')
           : 'Nada mudou', 'ok');
         if (aoSalvar) aoSalvar(r);
       } catch (e) { aviso(e.message, 'erro'); botao.disabled = false; }

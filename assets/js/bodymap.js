@@ -4,18 +4,18 @@
 window.BodyMap = (function () {
 
   const REGIOES = {
-    cervical:     { label: 'Cervical / pescoço', ico: '🦴' },
-    ombro:        { label: 'Ombro',              ico: '💪' },
-    cotovelo:     { label: 'Cotovelo',           ico: '💪' },
-    punho:        { label: 'Punho / mão',        ico: '🖐' },
-    coluna:       { label: 'Coluna torácica',    ico: '🦴' },
-    lombar:       { label: 'Coluna lombar',      ico: '🦴' },
-    quadril:      { label: 'Quadril / pelve',    ico: '🦿' },
-    joelho:       { label: 'Joelho',             ico: '🦵' },
-    tornozelo:    { label: 'Tornozelo / pé',     ico: '🦶' },
-    neuro:        { label: 'Neurológico',        ico: '🧠' },
-    respiratorio: { label: 'Respiratório',       ico: '🫁' },
-    outro:        { label: 'Outro',              ico: '🩺' },
+    cervical:     { label: 'Cervical / pescoço', ico: '' },
+    ombro:        { label: 'Ombro',              ico: '' },
+    cotovelo:     { label: 'Cotovelo',           ico: '' },
+    punho:        { label: 'Punho / mão',        ico: '' },
+    coluna:       { label: 'Coluna torácica',    ico: '' },
+    lombar:       { label: 'Coluna lombar',      ico: '' },
+    quadril:      { label: 'Quadril / pelve',    ico: '' },
+    joelho:       { label: 'Joelho',             ico: '' },
+    tornozelo:    { label: 'Tornozelo / pé',     ico: '' },
+    neuro:        { label: 'Neurológico',        ico: '' },
+    respiratorio: { label: 'Respiratório',       ico: '' },
+    outro:        { label: 'Outro',              ico: '' },
   };
 
   /* Condições fisioterapêuticas comuns por região */

@@ -17,31 +17,34 @@
   const PAGINAS_DO_FISIO = ['agenda', 'prontuarios'];
   if (SO_AGENDA && page && !PAGINAS_DO_FISIO.includes(page)) { location.replace('agenda.html'); return; }
 
+  /* os ícones vêm do sprite (assets/img/icones.svg), sólidos e de cor única */
+  const ICO = n => `<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#${n}"></use></svg>`;
+
   const NAV = SO_AGENDA ? [
     { label: 'Principal' },
-    { id: 'agenda',      href: 'agenda.html',      ico: '📅', text: 'Minha agenda' },
-    { id: 'prontuarios', href: 'prontuarios.html', ico: '📋', text: 'Prontuários' },
+    { id: 'agenda',      href: 'agenda.html',      ico: 'agenda',     text: 'Minha agenda' },
+    { id: 'prontuarios', href: 'prontuarios.html', ico: 'prontuario', text: 'Prontuários' },
   ] : [
     { label: 'Principal' },
-    { id: 'dashboard',     href: 'dashboard.html',     ico: '📊', text: 'Dashboard' },
-    { id: 'agenda',        href: 'agenda.html',        ico: '📅', text: 'Agenda' },
-    { id: 'pacientes',     href: 'pacientes.html',     ico: '👥', text: 'Pacientes' },
-    { id: 'crm',           href: 'crm.html',           ico: '🎯', text: 'CRM · Captação' },
+    { id: 'dashboard',     href: 'dashboard.html',     ico: 'grafico',      text: 'Dashboard' },
+    { id: 'agenda',        href: 'agenda.html',        ico: 'agenda',       text: 'Agenda' },
+    { id: 'pacientes',     href: 'pacientes.html',     ico: 'pessoas',      text: 'Pacientes' },
+    { id: 'crm',           href: 'crm.html',           ico: 'alvo',         text: 'CRM · Captação' },
     { label: 'Clínica' },
-    { id: 'prontuarios',   href: 'prontuarios.html',   ico: '📋', text: 'Prontuários' },
-    { id: 'financeiro',    href: 'financeiro.html',    ico: '💳', text: 'Financeiro' },
-    { id: 'marketing',     href: 'marketing.html',     ico: '📣', text: 'Marketing' },
-    { id: 'aprovacoes',    href: 'aprovacoes.html',    ico: '📱', text: 'Aprovações' },
-    { id: 'equipe',        href: 'equipe.html',        ico: '🧑‍⚕️', text: 'Equipe' },
-    { id: 'relatorios',    href: 'relatorios.html',    ico: '📈', text: 'Relatórios' },
-    { id: 'assinatura',    href: 'assinatura.html',    ico: '💳', text: 'Assinatura' },
-    { id: 'configuracoes', href: 'configuracoes.html', ico: '⚙️', text: 'Configurações' },
+    { id: 'prontuarios',   href: 'prontuarios.html',   ico: 'prontuario',   text: 'Prontuários' },
+    { id: 'financeiro',    href: 'financeiro.html',    ico: 'cartao',       text: 'Financeiro' },
+    { id: 'marketing',     href: 'marketing.html',     ico: 'megafone',     text: 'Marketing' },
+    { id: 'aprovacoes',    href: 'aprovacoes.html',    ico: 'celular',      text: 'Aprovações' },
+    { id: 'equipe',        href: 'equipe.html',        ico: 'estetoscopio', text: 'Equipe' },
+    { id: 'relatorios',    href: 'relatorios.html',    ico: 'subindo',      text: 'Relatórios' },
+    { id: 'assinatura',    href: 'assinatura.html',    ico: 'recibo',       text: 'Assinatura' },
+    { id: 'configuracoes', href: 'configuracoes.html', ico: 'engrenagem',   text: 'Configurações' },
   ];
 
   const navHtml = NAV.map(n => n.label
     ? `<div class="nav-label">${n.label}</div>`
     : `<a class="nav-item${n.id === page ? ' active' : ''}" href="${n.href}">
-         <span class="ico">${n.ico}</span>${n.text}</a>`
+         <span class="ico">${ICO(n.ico)}</span>${n.text}</a>`
   ).join('');
 
   const PERFIS = { gestor: 'Gestor(a)', fisio: 'Fisioterapeuta', recepcao: 'Recepção' };
@@ -62,7 +65,7 @@
         <div class="u-name">${usuario.nome}</div>
         <div class="u-role">${PERFIS[usuario.perfil] || usuario.perfil} · ${usuario.clinica_nome || ''}</div>
       </div>
-      <button class="logout" title="Sair" id="pfLogout">⎋</button>
+      <button class="logout" title="Sair" id="pfLogout"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#sair"></use></svg></button>
     </div>`;
 
   const topbar = document.createElement('header');
@@ -73,7 +76,19 @@
       ${subtitle ? `<div class="subtitle">${subtitle}</div>` : ''}
     </div>
     <div class="spacer"></div>
-    ${SO_AGENDA ? '' : '<div class="search">🔍 <input type="text" placeholder="Buscar paciente..." id="pfGlobalSearch"></div>'}`;
+    ${SO_AGENDA ? '' : '<div class="search"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#busca"></use></svg> <input type="text" placeholder="Buscar paciente..." id="pfGlobalSearch"></div>'}
+    <div class="sino-wrap">
+      <button class="sino-btn" id="pfSino" title="Avisos" aria-label="Avisos">
+        ${ICO('sino')}<span class="sino-contador" id="pfSinoContador" hidden></span>
+      </button>
+      <div class="sino-pop" id="pfSinoPop" hidden>
+        <div class="sino-topo">
+          <strong>Avisos</strong>
+          <button type="button" id="pfSinoLidas">Marcar todos como lidos</button>
+        </div>
+        <div class="sino-lista" id="pfSinoLista"></div>
+      </div>
+    </div>`;
 
   const shell = document.createElement('div');
   shell.className = 'app-shell';
@@ -94,6 +109,82 @@
   sidebar.querySelector('#pfLogout').addEventListener('click', PF.logout);
 
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  /* ---------- sino de avisos ----------
+     O que chegou enquanto ninguém olhava: agendamento pelo site, remarcação,
+     cancelamento, contato novo e avaliação. Recarrega sozinho a cada 20s e
+     quando a aba volta para a frente; toca um aviso curto quando sobe o número. */
+  (function sino() {
+    const btn = document.getElementById('pfSino');
+    const pop = document.getElementById('pfSinoPop');
+    const contador = document.getElementById('pfSinoContador');
+    const lista = document.getElementById('pfSinoLista');
+    if (!btn) return;
+    const ICONE = { agenda: 'agenda', cancelamento: 'faltou', lead: 'pessoa', avaliacao: 'estrela', equipe: 'pessoas', info: 'sino' };
+
+    const quando = iso => {
+      const s = (Date.now() - new Date(iso).getTime()) / 1000;
+      if (s < 60) return 'agora';
+      if (s < 3600) return `há ${Math.floor(s / 60)} min`;
+      if (s < 86400) return `há ${Math.floor(s / 3600)} h`;
+      return new Date(iso).toLocaleDateString('pt-BR');
+    };
+
+    /* aviso sonoro curto — o navegador só deixa tocar depois do primeiro gesto */
+    let audio = null, ultimoSom = 0;
+    const destravar = () => { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === 'suspended') audio.resume(); } catch (e) {} };
+    ['click', 'keydown', 'touchstart'].forEach(ev => document.addEventListener(ev, destravar, { once: true, passive: true }));
+    function tocar() {
+      if (!audio || Date.now() - ultimoSom < 1500) return;
+      ultimoSom = Date.now();
+      try {
+        const t0 = audio.currentTime;
+        [[880, 0], [1174.66, .12]].forEach(([hz, atraso]) => {
+          const o = audio.createOscillator(), g = audio.createGain();
+          o.type = 'sine'; o.frequency.value = hz; o.connect(g); g.connect(audio.destination);
+          const i = t0 + atraso;
+          g.gain.setValueAtTime(0.0001, i);
+          g.gain.exponentialRampToValueAtTime(0.18, i + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, i + 0.2);
+          o.start(i); o.stop(i + 0.22);
+        });
+      } catch (e) {}
+    }
+
+    let anterior = null;
+    async function carregar() {
+      let d;
+      try { d = await PF.api('/api/notificacoes'); } catch (e) { return; }
+      contador.textContent = d.naoLidas > 99 ? '99+' : d.naoLidas;
+      contador.hidden = !d.naoLidas;
+      if (anterior !== null && d.naoLidas > anterior) tocar();
+      anterior = d.naoLidas;
+      lista.innerHTML = d.itens.length ? d.itens.map(n => `
+        <a class="sino-item${n.lida ? '' : ' nova'}" href="${esc(n.link || '#')}">
+          <span class="sino-ico">${ICO(ICONE[n.tipo] || 'sino')}</span>
+          <span>
+            <b>${esc(n.titulo)}</b>
+            ${n.texto ? `<em>${esc(n.texto)}</em>` : ''}
+            <time>${quando(n.criado_em)}</time>
+          </span>
+        </a>`).join('')
+        : '<div class="sino-vazio">Nenhum aviso por enquanto.</div>';
+    }
+
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      pop.hidden = !pop.hidden;
+      if (!pop.hidden) carregar();
+    });
+    document.addEventListener('click', e => { if (!pop.hidden && !pop.contains(e.target) && !btn.contains(e.target)) pop.hidden = true; });
+    document.getElementById('pfSinoLidas').addEventListener('click', async e => {
+      e.stopPropagation();
+      try { await PF.api('/api/notificacoes/lidas', { method: 'POST' }); await carregar(); } catch (err) {}
+    });
+    carregar();
+    setInterval(carregar, 20000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) carregar(); });
+  })();
 
   /* profissional em mais de uma clínica: escolhe em qual está agora (prontuários e cadastros
      são de cada clínica; a agenda soma todas) e responde aos convites de clínicas novas */
@@ -126,7 +217,7 @@
       const barra = document.createElement('div');
       barra.style.cssText = 'background:var(--primary-soft);border-bottom:1px solid #BFE5DD;color:var(--primary-dark);' +
         'padding:12px 20px;font-size:.85rem;display:flex;gap:10px 12px;align-items:center;flex-wrap:wrap;';
-      barra.innerHTML = `🏥 <span style="flex:1;min-width:240px;line-height:1.5;"><b>${esc(cv.clinica_nome)}</b> convidou você para atender também por lá.
+      barra.innerHTML = `<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#hospital"></use></svg> <span style="flex:1;min-width:240px;line-height:1.5;"><b>${esc(cv.clinica_nome)}</b> convidou você para atender também por lá.
         Sua agenda continua uma só: a clínica vê apenas os pacientes dela e, dos seus outros horários, só que estão ocupados.</span>
         <button class="btn btn-primary btn-sm" type="button" data-a="aceitar">Aceitar</button>
         <button class="btn btn-ghost btn-sm" type="button" data-a="recusar">Recusar</button>`;
@@ -153,7 +244,7 @@
     const barra = document.createElement('div');
     barra.style.cssText = 'background:var(--amber-soft);border-bottom:1px solid #EED9B8;color:var(--amber);' +
       'padding:11px 20px;font-size:.85rem;font-weight:600;display:flex;gap:12px;align-items:center;flex-wrap:wrap;';
-    barra.innerHTML = `✉️ <span style="flex:1;min-width:220px;">Confirme seu e-mail — enviamos um link para <b>${v.email}</b>.</span>
+    barra.innerHTML = `<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#email"></use></svg> <span style="flex:1;min-width:220px;">Confirme seu e-mail — enviamos um link para <b>${v.email}</b>.</span>
       <button class="btn btn-soft btn-sm" type="button">Reenviar e-mail</button>`;
     const botao = barra.querySelector('button');
     botao.addEventListener('click', async () => {
@@ -175,7 +266,7 @@
     faixa.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:300;' +
       'background:#4A3480;color:#fff;padding:10px 18px;border-radius:99px;display:flex;gap:12px;align-items:center;' +
       'font-size:.84rem;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.3);';
-    faixa.innerHTML = `🎭 Você está vendo o sistema como <b>${usuario.clinica_nome || 'a clínica'}</b>
+    faixa.innerHTML = `<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#trocar"></use></svg> Você está vendo o sistema como <b>${usuario.clinica_nome || 'a clínica'}</b>
       <button style="background:#fff;color:#4A3480;border:none;border-radius:99px;padding:6px 14px;font-weight:700;font-size:.8rem;cursor:pointer;">
         Voltar ao painel</button>`;
     faixa.querySelector('button').addEventListener('click', () => {

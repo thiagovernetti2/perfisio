@@ -12,31 +12,31 @@
 
   <div class="stats-grid">
     <div class="stat-card">
-      <div class="s-top"><span class="s-label">Recebido no mês</span><div class="s-ico" style="background:var(--green-soft);">💰</div></div>
+      <div class="s-top"><span class="s-label">Recebido no mês</span><div class="s-ico" style="background:var(--green-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#dinheiro"></use></svg></div></div>
       <div class="s-value" id="stReceita">—</div>
       <div class="s-delta"><span class="muted" id="stReceitaSub"></span></div>
     </div>
     <div class="stat-card">
-      <div class="s-top"><span class="s-label">A receber</span><div class="s-ico" style="background:var(--blue-soft);">📥</div></div>
+      <div class="s-top"><span class="s-label">A receber</span><div class="s-ico" style="background:var(--blue-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#baixar"></use></svg></div></div>
       <div class="s-value" id="stReceber">—</div>
       <div class="s-delta"><span class="muted" id="stReceberSub"></span></div>
     </div>
     <div class="stat-card">
-      <div class="s-top"><span class="s-label">A pagar</span><div class="s-ico" style="background:var(--amber-soft);">📤</div></div>
+      <div class="s-top"><span class="s-label">A pagar</span><div class="s-ico" style="background:var(--amber-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#upload"></use></svg></div></div>
       <div class="s-value" id="stPagar">—</div>
       <div class="s-delta"><span class="muted" id="stPagarSub"></span></div>
     </div>
     <div class="stat-card">
-      <div class="s-top"><span class="s-label">Resultado do mês</span><div class="s-ico" style="background:var(--primary-soft);">📊</div></div>
+      <div class="s-top"><span class="s-label">Resultado do mês</span><div class="s-ico" style="background:var(--primary-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#grafico"></use></svg></div></div>
       <div class="s-value" id="stResultado">—</div>
       <div class="s-delta"><span class="muted" id="stResultadoSub"></span></div>
     </div>
   </div>
 
   <div class="tabs" data-auto>
-    <button class="tab active" data-tab="receber">📥 Contas a receber</button>
-    <button class="tab" data-tab="pagar">📤 Contas a pagar</button>
-    <button class="tab" data-tab="comissoes">🧑‍⚕️ Comissões</button>
+    <button class="tab active" data-tab="receber"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#baixar"></use></svg> Contas a receber</button>
+    <button class="tab" data-tab="pagar"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#upload"></use></svg> Contas a pagar</button>
+    <button class="tab" data-tab="comissoes"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#estetoscopio"></use></svg> Comissões</button>
     <button class="tab" data-tab="pacotes">Pacotes & Planos</button>
     <button class="tab" data-tab="convenios">Convênios</button>
   </div>
@@ -162,15 +162,15 @@
           <div class="field full"><label>Descrição *</label><input type="text" id="dpDesc" placeholder="Ex.: Aluguel da sala · agosto"></div>
           <div class="field"><label>Categoria</label>
             <select id="dpCat">
-              <option value="comissao">🧑‍⚕️ Comissão / repasse</option>
-              <option value="aluguel">🏠 Aluguel</option>
-              <option value="material">📦 Material e insumos</option>
-              <option value="equipamento">🏋️ Equipamentos</option>
-              <option value="salario">💼 Salários e encargos</option>
-              <option value="imposto">🧾 Impostos</option>
-              <option value="marketing">📣 Marketing</option>
-              <option value="operacional" selected>⚙️ Operacional (luz, água, internet)</option>
-              <option value="outro">🔖 Outro</option>
+              <option value="comissao">Comissão / repasse</option>
+              <option value="aluguel">Aluguel</option>
+              <option value="material">Material e insumos</option>
+              <option value="equipamento">Equipamentos</option>
+              <option value="salario">Salários e encargos</option>
+              <option value="imposto">Impostos</option>
+              <option value="marketing">Marketing</option>
+              <option value="operacional" selected>Operacional (luz, água, internet)</option>
+              <option value="outro">Outro</option>
             </select>
           </div>
           <div class="field"><label>Profissional (se for repasse)</label><select id="dpFisio"></select></div>
@@ -247,11 +247,11 @@
     const hoje = PF.hojeISO();
     const mesAtual = hoje.slice(0, 7);
     const CORES = ['#0DA189','#2D7DD2','#7C5CBF','#D9820B','#D64545','#1E9E6A'];
-    const TIPO_EMOJI = { avulsa: '🎫', pacote: '📦', mensal: '🧘' };
+    const TIPO_EMOJI = { avulsa: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#ticket"></use></svg>', pacote: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#caixa"></use></svg>', mensal: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#pilates"></use></svg>' };
     const CAT = {
-      comissao: ['🧑‍⚕️', 'Comissão'], aluguel: ['🏠', 'Aluguel'], material: ['📦', 'Material'],
-      equipamento: ['🏋️', 'Equipamento'], salario: ['💼', 'Salário'], imposto: ['🧾', 'Imposto'],
-      marketing: ['📣', 'Marketing'], operacional: ['⚙️', 'Operacional'], outro: ['🔖', 'Outro'],
+      comissao: ['<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#estetoscopio"></use></svg>', 'Comissão'], aluguel: ['<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#casa"></use></svg>', 'Aluguel'], material: ['<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#caixa"></use></svg>', 'Material'],
+      equipamento: ['<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#musculo"></use></svg>', 'Equipamento'], salario: ['<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#maleta"></use></svg>', 'Salário'], imposto: ['<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#recibo"></use></svg>', 'Imposto'],
+      marketing: ['<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#megafone"></use></svg>', 'Marketing'], operacional: ['<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#engrenagem"></use></svg>', 'Operacional'], outro: ['<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#marcador"></use></svg>', 'Outro'],
     };
 
     async function boot() {
@@ -259,12 +259,12 @@
         PF.get('pagamentos'), PF.get('pacientes'), PF.get('pacotes'),
         PF.get('convenios'), PF.get('despesas'), PF.get('fisios'),
       ]);
-      document.getElementById('pgPaciente').innerHTML = '<option value="">— Sem paciente —</option>' +
-        PACS.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
-      document.getElementById('pgPacote').innerHTML = '<option value="">— Livre —</option>' +
-        PACOTES.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
-      document.getElementById('dpFisio').innerHTML = '<option value="">— Não é repasse —</option>' +
-        FISIOS.map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
+      document.getElementById('pgPaciente').innerHTML = ' 27 ' +
+        PACS.map(p => ` 28 `).join('');
+      document.getElementById('pgPacote').innerHTML = ' 29 ' +
+        PACOTES.map(p => ` 30 `).join('');
+      document.getElementById('dpFisio').innerHTML = ' 31 ' +
+        FISIOS.map(f => ` 32 `).join('');
       document.getElementById('pgPacote').addEventListener('change', atualizarCreditar);
       document.getElementById('pgPaciente').addEventListener('change', atualizarCreditar);
       document.getElementById('cmMes').value = mesAtual;
@@ -329,8 +329,8 @@
           <td style="font-weight:700;">${App.money(Number(p.valor))}</td>
           <td>${BADGE[st]}</td>
           <td style="white-space:nowrap;">
-            ${st !== 'pago' ? `<button class="btn btn-soft btn-sm" onclick="marcarPago('${p.id}')">✓ Recebido</button>` : ''}
-            <button class="btn btn-ghost btn-sm" title="Excluir" onclick="excluirPag('${p.id}')">🗑</button>
+            ${st !== 'pago' ? `<button class="btn btn-soft btn-sm" onclick="marcarPago('${p.id}')"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg> Recebido</button>` : ''}
+            <button class="btn btn-ghost btn-sm" title="Excluir" onclick="excluirPag('${p.id}')"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#lixeira"></use></svg></button>
           </td>
         </tr>`;
       }).join('') || '<tr><td colspan="7" class="empty">Nenhuma cobrança registrada.</td></tr>';
@@ -356,8 +356,8 @@
           <td style="font-weight:700;">${App.money(Number(d.valor))}</td>
           <td>${BADGE[st]}</td>
           <td style="white-space:nowrap;">
-            ${st !== 'pago' ? `<button class="btn btn-soft btn-sm" onclick="marcarDespesaPaga('${d.id}')">✓ Paga</button>` : ''}
-            <button class="btn btn-ghost btn-sm" title="Excluir" onclick="excluirDespesa('${d.id}')">🗑</button>
+            ${st !== 'pago' ? `<button class="btn btn-soft btn-sm" onclick="marcarDespesaPaga('${d.id}')"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg> Paga</button>` : ''}
+            <button class="btn btn-ghost btn-sm" title="Excluir" onclick="excluirDespesa('${d.id}')"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#lixeira"></use></svg></button>
           </td>
         </tr>`;
       }).join('') || '<tr><td colspan="6" class="empty">Nenhuma despesa lançada. Use <b>+ Nova despesa</b> ou gere as comissões do mês.</td></tr>';
@@ -422,7 +422,7 @@
             <td>${App.money(l.base)}</td>
             <td>${l.comissao}%</td>
             <td style="font-weight:700;color:var(--primary-dark);">${App.money(l.valor)}</td>
-            <td>${l.despesa_id ? '<span class="badge green">✓ lançada</span>' : (l.valor > 0 ? '<span class="badge gray">não lançada</span>' : '—')}</td>
+            <td>${l.despesa_id ? '<span class="badge green"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg> lançada</span>' : (l.valor > 0 ? '<span class="badge gray">não lançada</span>' : '—')}</td>
           </tr>`).join('') + (r.total ? `
           <tr style="background:#F9FBFA;">
             <td colspan="4" style="text-align:right;font-weight:700;">Total do mês</td>
@@ -449,7 +449,7 @@
       const BG = ['var(--primary-soft)','var(--green-soft)','var(--blue-soft)','var(--purple-soft)','var(--amber-soft)'];
       document.getElementById('pacotesGrid').innerHTML = PACOTES.map((p, i) => `
         <div class="ex-card" onclick="abrirPacote('${p.id}')">
-          <div class="e-img" style="background:${BG[i % 5]};height:90px;">${TIPO_EMOJI[p.tipo] || '📦'}</div>
+          <div class="e-img" style="background:${BG[i % 5]};height:90px;">${TIPO_EMOJI[p.tipo] || '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#caixa"></use></svg>'}</div>
           <div class="e-body">
             <div class="e-title">${p.nome}</div>
             <div class="e-sub">${p.descricao || ''}</div>
@@ -470,7 +470,7 @@
           <td>${n}</td>
           <td>${App.money(Number(c.valor_sessao))}</td>
           <td>${c.ativo ? '<span class="badge green">Ativo</span>' : '<span class="badge gray">Inativo</span>'}</td>
-          <td><button class="btn btn-ghost btn-sm" onclick="excluirConv('${c.id}')">🗑</button></td>
+          <td><button class="btn btn-ghost btn-sm" onclick="excluirConv('${c.id}')"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#lixeira"></use></svg></button></td>
         </tr>`;
       }).join('') || '<tr><td colspan="5" class="empty">Nenhum convênio cadastrado (atendimento 100% particular).</td></tr>';
     }
@@ -511,7 +511,7 @@
           const novoTotal = (pac.sessoes_total || 0) + p.sessoes;
           await PF.put('pacientes', pac.id, { pacote_nome: p.nome, sessoes_total: novoTotal });
           pac.sessoes_total = novoTotal; pac.pacote_nome = p.nome;
-          App.toast(`${p.sessoes} sessão(ões) creditadas a ${pac.nome.split(' ')[0]} 🎫`);
+          App.toast(`${p.sessoes} sessão(ões) creditadas a ${pac.nome.split(' ')[0]}`);
         } else App.toast('Cobrança registrada!');
         App.closeModal('mPagamento');
         PAGS = await PF.get('pagamentos'); renderTudo();
@@ -520,7 +520,7 @@
     }
 
     async function marcarPago(id) {
-      try { await PF.put('pagamentos', id, { status: 'pago' }); App.toast('Pagamento recebido! 💰'); PAGS = await PF.get('pagamentos'); renderTudo(); }
+      try { await PF.put('pagamentos', id, { status: 'pago' }); App.toast('Pagamento recebido!'); PAGS = await PF.get('pagamentos'); renderTudo(); }
       catch (e) { App.toast(e.message, 'error'); }
     }
     async function excluirPag(id) {

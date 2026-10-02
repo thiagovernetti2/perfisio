@@ -83,23 +83,23 @@
             <select id="fTrat"></select>
           </div>
           <div class="field full" id="fNovoTratWrap" style="display:none;background:var(--primary-soft);border-radius:10px;padding:12px 14px;">
-            <div style="font-size:.78rem;font-weight:700;color:var(--primary-dark);margin-bottom:8px;">🩺 Nova ocorrência</div>
+            <div style="font-size:.78rem;font-weight:700;color:var(--primary-dark);margin-bottom:8px;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#estetoscopio"></use></svg> Nova ocorrência</div>
             <div class="form-grid">
               <div class="field"><label>Título</label><input type="text" id="ntTitulo" placeholder="Ex.: Dor no joelho direito (padrão: Avaliação inicial)"></div>
               <div class="field"><label>Região</label>
                 <select id="ntRegiao">
-                  <option value="outro">🩺 A definir na avaliação</option>
-                  <option value="cervical">🦴 Cervical / pescoço</option>
-                  <option value="ombro">💪 Ombro</option>
-                  <option value="cotovelo">💪 Cotovelo</option>
-                  <option value="punho">🖐 Punho / mão</option>
-                  <option value="coluna">🦴 Coluna torácica</option>
-                  <option value="lombar">🦴 Coluna lombar</option>
-                  <option value="quadril">🦿 Quadril</option>
-                  <option value="joelho">🦵 Joelho</option>
-                  <option value="tornozelo">🦶 Tornozelo / pé</option>
-                  <option value="neuro">🧠 Neurológico</option>
-                  <option value="respiratorio">🫁 Respiratório</option>
+                  <option value="outro">A definir na avaliação</option>
+                  <option value="cervical">Cervical / pescoço</option>
+                  <option value="ombro">Ombro</option>
+                  <option value="cotovelo">Cotovelo</option>
+                  <option value="punho">Punho / mão</option>
+                  <option value="coluna">Coluna torácica</option>
+                  <option value="lombar">Coluna lombar</option>
+                  <option value="quadril">Quadril</option>
+                  <option value="joelho">Joelho</option>
+                  <option value="tornozelo">Tornozelo / pé</option>
+                  <option value="neuro">Neurológico</option>
+                  <option value="respiratorio">Respiratório</option>
                 </select>
               </div>
             </div>
@@ -160,13 +160,13 @@
       if (sub) sub.textContent = MULTI ? 'Suas sessões em todas as clínicas' : 'Suas sessões';
       const sel = document.getElementById('fFisio');
       sel.innerHTML = MULTI
-        ? VINCULOS.map(v => `<option value="${v.fisio_id}">${v.clinica_nome}</option>`).join('')
-        : FISIOS.filter(f => f.id === EU.fisio_id).map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
+        ? VINCULOS.map(v => ` 30 `).join('')
+        : FISIOS.filter(f => f.id === EU.fisio_id).map(f => ` 31 `).join('');
       sel.value = EU.fisio_id;
       sel.disabled = true;
       document.getElementById('fFisioWrap').style.display = 'none';
       if (MULTI) {
-        fClinica.innerHTML = VINCULOS.map(v => `<option value="${v.clinica_id}">${v.clinica_nome}</option>`).join('');
+        fClinica.innerHTML = VINCULOS.map(v => ` 32 `).join('');
         fClinica.value = EU.clinica_id;
         document.getElementById('fClinicaWrap').style.display = '';
         fClinica.addEventListener('change', trocarClinicaModal);
@@ -187,9 +187,9 @@
     // pacientes do select (no modo várias clínicas, só os da clínica escolhida)
     function montarPacSelect(selecionado) {
       const lista = PACS.filter(p => p.status !== 'inativo' && (!MULTI || p._c === fClinica.value));
-      fPaciente.innerHTML = '<option value="">— Sem paciente (turma/bloqueio) —</option>' +
-        '<option value="__novo__">＋ Cadastrar novo paciente…</option>' +
-        lista.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+      fPaciente.innerHTML = ' 33 ' +
+        ' 34 ' +
+        lista.map(p => ` 35 `).join('');
       if (selecionado) fPaciente.value = selecionado;
     }
 
@@ -199,13 +199,13 @@
       box.className = 'card card-pad';
       box.style.cssText = 'display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;margin-bottom:16px;';
       box.innerHTML = `
-        <div style="font-size:.86rem;font-weight:800;color:var(--ink);">🔗 Seu link</div>
+        <div style="font-size:.86rem;font-weight:800;color:var(--ink);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#link"></use></svg> Seu link</div>
         <div class="user-link" style="flex:1;min-width:260px;max-width:460px;">
           <span class="pref">perfis.io/</span>
           <input type="text" id="mlUsername" maxlength="40" autocomplete="off" spellcheck="false">
           <button type="button" class="btn btn-soft btn-sm" id="mlSalvar">Salvar</button>
         </div>
-        <button type="button" class="btn btn-ghost btn-sm" id="mlCopiar">📋 Copiar</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="mlCopiar"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#prontuario"></use></svg> Copiar</button>
         <div id="mlStatus" style="flex-basis:100%;font-size:.74rem;"></div>`;
       document.querySelector('.grid-2').before(box);
       const campo = ligarUsername({
@@ -239,7 +239,7 @@
     }
     const postar = (t, body) => MULTI ? PF.api('/api/' + t, { method: 'POST', body, clinica: fClinica.value }) : PF.post(t, body);
     const corEv = e => MULTI ? corClinica(e._c) : (fisioById(e.fisio_id) || { cor: '#94A8A5' }).cor;
-    const sufixoClinica = e => MULTI && e._c ? ' · 🏥 ' + (vinculoDe(e._c) || {}).clinica_nome : '';
+    const sufixoClinica = e => MULTI && e._c ? ' · <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#hospital"></use></svg> ' + (vinculoDe(e._c) || {}).clinica_nome : '';
     const urlPront = e => `prontuarios.html?p=${e.paciente_id}${e.tratamento_id ? '&t=' + e.tratamento_id : ''}${MULTI && e._c ? '&c=' + e._c : ''}`;
 
     const ocupDoISO = dISO => OCUPADOS.filter(o => o.data === dISO && (filtro === 'todos' || o.fisio_id === filtro));
@@ -247,13 +247,13 @@
     function spanOcupado(o) {
       const f = fisioById(o.fisio_id);
       const quem = filtro === 'todos' && f ? f.nome.split(' ')[0] + ' · ' : '';
-      return `<span class="cal-ev ocupado" onclick="event.stopPropagation()" title="${f ? f.nome : 'Profissional'} — ${rotuloOcupado(o)}${o.duracao ? ' (' + o.duracao + ')' : ''}">${o.hora} 🔒 ${quem}ocupado</span>`;
+      return `<span class="cal-ev ocupado" onclick="event.stopPropagation()" title="${f ? f.nome : 'Profissional'} — ${rotuloOcupado(o)}${o.duracao ? ' (' + o.duracao + ')' : ''}">${o.hora} <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#cadeado"></use></svg> ${quem}ocupado</span>`;
     }
     const htmlOcupado = o => `<div class="dl-item">
         <div class="dl-time">${o.hora}</div>
         <div class="dl-bar" style="background:#AEBBB8;"></div>
         <div style="flex:1;">
-          <div class="dl-title">🔒 ${rotuloOcupado(o)}</div>
+          <div class="dl-title"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#cadeado"></use></svg> ${rotuloOcupado(o)}</div>
           <div class="dl-sub">${(fisioById(o.fisio_id) || {}).nome || ''}${o.duracao ? ' · ' + o.duracao : ''} · horário indisponível para agendar</div>
         </div>
       </div>`;
@@ -283,7 +283,7 @@
       [FISIOS, PACS, TRATS_ALL] = MULTI
         ? await Promise.all([somarClinicas('/api/fisios'), somarClinicas('/api/pacientes'), somarClinicas('/api/tratamentos')])
         : await Promise.all([PF.get('fisios'), PF.get('pacientes'), PF.get('tratamentos')]);
-      document.getElementById('fFisio').innerHTML = FISIOS.filter(f=>f.ativo).map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
+      document.getElementById('fFisio').innerHTML = FISIOS.filter(f=>f.ativo).map(f => ` 36 `).join('');
       if (SO_LEITURA) aplicarSomenteLeitura();
       montarPacSelect();
       document.getElementById('fPaciente').addEventListener('change', e => {
@@ -328,9 +328,9 @@
       if (!pacienteId) { wrap.style.display = 'none'; novoWrap.style.display = 'none'; selEl.innerHTML = ''; return; }
       const doPac = TRATS_ALL.filter(t => t.paciente_id === pacienteId);
       wrap.style.display = '';
-      selEl.innerHTML = '<option value="">— Sem vínculo (avaliação livre) —</option>' +
-        doPac.map(t => `<option value="${t.id}">${t.titulo}${t.status === 'concluido' ? ' (concluído)' : ''}</option>`).join('') +
-        '<option value="__novo__">＋ Nova ocorrência…</option>';
+      selEl.innerHTML = ' 37 ' +
+        doPac.map(t => ` 38 `).join('') +
+        ' 39 ';
       const ativos = doPac.filter(t => t.status === 'ativo');
       if (preferId && doPac.some(t => t.id === preferId)) selEl.value = preferId;
       else if (ativos.length) selEl.value = ativos[ativos.length - 1].id;
@@ -586,26 +586,26 @@
         if (pac && pac.sessoes_total > 0) {
           const saldo = pac.sessoes_total - pac.sessoes_feitas;
           credBadge = saldo > 0
-            ? `<span class="badge primary" title="${pac.pacote_nome || 'Pacote'}: ${pac.sessoes_feitas}/${pac.sessoes_total} usadas">🎫 ${saldo} crédito(s)</span>`
-            : `<span class="badge red" title="Pacote esgotado — renovar no financeiro">🎫 sem créditos</span>`;
+            ? `<span class="badge primary" title="${pac.pacote_nome || 'Pacote'}: ${pac.sessoes_feitas}/${pac.sessoes_total} usadas"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#ticket"></use></svg> ${saldo} crédito(s)</span>`
+            : `<span class="badge red" title="Pacote esgotado — renovar no financeiro"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#ticket"></use></svg> sem créditos</span>`;
         } else if (pac) {
           credBadge = `<span class="badge gray" title="Paciente sem pacote — sessão avulsa">sem pacote</span>`;
         }
-        const badge = e.status === 'realizada' ? '<span class="badge green">✓ realizada</span>'
+        const badge = e.status === 'realizada' ? '<span class="badge green"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg> realizada</span>'
           : e.status === 'falta' ? '<span class="badge red">falta</span>' : credBadge;
         const linkPront = e.paciente_id
-          ? `<a href="${urlPront(e)}" style="color:var(--primary);font-weight:600;font-size:.74rem;">📋 ${e.status === 'realizada' ? 'registrar evolução' : 'prontuário'} →</a>`
+          ? `<a href="${urlPront(e)}" style="color:var(--primary);font-weight:600;font-size:.74rem;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#prontuario"></use></svg> ${e.status === 'realizada' ? 'registrar evolução' : 'prontuário'} →</a>`
           : '';
         return `<div class="dl-item">
           <div class="dl-time">${e.hora.slice(0,5)}</div>
           <div class="dl-bar" style="background:${corEv(e)};"></div>
           <div style="flex:1;">
             <div class="dl-title" style="cursor:pointer;" onclick="abrirEvento('${e.id}')" title="Ver detalhes">${nomeEv(e)} ${badge}</div>
-            <div class="dl-sub">${e.tipo}${t ? ' · 🩺 ' + t.titulo : ''}${f && !MULTI ? ' · ' + f.nome : ''}${sufixoClinica(e)}${e.obs ? ' · ' + e.obs : ''}</div>
+            <div class="dl-sub">${e.tipo}${t ? ' · <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#estetoscopio"></use></svg> ' + t.titulo : ''}${f && !MULTI ? ' · ' + f.nome : ''}${sufixoClinica(e)}${e.obs ? ' · ' + e.obs : ''}</div>
             ${(e.status === 'agendada' && !SO_LEITURA) ? `<div style="display:flex;gap:6px;margin-top:7px;align-items:center;">
-              <button class="btn btn-soft btn-sm" onclick="mudarStatus('${e.id}','realizada')">✓ Realizada</button>
+              <button class="btn btn-soft btn-sm" onclick="mudarStatus('${e.id}','realizada')"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg> Realizada</button>
               <button class="btn btn-ghost btn-sm" onclick="mudarStatus('${e.id}','falta')">Falta</button>
-              <button class="btn btn-ghost btn-sm" onclick="excluir('${e.id}')" title="Excluir">🗑</button>
+              <button class="btn btn-ghost btn-sm" onclick="excluir('${e.id}')" title="Excluir"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#lixeira"></use></svg></button>
               ${linkPront}
             </div>` : `<div style="margin-top:5px;">${linkPront}</div>`}
           </div>
@@ -699,13 +699,13 @@
       const pac = pacById(e.paciente_id);
       const t = e.tratamento_id ? tratById(e.tratamento_id) : null;
       const ST = {
-        agendada: '<span class="badge blue">Agendada</span>', realizada: '<span class="badge green">✓ Realizada</span>',
+        agendada: '<span class="badge blue">Agendada</span>', realizada: '<span class="badge green"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg> Realizada</span>',
         falta: '<span class="badge red">Falta</span>', cancelada: '<span class="badge gray">Cancelada</span>',
       };
       let cred = '';
       if (pac && pac.sessoes_total > 0) {
         const saldo = pac.sessoes_total - pac.sessoes_feitas;
-        cred = saldo > 0 ? `<span class="badge primary">🎫 ${saldo} crédito(s) — ${pac.pacote_nome}</span>` : '<span class="badge red">🎫 sem créditos</span>';
+        cred = saldo > 0 ? `<span class="badge primary"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#ticket"></use></svg> ${saldo} crédito(s) — ${pac.pacote_nome}</span>` : '<span class="badge red"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#ticket"></use></svg> sem créditos</span>';
       }
       document.getElementById('evmTitulo').textContent = nomeEv(e);
       const linha = (l, v) => v ? `<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid #EDF1F0;font-size:.87rem;">
@@ -715,23 +715,23 @@
         linha('Quando', `${PF.fmtData(e.data.slice(0,10))} às ${e.hora.slice(0,5)} · ${e.duracao || ''}`) +
         linha('Tipo', e.tipo) +
         linha('Paciente', pac ? pac.nome : null) +
-        linha('Ocorrência', t ? `🩺 ${t.titulo}${t.status === 'concluido' ? ' (concluída)' : ''}` : (pac ? '<span style="color:var(--text-soft);">sem vínculo</span>' : null)) +
+        linha('Ocorrência', t ? `${t.titulo}${t.status === 'concluido' ? ' (concluída)' : ''}` : (pac ? '<span style="color:var(--text-soft);">sem vínculo</span>' : null)) +
         linha(MULTI ? 'Clínica' : 'Fisioterapeuta', MULTI ? (vinculoDe(e._c) || {}).clinica_nome : (f ? f.nome : null)) +
         linha('Observações', e.obs);
       const foot = [];
       if (SO_LEITURA) {
         document.getElementById('evmFoot').innerHTML =
           '<div style="font-size:.78rem;color:var(--text-soft);flex:1;">Para remarcar ou cancelar, fale com a recepção.</div>'
-          + (pac ? `<button class="btn btn-primary" onclick="location.href='${urlPront(e)}&s=${e.id}'">📋 Registrar evolução no prontuário</button>` : '');
+          + (pac ? `<button class="btn btn-primary" onclick="location.href='${urlPront(e)}&s=${e.id}'"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#prontuario"></use></svg> Registrar evolução no prontuário</button>` : '');
         App.openModal('mEvento');
         return;
       }
       if (e.status === 'agendada') {
-        foot.push(`<button class="btn btn-soft" onclick="App.closeModal('mEvento');mudarStatus('${e.id}','realizada')">✓ Realizada</button>`);
+        foot.push(`<button class="btn btn-soft" onclick="App.closeModal('mEvento');mudarStatus('${e.id}','realizada')"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg> Realizada</button>`);
         foot.push(`<button class="btn btn-ghost" onclick="App.closeModal('mEvento');mudarStatus('${e.id}','falta')">Falta</button>`);
       }
-      foot.push(`<button class="btn btn-danger" onclick="App.closeModal('mEvento');excluir('${e.id}')">🗑 Excluir</button>`);
-      if (pac) foot.push(`<button class="btn btn-primary" style="margin-left:auto;" onclick="location.href='${urlPront(e)}&s=${e.id}'">📋 Registrar evolução no prontuário</button>`);
+      foot.push(`<button class="btn btn-danger" onclick="App.closeModal('mEvento');excluir('${e.id}')"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#lixeira"></use></svg> Excluir</button>`);
+      if (pac) foot.push(`<button class="btn btn-primary" style="margin-left:auto;" onclick="location.href='${urlPront(e)}&s=${e.id}'"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#prontuario"></use></svg> Registrar evolução no prontuário</button>`);
       document.getElementById('evmFoot').innerHTML = foot.join('');
       App.openModal('mEvento');
     }
@@ -741,7 +741,7 @@
         const r = await PF.api(`/api/sessoes/${id}/status`, { method: 'PATCH', body: { status } });
         const c = r.creditos;
         if (status === 'realizada' && c && c.total > 0) {
-          if (c.saldo >= 0) App.toast(`Sessão paga com crédito do pacote 🎫 — saldo: ${c.saldo} de ${c.total}`);
+          if (c.saldo >= 0) App.toast(`Sessão paga com crédito do pacote — saldo: ${c.saldo} de ${c.total}`);
           if (c.saldo <= 0) setTimeout(() => App.toast(
             c.saldo < 0 ? 'Paciente está além do pacote — cobre avulsa ou renove no Financeiro' : 'Pacote chegou ao fim — proponha a renovação no Financeiro', 'info'), 700);
         } else {

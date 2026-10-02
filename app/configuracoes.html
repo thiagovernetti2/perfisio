@@ -44,21 +44,21 @@
       <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
         <div id="logoPrev" style="width:120px;height:70px;border:1px dashed var(--line);border-radius:10px;
              display:grid;place-items:center;background:#fff;background-size:contain;background-repeat:no-repeat;
-             background-position:center;font-size:1.4rem;color:var(--text-soft);">🏥</div>
+             background-position:center;font-size:1.4rem;color:var(--text-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#hospital"></use></svg></div>
         <div style="flex:1;min-width:200px;">
           <div style="font-size:.82rem;font-weight:700;color:var(--ink);">Logo da clínica</div>
           <div style="font-size:.74rem;color:var(--text-soft);line-height:1.5;margin-top:2px;">
             PNG com fundo transparente fica melhor. Até 4 MB.
           </div>
           <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
-            <label class="btn btn-soft btn-sm" style="cursor:pointer;">📤 Enviar logo
+            <label class="btn btn-soft btn-sm" style="cursor:pointer;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#upload"></use></svg> Enviar logo
               <input type="file" id="logoInput" accept="image/jpeg,image/png,image/webp" style="display:none;"></label>
             <button class="btn btn-ghost btn-sm" id="logoDel" onclick="removerLogo()" style="display:none;">Remover</button>
           </div>
         </div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);">
-        <a class="btn btn-primary btn-sm" href="cartao.html" target="_blank">💳 Cartão da clínica</a>
+        <a class="btn btn-primary btn-sm" href="cartao.html" target="_blank"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#cartao"></use></svg> Cartão da clínica</a>
         <a class="btn btn-soft btn-sm" href="equipe.html">Cartão dos fisioterapeutas →</a>
       </div>
     </div>
@@ -83,7 +83,7 @@
         </div>
       </div>
       <div class="card card-pad">
-        <h3 style="font-size:.98rem;margin-bottom:14px;">💡 Como funciona</h3>
+        <h3 style="font-size:.98rem;margin-bottom:14px;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#ideia"></use></svg> Como funciona</h3>
         <div class="day-list">
           <div class="dl-item"><div class="dl-bar" style="background:var(--primary);"></div><div><div class="dl-title">Perfil no diretório</div><div class="dl-sub">Com o perfil visível, sua clínica aparece na busca pública da página inicial do PerFisio.</div></div></div>
           <div class="dl-item"><div class="dl-bar" style="background:var(--blue);"></div><div><div class="dl-title">Solicitações viram leads</div><div class="dl-sub">Quando um paciente pede avaliação pelo site, o contato entra automaticamente no seu CRM na coluna "Novo contato".</div></div></div>
@@ -136,7 +136,7 @@
       </div>
 
       <div class="card card-pad">
-        <h3 style="font-size:.98rem;margin-bottom:14px;">💡 Como funciona</h3>
+        <h3 style="font-size:.98rem;margin-bottom:14px;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#ideia"></use></svg> Como funciona</h3>
         <div class="day-list">
           <div class="dl-item"><div class="dl-bar" style="background:var(--primary);"></div><div><div class="dl-title">1. Você informa o domínio</div><div class="dl-sub">Pode ser um domínio que você já tem ou um novo, comprado em qualquer registrador.</div></div></div>
           <div class="dl-item"><div class="dl-bar" style="background:var(--blue);"></div><div><div class="dl-title">2. Aponta o DNS para o PerFisio</div><div class="dl-sub">Um registro CNAME no painel do seu domínio. Mostramos exatamente o que preencher.</div></div></div>
@@ -242,11 +242,11 @@
       st.style.display = '';
       if (ativo) {
         st.style.cssText += ';background:var(--green-soft);border:1px solid #BFE5D2;color:var(--green);';
-        st.innerHTML = `✅ <b>${DOM.dominio} está no ar</b> — apontando para a página da sua clínica.
+        st.innerHTML = `<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#verificado"></use></svg> <b>${DOM.dominio} está no ar</b> — apontando para a página da sua clínica.
           ${DOM.dominio_verificado_em ? 'Verificado em ' + new Date(DOM.dominio_verificado_em).toLocaleString('pt-BR') + '.' : ''}`;
       } else {
         st.style.cssText += ';background:var(--amber-soft);border:1px solid #EED9B8;color:var(--amber);';
-        st.innerHTML = `⏳ <b>${DOM.dominio} aguardando o DNS.</b> Crie o registro abaixo no painel do seu domínio e clique em "Verificar DNS agora".`;
+        st.innerHTML = `<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#ampulheta"></use></svg> <b>${DOM.dominio} aguardando o DNS.</b> Crie o registro abaixo no painel do seu domínio e clique em "Verificar DNS agora".`;
       }
     }
 
@@ -271,7 +271,7 @@
       try {
         const r = await PF.api('/api/dominio/verificar', { method: 'POST' });
         await carregarDominio();
-        if (r.ok) App.toast('Domínio ativo! 🌐');
+        if (r.ok) App.toast('Domínio ativo!');
         else App.toast(r.erro || `Ainda não aponta para o PerFisio${r.valor ? ' (achamos: ' + r.valor + ')' : ''}`, 'error');
       } catch (e) { App.toast(e.message, 'error'); }
       btn.disabled = false; btn.textContent = 'Verificar DNS agora';
@@ -292,7 +292,7 @@
     function pintarLogo(tem) {
       const el = document.getElementById('logoPrev');
       el.style.backgroundImage = tem ? `url(/api/public/clinica-logo/${CLINICA.slug || CLINICA.id}?v=${Date.now()})` : '';
-      el.textContent = tem ? '' : '🏥';
+      el.innerHTML = tem ? '' : '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#hospital"></use></svg>';
       document.getElementById('logoDel').style.display = tem ? '' : 'none';
     }
 
@@ -347,7 +347,7 @@
           faixa_preco: pPreco.value.trim(), visivel: pVisivel.checked, agenda_online: pAgenda.checked,
         };
         CLINICA = await PF.api('/api/clinica', { method: 'PUT', body: { perfil } });
-        App.toast(perfil.visivel ? 'Perfil publicado no diretório! 🌐' : 'Perfil salvo (oculto do diretório)');
+        App.toast(perfil.visivel ? 'Perfil publicado no diretório!' : 'Perfil salvo (oculto do diretório)');
       } catch (e) { App.toast(e.message, 'error'); }
     }
 
@@ -355,8 +355,8 @@
       const [users, fisios] = await Promise.all([PF.get('usuarios'), PF.get('fisios').catch(() => [])]);
       /* só profissionais que ainda não têm login */
       const livres = fisios.filter(f => f.ativo && !users.some(u => u.fisio_id === f.id));
-      document.getElementById('uFisio').innerHTML = '<option value="">— Nenhum —</option>'
-        + livres.map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
+      document.getElementById('uFisio').innerHTML = ' 4 '
+        + livres.map(f => ` 5 `).join('');
       const BADGE = { gestor: '<span class="badge primary">Gestor</span>', fisio: '<span class="badge blue">Fisioterapeuta</span>', recepcao: '<span class="badge amber">Recepção</span>' };
       const CORES = ['#0DA189','#2D7DD2','#7C5CBF','#D9820B'];
       document.getElementById('userRows').innerHTML = users.map((u, i) => `

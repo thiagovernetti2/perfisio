@@ -21,7 +21,7 @@ window.App = (function () {
     }
     const el = document.createElement('div');
     el.className = `toast ${type}`;
-    const ico = { success: '✅', error: '⚠️', info: 'ℹ️' }[type] || '';
+    const ico = { success: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#verificado"></use></svg>', error: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#aviso"></use></svg>', info: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#ideia"></use></svg>' }[type] || '';
     el.innerHTML = `${ico} <span>${msg}</span>`;
     toastWrap.appendChild(el);
     setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; }, 3200);

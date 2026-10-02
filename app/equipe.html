@@ -13,7 +13,7 @@
   <div class="page-head">
     <div style="display:flex;gap:8px;" id="eqBadges"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="btn btn-ghost" onclick="abrirConvite()" title="Para quem já usa o PerFisio em outra clínica">✉️ Convidar de outra clínica</button>
+      <button class="btn btn-ghost" onclick="abrirConvite()" title="Para quem já usa o PerFisio em outra clínica"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#email"></use></svg> Convidar de outra clínica</button>
       <button class="btn btn-primary" onclick="abrirNovo()">+ Novo profissional</button>
     </div>
   </div>
@@ -55,20 +55,20 @@
         </div>
         <!-- quem veio de outra clínica: o perfil público é o de lá; aqui só o valor da consulta -->
         <div id="boxPerfilFora" style="display:none;margin-top:18px;padding:16px;background:var(--primary-soft);border-radius:12px;">
-          <div style="font-size:.85rem;font-weight:800;color:var(--primary-dark);margin-bottom:4px;">🏥 Atende também em outra clínica</div>
+          <div style="font-size:.85rem;font-weight:800;color:var(--primary-dark);margin-bottom:4px;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#hospital"></use></svg> Atende também em outra clínica</div>
           <div style="font-size:.76rem;color:var(--text-soft);margin-bottom:12px;line-height:1.55;" id="perfilForaTxt"></div>
           <div class="form-grid">
             <div class="field"><label>Valor da consulta nesta clínica (R$)</label><input type="number" id="prConsultaFora" min="0" step="1" placeholder="Ex.: 180"></div>
           </div>
         </div>
         <div id="boxPerfil" style="margin-top:18px;padding:16px;background:var(--primary-soft);border-radius:12px;">
-          <div style="font-size:.85rem;font-weight:800;color:var(--primary-dark);margin-bottom:4px;">🌐 Perfil público no diretório PerFisio</div>
+          <div style="font-size:.85rem;font-weight:800;color:var(--primary-dark);margin-bottom:4px;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#globo"></use></svg> Perfil público no diretório PerFisio</div>
           <div style="font-size:.75rem;color:var(--text-soft);margin-bottom:12px;">Pacientes encontram este profissional na busca por especialidade e por proximidade.</div>
           <div class="check-row" style="padding-top:0;"><input type="checkbox" id="prPublico"><label for="prPublico" style="margin:0;font-weight:600;">Exibir este profissional no diretório público</label></div>
 
           <!-- link curto (username): perfis.io/username -->
           <div id="boxLinkCurto" style="display:none;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:12px 0;">
-            <div style="font-size:.78rem;font-weight:700;color:var(--ink);margin-bottom:6px;">🔗 Link curto para divulgar</div>
+            <div style="font-size:.78rem;font-weight:700;color:var(--ink);margin-bottom:6px;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#link"></use></svg> Link curto para divulgar</div>
             <div class="user-link">
               <span class="pref">perfis.io/</span>
               <input type="text" id="prUsername" maxlength="40" autocomplete="off" spellcheck="false" placeholder="seu-nome">
@@ -76,7 +76,7 @@
             </div>
             <div id="usernameStatus" style="font-size:.72rem;margin-top:6px;min-height:16px;"></div>
             <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;" id="linkCurtoAcoes">
-              <button type="button" class="btn btn-ghost btn-sm" onclick="copiarLinkCurto()">📋 Copiar link</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="copiarLinkCurto()"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#prontuario"></use></svg> Copiar link</button>
               <button type="button" class="btn btn-ghost btn-sm" onclick="abrirLinkCurto()">Abrir ↗</button>
             </div>
             <div style="font-size:.72rem;color:var(--text-soft);margin-top:8px;line-height:1.5;">
@@ -85,12 +85,12 @@
             </div>
           </div>
           <div style="display:flex;gap:14px;align-items:center;margin:12px 0;padding:12px;background:#fff;border-radius:10px;border:1px solid var(--line);flex-wrap:wrap;">
-            <div id="prFotoPrev" style="width:56px;height:56px;border-radius:50%;background:var(--line);display:grid;place-items:center;font-size:1.3rem;overflow:hidden;flex-shrink:0;background-size:cover;background-position:center;">📷</div>
+            <div id="prFotoPrev" style="width:56px;height:56px;border-radius:50%;background:var(--line);display:grid;place-items:center;font-size:1.3rem;overflow:hidden;flex-shrink:0;background-size:cover;background-position:center;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#camera"></use></svg></div>
             <div style="flex:1;min-width:160px;">
               <div style="font-size:.8rem;font-weight:700;color:var(--ink);">Foto de perfil</div>
               <div style="font-size:.7rem;color:var(--text-soft);">Aparece no diretório e na página do profissional</div>
             </div>
-            <label class="btn btn-soft btn-sm" style="cursor:pointer;">📤 Enviar<input type="file" id="prFotoInput" accept="image/jpeg,image/png,image/webp" style="display:none;"></label>
+            <label class="btn btn-soft btn-sm" style="cursor:pointer;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#upload"></use></svg> Enviar<input type="file" id="prFotoInput" accept="image/jpeg,image/png,image/webp" style="display:none;"></label>
             <button class="btn btn-ghost btn-sm" id="prFotoDel" onclick="removerFoto(event)" style="display:none;">Remover</button>
           </div>
           <div style="padding:12px;background:#fff;border-radius:10px;border:1px solid var(--line);margin-bottom:12px;">
@@ -99,7 +99,7 @@
                 <div style="font-size:.8rem;font-weight:700;color:var(--ink);">Galeria de fotos</div>
                 <div style="font-size:.7rem;color:var(--text-soft);">Consultório, equipamentos, atendimentos · até 12 fotos</div>
               </div>
-              <label class="btn btn-soft btn-sm" style="cursor:pointer;">➕ Adicionar<input type="file" id="prGalInput" accept="image/jpeg,image/png,image/webp" multiple style="display:none;"></label>
+              <label class="btn btn-soft btn-sm" style="cursor:pointer;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#mais"></use></svg> Adicionar<input type="file" id="prGalInput" accept="image/jpeg,image/png,image/webp" multiple style="display:none;"></label>
             </div>
             <div id="prGalLista" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
           </div>
@@ -114,7 +114,7 @@
             <div class="field"><label>Localização no mapa</label>
               <div style="display:flex;gap:6px;">
                 <input type="text" id="prCoord" placeholder="lat, lng" style="flex:1;">
-                <button class="btn btn-soft btn-sm" onclick="buscarCoord()" title="Buscar coordenadas pelo endereço">📍</button>
+                <button class="btn btn-soft btn-sm" onclick="buscarCoord()" title="Buscar coordenadas pelo endereço"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#local"></use></svg></button>
               </div>
             </div>
             <div class="field full"><label>Apresentação (bio)</label><textarea id="prBio" placeholder="Ex.: Especialista em corredores, atendo no consultório e em domicílio na zona sul."></textarea></div>
@@ -122,7 +122,7 @@
             <div class="field"><label>Instagram</label><input type="text" id="prInstagram" placeholder="@perfil"></div>
             <div class="field full"><label>Tratamentos (separados por vírgula)</label><input type="text" id="prTratamentos" placeholder="Articulares, Lesões do esporte, Musculares, Reabilitação funcional, Dores em geral"></div>
             <div class="field full"><label>Regiões atendidas</label><input type="text" id="prRegioes" placeholder="Ex.: Vila Mariana, Moema e região · domiciliar na zona sul"></div>
-            <div class="check-row full" style="padding-bottom:0;"><input type="checkbox" id="prDomiciliar"><label for="prDomiciliar" style="margin:0;font-weight:500;">🏠 Atende em domicílio</label></div>
+            <div class="check-row full" style="padding-bottom:0;"><input type="checkbox" id="prDomiciliar"><label for="prDomiciliar" style="margin:0;font-weight:500;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#casa"></use></svg> Atende em domicílio</label></div>
             <div class="field full"><label>Pacotes e planos que aparecem no perfil</label>
               <div id="prPacotes"></div>
               <div style="font-size:.72rem;color:var(--text-soft);margin-top:6px;line-height:1.5;">
@@ -137,7 +137,7 @@
         </div>
         <!-- acesso ao sistema: cria o usuário em Configurações → Usuários automaticamente -->
         <div id="boxAcesso" style="margin-top:18px;padding:16px;background:var(--bg);border-radius:12px;">
-          <div style="font-size:.85rem;font-weight:800;color:var(--ink);margin-bottom:4px;">🔑 Acesso ao sistema</div>
+          <div style="font-size:.85rem;font-weight:800;color:var(--ink);margin-bottom:4px;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#chave"></use></svg> Acesso ao sistema</div>
           <div style="font-size:.75rem;color:var(--text-soft);margin-bottom:12px;">
             Com um e-mail aqui, o profissional vira usuário do sistema (perfil <b>Fisioterapeuta</b>) e entra
             no app para <b>cuidar da própria agenda</b> — vê as sessões dele, marca novas, cadastra paciente
@@ -167,7 +167,7 @@
   <div class="modal-overlay" id="mConvite">
     <div class="modal" style="max-width:480px;">
       <div class="modal-head">
-        <h3>✉️ Convidar de outra clínica</h3>
+        <h3><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#email"></use></svg> Convidar de outra clínica</h3>
         <button class="close" onclick="App.closeModal('mConvite')">×</button>
       </div>
       <div class="modal-body">
@@ -189,7 +189,7 @@
   <div class="modal-overlay" id="mCred">
     <div class="modal" style="max-width:460px;">
       <div class="modal-head">
-        <h3>🔑 Acesso criado</h3>
+        <h3><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#chave"></use></svg> Acesso criado</h3>
         <button class="close" onclick="App.closeModal('mCred')">×</button>
       </div>
       <div class="modal-body">
@@ -269,7 +269,7 @@
     function renderConvites() {
       const vis = CONVITES.filter(c => c.status === 'pendente' || c.status === 'recusado');
       document.getElementById('convitesBox').innerHTML = vis.length ? `<div class="card card-pad convites">
-        <div style="font-size:.85rem;font-weight:800;color:var(--ink);margin-bottom:6px;">✉️ Convites enviados</div>
+        <div style="font-size:.85rem;font-weight:800;color:var(--ink);margin-bottom:6px;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#email"></use></svg> Convites enviados</div>
         ${vis.map(c => `<div class="convite-linha">
           <span style="flex:1;min-width:200px;"><b>${c.nome || c.email}</b> · ${c.email}</span>
           ${c.status === 'pendente'
@@ -323,7 +323,7 @@
       const loginFora = !!(f && f.login_de_fora && !acessoDe(f.id));
       document.getElementById('boxAcesso').style.display = loginFora ? 'none' : '';
       document.getElementById('boxAcessoFora').style.display = loginFora ? '' : 'none';
-      if (loginFora) acessoForaTxt.innerHTML = `🔑 Entra com o login próprio <b>${f.login_de_fora}</b> — o mesmo em
+      if (loginFora) acessoForaTxt.innerHTML = `<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#chave"></use></svg> Entra com o login próprio <b>${f.login_de_fora}</b> — o mesmo em
         todas as clínicas onde atende. Aqui ele vê só a própria agenda e os prontuários dos pacientes desta clínica.`;
     }
 
@@ -353,13 +353,13 @@
           <div class="pro-name">${f.nome}</div>
           <div class="pro-crefito">${f.crefito || 'CREFITO não informado'}</div>
           <div class="pro-esp"><span class="badge primary">${f.esp || 'Fisioterapeuta'}</span>${f.ativo ? '' : ' <span class="badge gray">Inativo</span>'}</div>
-          ${f.outras_clinicas ? `<div class="pro-vinculo">🏥 Atende também em ${f.outras_clinicas} outra${f.outras_clinicas > 1 ? 's clínicas' : ' clínica'}</div>` : ''}
+          ${f.outras_clinicas ? `<div class="pro-vinculo"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#hospital"></use></svg> Atende também em ${f.outras_clinicas} outra${f.outras_clinicas > 1 ? 's clínicas' : ' clínica'}</div>` : ''}
           <div class="pro-acesso" title="${acessoDe(f.id) || f.login_de_fora ? 'Login do profissional no sistema' : 'Este profissional ainda não entra no sistema'}">
             ${acessoDe(f.id)
-              ? `🔑 <span>${acessoDe(f.id).email}</span>`
+              ? `<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#chave"></use></svg> <span>${acessoDe(f.id).email}</span>`
               : f.login_de_fora
-                ? `🔑 <span>${f.login_de_fora}</span>`
-                : `<span style="color:var(--text-soft);">🔒 Sem acesso ao sistema</span>`}
+                ? `<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#chave"></use></svg> <span>${f.login_de_fora}</span>`
+                : `<span style="color:var(--text-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#cadeado"></use></svg> Sem acesso ao sistema</span>`}
           </div>
           <div style="margin-top:14px;">
             <div style="display:flex;justify-content:space-between;font-size:.74rem;margin-bottom:5px;">
@@ -379,7 +379,7 @@
           </div>` : f.publico && f.slug ? `
           <div class="link-curto">
             <code>perfis.io/${f.slug}</code>
-            <button class="btn btn-ghost btn-sm" title="Copiar link" onclick="copiarLink('${f.slug}', this)">📋</button>
+            <button class="btn btn-ghost btn-sm" title="Copiar link" onclick="copiarLink('${f.slug}', this)"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#prontuario"></use></svg></button>
           </div>` : `
           <div class="link-curto off" title="O link curto e o QR só funcionam com o perfil público ativo">
             <code>perfis.io/${f.slug || '...'}</code>
@@ -387,13 +387,13 @@
           </div>`}
           <div class="pro-acoes">
             ${f.ficha_do_perfil === false ? '' : `<a class="btn btn-ghost btn-sm" href="cartao.html?p=${f.slug || f.id}" target="_blank"
-               title="Cartão de visita · folha A4 com 10 unidades">💳 Cartão</a>`}
+               title="Cartão de visita · folha A4 com 10 unidades"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#cartao"></use></svg> Cartão</a>`}
             ${f.ficha_do_perfil === false ? '' : f.publico && f.slug
               ? `<a class="btn btn-ghost btn-sm" href="cartaz.html?p=${f.slug}" target="_blank"
-                   title="Cartaz A4 com QR code para o paciente avaliar">🏷 Cartaz</a>`
+                   title="Cartaz A4 com QR code para o paciente avaliar"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#etiqueta"></use></svg> Cartaz</a>`
               : `<button class="btn btn-ghost btn-sm" disabled
-                   title="Ative o perfil público para gerar o cartaz de avaliação">🏷 Cartaz</button>`}
-            <button class="btn btn-ghost btn-sm" onclick="location.href='agenda.html'">📅 Agenda</button>
+                   title="Ative o perfil público para gerar o cartaz de avaliação"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#etiqueta"></use></svg> Cartaz</button>`}
+            <button class="btn btn-ghost btn-sm" onclick="location.href='agenda.html'"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#agenda"></use></svg> Agenda</button>
             <button class="btn btn-soft btn-sm" onclick="abrirEditar('${f.id}')">Editar</button>
           </div>
         </div>`;
@@ -414,9 +414,9 @@
 
     /* ---------- Perfil público ---------- */
     const ESPECIALIDADES = [
-      ['esportiva', '🏃 Esportiva'], ['ortopedia', '🦴 Ortopedia'], ['pilates', '🧘 Pilates'],
-      ['neuro', '🧠 Neuro'], ['rpg', '🧍 RPG'], ['respiratoria', '🫁 Respiratória'],
-      ['pelvica', '🌸 Pélvica'], ['geriatrica', '👵 Geriátrica'],
+      ['esportiva', '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#corrida"></use></svg> Esportiva'], ['ortopedia', '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#osso"></use></svg> Ortopedia'], ['pilates', '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#pilates"></use></svg> Pilates'],
+      ['neuro', '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#neuro"></use></svg> Neuro'], ['rpg', '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#postura"></use></svg> RPG'], ['respiratoria', '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#pulmao"></use></svg> Respiratória'],
+      ['pelvica', '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#pelvica"></use></svg> Pélvica'], ['geriatrica', '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#idoso"></use></svg> Geriátrica'],
     ];
     let espSel = new Set();
     const locPro = ligarLocalidade({ uf: prUf, cidade: prCidade });
@@ -437,7 +437,7 @@
         const c = r.features && r.features[0];
         if (!c) { App.toast('Endereço não encontrado', 'error'); return; }
         prCoord.value = `${c.center[1].toFixed(6)}, ${c.center[0].toFixed(6)}`;
-        App.toast('📍 Localizado: ' + c.place_name.slice(0, 60));
+        App.toast('Localizado: ' + c.place_name.slice(0, 60));
       } catch (e) { App.toast('Falha ao buscar coordenadas', 'error'); }
     }
 
@@ -462,7 +462,7 @@
     function fotoPrev(tem) {
       const el = document.getElementById('prFotoPrev');
       el.style.backgroundImage = tem ? `url(/api/public/fisio-foto/${editId}?v=${Date.now()})` : '';
-      el.textContent = tem ? '' : '📷';
+      el.innerHTML = tem ? '' : '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#camera"></use></svg>';
       document.getElementById('prFotoDel').style.display = tem ? '' : 'none';
     }
 
@@ -473,7 +473,7 @@
       lista.innerHTML = fotos.map(g => `
         <div style="position:relative;">
           <img src="/api/public/galeria-foto/${g.id}?v=1" style="width:74px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--line);">
-          <button onclick="removerGaleria('${g.id}')" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:var(--red);color:#fff;font-size:.7rem;cursor:pointer;">✕</button>
+          <button onclick="removerGaleria('${g.id}')" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:var(--red);color:#fff;font-size:.7rem;cursor:pointer;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#fechar"></use></svg></button>
         </div>`).join('') || '<div style="font-size:.72rem;color:var(--text-soft);">Nenhuma foto ainda.</div>';
     }
 
@@ -520,7 +520,7 @@
       const url = 'https://perfis.io/' + slug;
       navigator.clipboard.writeText(url).then(() => {
         App.toast('Link copiado: ' + url.replace('https://', ''));
-        if (botao) { const antes = botao.textContent; botao.textContent = '✓'; setTimeout(() => botao.textContent = antes, 1600); }
+        if (botao) { const antes = botao.textContent; botao.innerHTML = '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg>'; setTimeout(() => botao.textContent = antes, 1600); }
       }).catch(() => App.toast('Copie manualmente: ' + url, 'error'));
     }
 
@@ -612,7 +612,7 @@
         ? 'em branco = mantém a senha atual'
         : 'em branco = gerada automaticamente';
       box.style.display = u ? '' : 'none';
-      if (u) box.innerHTML = `✅ Já tem acesso como <b>${u.perfil === 'gestor' ? 'Gestor' : u.perfil === 'recepcao' ? 'Recepção' : 'Fisioterapeuta'}</b>` +
+      if (u) box.innerHTML = `<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#verificado"></use></svg> Já tem acesso como <b>${u.perfil === 'gestor' ? 'Gestor' : u.perfil === 'recepcao' ? 'Recepção' : 'Fisioterapeuta'}</b>` +
         (u.ultimo_acesso ? ` · último acesso em ${new Date(u.ultimo_acesso).toLocaleDateString('pt-BR')}` : ' · ainda não entrou');
       document.getElementById('btnRemoverAcesso').style.display =
         (u && u.perfil !== 'gestor' && u.id !== (PF.user() || {}).id) ? '' : 'none';
@@ -632,7 +632,7 @@
         + `E-mail: ${document.getElementById('credEmail').textContent}\n`
         + `Senha provisória: ${document.getElementById('credSenha').textContent}`;
       navigator.clipboard.writeText(txt)
-        .then(() => { botao.textContent = '✓ Copiado'; setTimeout(() => botao.textContent = 'Copiar dados', 1800); })
+        .then(() => { botao.innerHTML = '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg> Copiado'; setTimeout(() => botao.textContent = 'Copiar dados', 1800); })
         .catch(() => App.toast('Não consegui copiar — selecione o texto manualmente', 'error'));
     }
 

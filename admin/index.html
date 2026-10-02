@@ -48,14 +48,14 @@
       </div>
       <nav id="admNav">
         <div class="nav-label">Plataforma</div>
-        <a class="nav-item active" data-sec="dashboard" onclick="irSecao('dashboard')"><span class="ico">📊</span>Visão geral</a>
-        <a class="nav-item" data-sec="clinicas" onclick="irSecao('clinicas')"><span class="ico">🏥</span>Clínicas</a>
-        <a class="nav-item" data-sec="fisios" onclick="irSecao('fisios')"><span class="ico">🧑‍⚕️</span>Profissionais</a>
+        <a class="nav-item active" data-sec="dashboard" onclick="irSecao('dashboard')"><span class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#grafico"></use></svg></span>Visão geral</a>
+        <a class="nav-item" data-sec="clinicas" onclick="irSecao('clinicas')"><span class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#hospital"></use></svg></span>Clínicas</a>
+        <a class="nav-item" data-sec="fisios" onclick="irSecao('fisios')"><span class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#estetoscopio"></use></svg></span>Profissionais</a>
         <div class="nav-label">Marketing</div>
-        <a class="nav-item" data-sec="social" onclick="irSecao('social')"><span class="ico">📱</span>Posts · Aprovações</a>
+        <a class="nav-item" data-sec="social" onclick="irSecao('social')"><span class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#celular"></use></svg></span>Posts · Aprovações</a>
         <div class="nav-label">Atalhos</div>
-        <a class="nav-item" href="../index.html" target="_blank"><span class="ico">🌐</span>Site público</a>
-        <a class="nav-item" href="../login.html" target="_blank"><span class="ico">🔑</span>Login das clínicas</a>
+        <a class="nav-item" href="../index.html" target="_blank"><span class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#globo"></use></svg></span>Site público</a>
+        <a class="nav-item" href="../login.html" target="_blank"><span class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#chave"></use></svg></span>Login das clínicas</a>
       </nav>
       <div class="user-box">
         <div class="avatar">SA</div>
@@ -63,7 +63,7 @@
           <div class="u-name">Superadmin</div>
           <div class="u-role" id="admUser" style="overflow:hidden;text-overflow:ellipsis;"></div>
         </div>
-        <button class="logout" title="Sair" onclick="sair()">⎋</button>
+        <button class="logout" title="Sair" onclick="sair()"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#sair"></use></svg></button>
       </div>
     </aside>
 
@@ -82,22 +82,22 @@
         <div data-sec-panel="dashboard">
           <div class="stats-grid">
             <div class="stat-card">
-              <div class="s-top"><span class="s-label">Clínicas cadastradas</span><div class="s-ico" style="background:var(--primary-soft);">🏥</div></div>
+              <div class="s-top"><span class="s-label">Clínicas cadastradas</span><div class="s-ico" style="background:var(--primary-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#hospital"></use></svg></div></div>
               <div class="s-value" id="mClinicas">—</div>
               <div class="s-delta"><span class="muted" id="mClinicasSub"></span></div>
             </div>
             <div class="stat-card">
-              <div class="s-top"><span class="s-label">Pacientes na plataforma</span><div class="s-ico" style="background:var(--blue-soft);">👥</div></div>
+              <div class="s-top"><span class="s-label">Pacientes na plataforma</span><div class="s-ico" style="background:var(--blue-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#pessoas"></use></svg></div></div>
               <div class="s-value" id="mPacientes">—</div>
               <div class="s-delta"><span class="muted" id="mPacientesSub"></span></div>
             </div>
             <div class="stat-card">
-              <div class="s-top"><span class="s-label">Sessões (30 dias)</span><div class="s-ico" style="background:var(--green-soft);">📅</div></div>
+              <div class="s-top"><span class="s-label">Sessões (30 dias)</span><div class="s-ico" style="background:var(--green-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#agenda"></use></svg></div></div>
               <div class="s-value" id="mSessoes">—</div>
               <div class="s-delta"><span class="muted">em toda a plataforma</span></div>
             </div>
             <div class="stat-card">
-              <div class="s-top"><span class="s-label">Receita registrada</span><div class="s-ico" style="background:var(--amber-soft);">💰</div></div>
+              <div class="s-top"><span class="s-label">Receita registrada</span><div class="s-ico" style="background:var(--amber-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#dinheiro"></use></svg></div></div>
               <div class="s-value" id="mReceita">—</div>
               <div class="s-delta"><span class="muted">somando todas as clínicas</span></div>
             </div>
@@ -110,9 +110,9 @@
             <div class="card card-pad">
               <h3 style="font-size:.95rem;margin-bottom:12px;">Como funciona</h3>
               <div style="font-size:.84rem;color:var(--text-soft);line-height:1.7;">
-                🏥 <b style="color:var(--ink);">Clínicas</b>: crie contas completas e entregue as credenciais.<br>
-                🧑‍⚕️ <b style="color:var(--ink);">Profissionais</b>: gerencie os perfis do diretório de todas as clínicas.<br>
-                📱 <b style="color:var(--ink);">Posts</b>: crie conteúdo para as redes das clínicas e acompanhe as aprovações.
+                <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#hospital"></use></svg> <b style="color:var(--ink);">Clínicas</b>: crie contas completas e entregue as credenciais.<br>
+                <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#estetoscopio"></use></svg> <b style="color:var(--ink);">Profissionais</b>: gerencie os perfis do diretório de todas as clínicas.<br>
+                <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#celular"></use></svg> <b style="color:var(--ink);">Posts</b>: crie conteúdo para as redes das clínicas e acompanhe as aprovações.
               </div>
             </div>
           </div>
@@ -126,7 +126,7 @@
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                 <div style="display:flex;gap:6px;" id="clinAbas">
                   <button class="chip active" data-aba="ativas" onclick="trocarAbaClinicas('ativas')">Cadastradas</button>
-                  <button class="chip" data-aba="excluidas" onclick="trocarAbaClinicas('excluidas')">🗑 Excluídas</button>
+                  <button class="chip" data-aba="excluidas" onclick="trocarAbaClinicas('excluidas')"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#lixeira"></use></svg> Excluídas</button>
                 </div>
                 <button class="btn btn-primary btn-sm" onclick="abrirNovaClinica()">+ Nova clínica</button>
               </div>
@@ -148,7 +148,7 @@
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                 <div style="display:flex;gap:6px;" id="fisioAbas">
                   <button class="chip active" data-aba="ativos" onclick="trocarAbaFisios('ativos')">Cadastrados</button>
-                  <button class="chip" data-aba="excluidos" onclick="trocarAbaFisios('excluidos')">🗑 Excluídos</button>
+                  <button class="chip" data-aba="excluidos" onclick="trocarAbaFisios('excluidos')"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#lixeira"></use></svg> Excluídos</button>
                 </div>
                 <button class="btn btn-primary btn-sm" onclick="abrirFisio(null)">+ Novo fisioterapeuta</button>
               </div>
@@ -197,7 +197,7 @@
           <div class="field"><label>Senha provisória *</label>
             <div style="display:flex;gap:6px;">
               <input type="text" id="ncSenha" style="flex:1;">
-              <button class="btn btn-soft btn-sm" onclick="ncSenha.value = 'pf' + Math.random().toString(36).slice(2, 10)">🎲</button>
+              <button class="btn btn-soft btn-sm" onclick="ncSenha.value = 'pf' + Math.random().toString(36).slice(2, 10)"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#sorte"></use></svg></button>
             </div>
           </div>
           <div class="field"><label>Telefone</label><input type="text" id="ncTel"></div>
@@ -205,7 +205,7 @@
         </div>
         <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
           <input type="checkbox" id="ncSocial" style="width:17px;height:17px;">
-          <label for="ncSocial" style="margin:0;font-weight:500;font-size:.85rem;">📱 Contratou o plano de redes sociais</label>
+          <label for="ncSocial" style="margin:0;font-weight:500;font-size:.85rem;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#celular"></use></svg> Contratou o plano de redes sociais</label>
         </div>
         <div id="ncResultado" style="display:none;margin-top:14px;" class="cred-box"></div>
       </div>
@@ -256,8 +256,8 @@
           <div class="field"><label>Bairro</label><input type="text" id="mfBairro"></div>
           <div class="field full"><label>Especialidades no diretório (separadas por vírgula)</label><input type="text" id="mfEspecialidades" placeholder="esportiva, ortopedia, pilates, neuro, rpg, respiratoria, pelvica, geriatrica"></div>
           <div class="field full"><label>Bio</label><textarea id="mfBio"></textarea></div>
-          <div class="check-row"><input type="checkbox" id="mfPublico"><label for="mfPublico" style="margin:0;font-weight:500;">🌐 Público no diretório</label></div>
-          <div class="check-row"><input type="checkbox" id="mfDomiciliar"><label for="mfDomiciliar" style="margin:0;font-weight:500;">🏠 Atende em domicílio</label></div>
+          <div class="check-row"><input type="checkbox" id="mfPublico"><label for="mfPublico" style="margin:0;font-weight:500;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#globo"></use></svg> Público no diretório</label></div>
+          <div class="check-row"><input type="checkbox" id="mfDomiciliar"><label for="mfDomiciliar" style="margin:0;font-weight:500;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#casa"></use></svg> Atende em domicílio</label></div>
           <div class="check-row"><input type="checkbox" id="mfAtivo" checked><label for="mfAtivo" style="margin:0;font-weight:500;">Ativo na clínica</label></div>
         </div>
       </div>
@@ -277,7 +277,7 @@
       </div>
       <div class="modal-body">
         <div id="psAviso" style="display:none;background:#FEF3E2;border:1px solid #F5C88B;color:#8A5B12;border-radius:10px;padding:10px 14px;font-size:.84rem;margin-bottom:14px;">
-          ⚠️ Nenhuma clínica ativa tem o <b>plano de redes sociais</b> contratado. Abra a clínica em <b>Clínicas</b> e ative o plano para poder enviar posts.
+          <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#aviso"></use></svg> Nenhuma clínica ativa tem o <b>plano de redes sociais</b> contratado. Abra a clínica em <b>Clínicas</b> e ative o plano para poder enviar posts.
         </div>
         <div class="form-grid">
           <div class="field"><label>Clínica * <span id="psContagem" style="font-weight:500;color:var(--text-soft);font-size:.74rem;"></span></label><select id="psClinica"></select></div>
@@ -380,7 +380,7 @@
       renderClinicas();
       carregarFisios();
       carregarSocial();
-      const opts = clinicas.filter(c => c.ativa).map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+      const opts = clinicas.filter(c => c.ativa).map(c => ` 7 `).join('');
       document.getElementById('mfClinica').innerHTML = opts;
       preencherClinicasSocial();
     }
@@ -390,8 +390,8 @@
       const comPlano = CLINICAS.filter(c => c.ativa && c.plano_social);
       const sel = document.getElementById('psClinica');
       sel.innerHTML = comPlano.length
-        ? comPlano.map(c => `<option value="${c.id}">${c.nome}</option>`).join('')
-        : '<option value="">Nenhuma clínica com o plano contratado</option>';
+        ? comPlano.map(c => ` 8 `).join('')
+        : ' 9 ';
       sel.disabled = !comPlano.length;
       document.getElementById('psAviso').style.display = comPlano.length ? 'none' : '';
       document.getElementById('psContagem').textContent = comPlano.length
@@ -414,7 +414,7 @@
       const vivas = CLINICAS.filter(c => !c.excluida_em), excluidas = CLINICAS.filter(c => c.excluida_em);
       document.getElementById('clinCount').textContent = '· ' + vivas.length + ' no total';
       document.querySelector('#clinAbas [data-aba="ativas"]').textContent = `Cadastradas (${vivas.length})`;
-      document.querySelector('#clinAbas [data-aba="excluidas"]').textContent = `🗑 Excluídas (${excluidas.length})`;
+      document.querySelector('#clinAbas [data-aba="excluidas"]').textContent = `Excluídas (${excluidas.length})`;
 
       if (ABA_CLINICAS === 'excluidas') {
         document.getElementById('clinHead').innerHTML =
@@ -423,11 +423,11 @@
           <tr onclick="abrirDetalhe('${c.id}')" style="cursor:pointer;opacity:.85;">
             <td><div class="cell-person"><span class="avatar-sm" style="background:#94A8A5;">${App.iniciais(c.nome)}</span>
               <div><div class="p-name">${c.nome}</div><div class="p-sub">${c.email || ''}</div></div></div></td>
-            <td><span class="badge gray">🗑 ${new Date(c.excluida_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></td>
+            <td><span class="badge gray"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#lixeira"></use></svg> ${new Date(c.excluida_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></td>
             <td>${c.usuarios}</td>
             <td>${c.pacientes}</td>
             <td style="font-weight:700;">${App.money(Number(c.receita))}</td>
-            <td>${c.assinante ? '<span class="badge amber" title="A assinatura na Stripe não é cancelada pela exclusão">💳 ainda assinante</span>' : '<span class="badge gray">—</span>'}</td>
+            <td>${c.assinante ? '<span class="badge amber" title="A assinatura na Stripe não é cancelada pela exclusão"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#cartao"></use></svg> ainda assinante</span>' : '<span class="badge gray">—</span>'}</td>
             <td onclick="event.stopPropagation()"><button class="btn btn-soft btn-sm" onclick="restaurarClinica('${c.id}')">↩ Restaurar</button></td>
           </tr>`).join('') || '<tr><td colspan="7" class="empty">Nenhuma clínica excluída.</td></tr>';
         return;
@@ -439,22 +439,22 @@
         <tr onclick="abrirDetalhe('${c.id}')" style="cursor:pointer;">
           <td><div class="cell-person"><span class="avatar-sm" style="background:${CORES[i % 6]};">${App.iniciais(c.nome)}</span>
             <div><div class="p-name">${c.nome}</div><div class="p-sub">${c.dominio
-              ? `🌐 ${c.dominio}${c.dominio_status === 'ativo' ? '' : ' (DNS pendente)'}`
+              ? `<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#globo"></use></svg> ${c.dominio}${c.dominio_status === 'ativo' ? '' : ' (DNS pendente)'}`
               : (c.email || '')}</div></div></div></td>
           <td>${c.usuarios}</td>
           <td>${c.pacientes}</td>
           <td>${c.sessoes_30d}</td>
           <td style="font-weight:700;">${App.money(Number(c.receita))}</td>
           <td>${c.visivel ? '<span class="badge green">Visível</span>' : '<span class="badge gray">Oculto</span>'}</td>
-          <td>${c.plano_social ? '<span class="badge primary">📱 Plano ativo</span>' : '<span class="badge gray">—</span>'}</td>
-          <td>${c.assinante ? `<span class="badge green">💳 ${c.licencas} licença${c.licencas > 1 ? 's' : ''}</span>` : '<span class="badge gray">Grátis</span>'}</td>
+          <td>${c.plano_social ? '<span class="badge primary"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#celular"></use></svg> Plano ativo</span>' : '<span class="badge gray">—</span>'}</td>
+          <td>${c.assinante ? `<span class="badge green"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#cartao"></use></svg> ${c.licencas} licença${c.licencas > 1 ? 's' : ''}</span>` : '<span class="badge gray">Grátis</span>'}</td>
           <td>${c.ativa ? '<span class="badge green">Ativa</span>' : '<span class="badge red">Desativada</span>'}</td>
           <td onclick="event.stopPropagation()" style="white-space:nowrap;">
-            ${c.ativa ? `<button class="btn btn-soft btn-sm" onclick="entrarComo('${c.id}', '${c.nome.replace(/'/g, '')}')" title="Abrir o sistema logado como esta clínica">🎭 Entrar como</button>` : ''}
+            ${c.ativa ? `<button class="btn btn-soft btn-sm" onclick="entrarComo('${c.id}', '${c.nome.replace(/'/g, '')}')" title="Abrir o sistema logado como esta clínica"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#trocar"></use></svg> Entrar como</button>` : ''}
             ${c.ativa
               ? `<button class="btn btn-danger btn-sm" onclick="mudar('${c.id}', false, '${c.nome.replace(/'/g, '')}')">Desativar</button>`
               : `<button class="btn btn-soft btn-sm" onclick="mudar('${c.id}', true, '${c.nome.replace(/'/g, '')}')">Reativar</button>`}
-            <button class="btn btn-ghost btn-sm" title="Excluir (vai para Excluídas)" onclick="excluirClinica('${c.id}')">🗑</button>
+            <button class="btn btn-ghost btn-sm" title="Excluir (vai para Excluídas)" onclick="excluirClinica('${c.id}')"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#lixeira"></use></svg></button>
           </td>
         </tr>`).join('') || '<tr><td colspan="10" class="empty">Nenhuma clínica.</td></tr>';
     }
@@ -463,7 +463,7 @@
       const c = CLINICAS.find(x => x.id === id);
       if (!c) return;
       const stripe = c.assinante
-        ? '\n\n⚠️ Esta clínica tem assinatura na Stripe. A exclusão NÃO cancela a cobrança — cancele na Stripe se for o caso.' : '';
+        ? '\n\nEsta clínica tem assinatura na Stripe. A exclusão NÃO cancela a cobrança — cancele na Stripe se for o caso.' : '';
       if (!confirm(`Excluir ${c.nome}?\n\n• ${c.usuarios} usuário(s) perdem o acesso na hora\n• sai do diretório, e o domínio próprio para de responder\n`
         + `• pacientes (${c.pacientes}), prontuários e financeiro ficam guardados\n\nFica em "Excluídas" e pode ser restaurada.${stripe}`)) return;
       try {
@@ -502,10 +502,10 @@
         }});
         const res = document.getElementById('ncResultado');
         res.style.display = '';
-        res.innerHTML = `✅ <b>${r.nome}</b> criada com os pacotes de sessões prontos!<br><br>
+        res.innerHTML = `<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#verificado"></use></svg> <b>${r.nome}</b> criada com os pacotes de sessões prontos!<br><br>
           <b>Acessos do gestor</b> (copie e envie):<br>
-          🔗 <code>${location.origin}/login.html</code><br>
-          ✉️ <code>${r.email}</code> &nbsp; 🔑 <code>${ncSenha.value.trim()}</code>`;
+          <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#link"></use></svg> <code>${location.origin}/login.html</code><br>
+          <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#email"></use></svg> <code>${r.email}</code> &nbsp; <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#chave"></use></svg> <code>${ncSenha.value.trim()}</code>`;
         document.getElementById('btnNc').style.display = 'none';
         App.toast('Clínica criada!');
         CLINICAS = await PF.api('/api/admin/clinicas');
@@ -524,7 +524,7 @@
       document.getElementById('dtBody').innerHTML = `
         ${d.excluida_em ? `
         <div style="display:flex;align-items:center;gap:12px;background:var(--red-soft);border:1px solid #F2C9C9;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:.86rem;">
-          <span style="font-size:1.2rem;">🗑</span>
+          <span style="font-size:1.2rem;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#lixeira"></use></svg></span>
           <div style="flex:1;"><b style="color:var(--red);">Clínica excluída em ${new Date(d.excluida_em).toLocaleDateString('pt-BR')}</b>
             <span style="display:block;color:var(--text-soft);font-size:.78rem;">Ninguém da equipe entra no sistema e ela não aparece no site. Os dados continuam guardados.</span></div>
           <button class="btn btn-soft btn-sm" onclick="restaurarClinica('${d.id}', true)">↩ Restaurar</button>
@@ -538,7 +538,7 @@
           <div class="field full"><label>Domínio próprio</label>
             <div style="display:flex;align-items:center;gap:10px;font-size:.88rem;padding:10px 0;">
               ${d.dominio
-                ? `<a href="https://${d.dominio}" target="_blank" style="font-weight:700;color:var(--primary-dark);">🌐 ${d.dominio}</a>
+                ? `<a href="https://${d.dominio}" target="_blank" style="font-weight:700;color:var(--primary-dark);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#globo"></use></svg> ${d.dominio}</a>
                    <span class="badge ${d.dominio_status === 'ativo' ? 'green' : 'amber'}">${d.dominio_status === 'ativo' ? 'ativo' : 'DNS pendente'}</span>
                    <span style="color:var(--text-soft);font-size:.78rem;">Cadastre no Railway (Settings → Networking → Custom Domain) para emitir o certificado.</span>`
                 : '<span style="color:var(--text-soft);">Nenhum — a clínica configura em Configurações → Domínio próprio</span>'}
@@ -547,7 +547,7 @@
         </div>
 
         <div style="display:flex;align-items:center;gap:12px;background:${d.assinante ? 'var(--green-soft)' : 'var(--bg)'};border:1px solid ${d.assinante ? '#BFE5D2' : 'var(--line)'};border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:.86rem;">
-          <span style="font-size:1.2rem;">💳</span>
+          <span style="font-size:1.2rem;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#cartao"></use></svg></span>
           <div style="flex:1;">
             <b style="color:var(--ink);">${d.assinante ? 'Assinatura ativa na Stripe' : 'Plano gratuito'}</b>
             <span style="display:block;font-weight:500;color:var(--text-soft);font-size:.78rem;">
@@ -561,7 +561,7 @@
         <div style="display:flex;align-items:center;gap:10px;background:#F4FAF9;border:1px solid #DCEEEA;border-radius:10px;padding:12px 14px;margin-bottom:18px;">
           <input type="checkbox" id="dcSocial" ${d.plano_social ? 'checked' : ''} style="width:18px;height:18px;">
           <label for="dcSocial" style="margin:0;font-weight:600;color:var(--ink);font-size:.86rem;flex:1;">
-            📱 Plano de redes sociais contratado
+            <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#celular"></use></svg> Plano de redes sociais contratado
             <span style="display:block;font-weight:500;color:var(--text-soft);font-size:.76rem;">
               Só clínicas com este plano aparecem em “Criar post para aprovação”.
               ${d.assinante ? 'Esta clínica assina pela Stripe — o add-on lá dentro sobrescreve este campo.' : 'Use para liberar manualmente (cortesia) quem não assina pela Stripe.'}
@@ -569,35 +569,35 @@
           </label>
         </div>
 
-        <h4 style="font-size:.85rem;color:var(--ink);margin-bottom:8px;">🧑‍⚕️ Equipe (${d.fisios.filter(f => !f.excluido_em).length})</h4>
+        <h4 style="font-size:.85rem;color:var(--ink);margin-bottom:8px;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#estetoscopio"></use></svg> Equipe (${d.fisios.filter(f => !f.excluido_em).length})</h4>
         ${d.fisios.map(f => f.excluido_em ? `
           <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #F0F4F3;font-size:.86rem;opacity:.6;">
             <span class="avatar-sm" style="background:#94A8A5;">${App.iniciais(f.nome)}</span>
             <div style="flex:1;"><b style="color:var(--ink);text-decoration:line-through;">${f.nome}</b> <span style="color:var(--text-soft);">· ${f.esp || '—'}</span></div>
-            <span class="badge gray">🗑 excluído em ${new Date(f.excluido_em).toLocaleDateString('pt-BR')}</span>
+            <span class="badge gray"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#lixeira"></use></svg> excluído em ${new Date(f.excluido_em).toLocaleDateString('pt-BR')}</span>
             <button class="btn btn-soft btn-sm" onclick="restaurarFisio('${f.id}', true)">↩ Restaurar</button>
           </div>` : `
           <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #F0F4F3;font-size:.86rem;">
             <span class="avatar-sm" style="background:${f.cor};">${App.iniciais(f.nome)}</span>
             <div style="flex:1;"><b style="color:var(--ink);">${f.nome}</b> <span style="color:var(--text-soft);">· ${f.esp || '—'}${f.cidade ? ' · ' + f.cidade : ''}</span></div>
-            ${f.publico ? '<span class="badge green">🌐 público</span>' : '<span class="badge gray">oculto</span>'}
+            ${f.publico ? '<span class="badge green"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#globo"></use></svg> público</span>' : '<span class="badge gray">oculto</span>'}
             ${f.ativo ? '' : '<span class="badge red">inativo</span>'}
             <button class="btn btn-ghost btn-sm" onclick="App.closeModal('mDetalhe');abrirFisioDeDetalhe('${f.id}')">Editar</button>
           </div>`).join('') || '<div class="empty" style="padding:10px;">Nenhum profissional.</div>'}
 
-        <h4 style="font-size:.85rem;color:var(--ink);margin:18px 0 8px;">🔐 Usuários com acesso (${d.usuarios.length})</h4>
+        <h4 style="font-size:.85rem;color:var(--ink);margin:18px 0 8px;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#chave"></use></svg> Usuários com acesso (${d.usuarios.length})</h4>
         ${d.usuarios.map(u => `
           <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #F0F4F3;font-size:.86rem;">
             <div style="flex:1;"><b style="color:var(--ink);">${u.nome}</b> <span style="color:var(--text-soft);">· ${u.email}</span></div>
             <span class="badge ${BADGE_U[u.perfil] || 'gray'}">${u.perfil}</span>
             <span style="font-size:.72rem;color:var(--text-soft);">${fmtDataHora(u.ultimo_acesso)}</span>
-            <button class="btn btn-ghost btn-sm" onclick="resetSenha('${u.id}', '${u.nome.replace(/'/g, '')}')">🔑 Nova senha</button>
+            <button class="btn btn-ghost btn-sm" onclick="resetSenha('${u.id}', '${u.nome.replace(/'/g, '')}')"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#chave"></use></svg> Nova senha</button>
           </div>`).join('')}
         <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
           <div class="field" style="flex:1;min-width:130px;"><label>Novo usuário</label><input type="text" id="nuNome" placeholder="Nome"></div>
           <div class="field" style="flex:1;min-width:150px;"><label>&nbsp;</label><input type="email" id="nuEmail" placeholder="email@clinica.com"></div>
           <div class="field"><label>&nbsp;</label>
-            <select id="nuPerfil"><option value="gestor">Gestor</option><option value="fisio">Fisioterapeuta</option><option value="recepcao">Recepção</option></select>
+            <select id="nuPerfil"> 10  11  12 </select>
           </div>
           <button class="btn btn-soft btn-sm" style="margin-bottom:2px;" onclick="criarUsuario()">＋ Criar</button>
         </div>`;
@@ -649,7 +649,7 @@
           clinica_id: detalheId, nome: nuNome.value.trim(), email: nuEmail.value.trim(),
           senha, perfil: nuPerfil.value,
         }});
-        alert(`Usuário criado!\n\n✉️ ${r.email}\n🔑 ${senha}\n\nCopie e envie os acessos.`);
+        alert(`Usuário criado!\n\n${r.email}\n${senha}\n\nCopie e envie os acessos.`);
         abrirDetalhe(detalheId);
       } catch (e) { App.toast(e.message, 'error'); }
     }
@@ -673,7 +673,7 @@
       const vivos = lista.filter(f => !f.excluido_em), excluidos = lista.filter(f => f.excluido_em);
       document.getElementById('fisioCount').textContent = '· ' + vivos.length + ' no total';
       document.querySelector('#fisioAbas [data-aba="ativos"]').textContent = `Cadastrados (${vivos.length})`;
-      document.querySelector('#fisioAbas [data-aba="excluidos"]').textContent = `🗑 Excluídos (${excluidos.length})`;
+      document.querySelector('#fisioAbas [data-aba="excluidos"]').textContent = `Excluídos (${excluidos.length})`;
       const pessoa = f => `<td><div class="cell-person"><span class="avatar-sm" style="background:${f.cor};">${App.iniciais(f.nome)}</span>
             <div><div class="p-name">${f.nome}</div><div class="p-sub">${f.crefito || ''}</div></div></div></td>
           <td>${f.clinica_nome}</td>
@@ -686,7 +686,7 @@
         document.getElementById('fisioRows').innerHTML = excluidos.map(f => `
           <tr style="opacity:.8;">
             ${pessoa(f)}
-            <td><span class="badge gray">🗑 ${new Date(f.excluido_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></td>
+            <td><span class="badge gray"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#lixeira"></use></svg> ${new Date(f.excluido_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></td>
             <td>${f.sessoes_futuras ? `<span class="badge amber" title="Sessões agendadas que ainda estão na agenda da clínica">${f.sessoes_futuras} sessão(ões)</span>` : '—'}</td>
             <td><button class="btn btn-soft btn-sm" onclick="restaurarFisio('${f.id}')">↩ Restaurar</button></td>
           </tr>`).join('') || '<tr><td colspan="7" class="empty">Nenhum profissional excluído.</td></tr>';
@@ -699,11 +699,11 @@
         <tr>
           ${pessoa(f)}
           <td style="min-width:250px;">${celulaLinks(f)}</td>
-          <td><span class="badge ${f.publico ? 'green' : 'gray'} tgl" onclick="togglePublico('${f.id}', ${!f.publico})">${f.publico ? '🌐 Público' : 'Oculto'} ↺</span></td>
-          <td><span class="badge ${f.ativo ? 'green' : 'red'} tgl" onclick="toggleAtivo('${f.id}', ${!f.ativo})">${f.ativo ? 'Ativo' : 'Inativo'} ↺</span></td>
+          <td><span class="badge ${f.publico ? 'green' : 'gray'} tgl" onclick="togglePublico('${f.id}', ${!f.publico})">${f.publico ? '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#globo"></use></svg> Público' : 'Oculto'} <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#sincronizar"></use></svg></span></td>
+          <td><span class="badge ${f.ativo ? 'green' : 'red'} tgl" onclick="toggleAtivo('${f.id}', ${!f.ativo})">${f.ativo ? 'Ativo' : 'Inativo'} <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#sincronizar"></use></svg></span></td>
           <td style="white-space:nowrap;">
             <button class="btn btn-ghost btn-sm" onclick="abrirFisio('${f.id}')">Editar</button>
-            <button class="btn btn-ghost btn-sm" title="Excluir (vai para Excluídos)" onclick="excluirFisio('${f.id}')">🗑</button>
+            <button class="btn btn-ghost btn-sm" title="Excluir (vai para Excluídos)" onclick="excluirFisio('${f.id}')"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#lixeira"></use></svg></button>
           </td>
         </tr>`).join('') || '<tr><td colspan="8" class="empty">Nenhum profissional.</td></tr>';
     }
@@ -715,8 +715,8 @@
       if (f.publico && f.ativo && f.clinica_ativa) return `
         <div class="lk">
           <code title="${f.url_curta}">${curta}</code>
-          <button class="btn btn-ghost btn-sm" title="Copiar link curto" onclick="copiarLink('${f.url_curta}', this)">📋</button>
-          <button class="btn btn-ghost btn-sm" title="Trocar o username" onclick="editarUsername('${f.id}')">✏️</button>
+          <button class="btn btn-ghost btn-sm" title="Copiar link curto" onclick="copiarLink('${f.url_curta}', this)"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#prontuario"></use></svg></button>
+          <button class="btn btn-ghost btn-sm" title="Trocar o username" onclick="editarUsername('${f.id}')"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#editar"></use></svg></button>
           <a class="btn btn-ghost btn-sm" href="${f.url_publica}" target="_blank" rel="noopener" title="${f.url_publica}">Site ↗</a>
         </div>`;
       const motivo = !f.clinica_ativa ? 'A clínica está desativada'
@@ -724,7 +724,7 @@
       return `
         <div class="lk off" title="${motivo}">
           <code>${curta}</code>
-          <button class="btn btn-ghost btn-sm" title="Trocar o username" onclick="editarUsername('${f.id}')">✏️</button>
+          <button class="btn btn-ghost btn-sm" title="Trocar o username" onclick="editarUsername('${f.id}')"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#editar"></use></svg></button>
           ${f.clinica_ativa
             ? `<button class="btn btn-soft btn-sm" onclick="habilitarLinks('${f.id}')">Habilitar</button>`
             : '<span class="badge gray">clínica desativada</span>'}
@@ -734,7 +734,7 @@
     function copiarLink(url, botao) {
       navigator.clipboard.writeText(url).then(() => {
         App.toast('Link copiado: ' + url.replace(/^https?:\/\//, ''));
-        if (botao) { const antes = botao.textContent; botao.textContent = '✓'; setTimeout(() => botao.textContent = antes, 1600); }
+        if (botao) { const antes = botao.textContent; botao.innerHTML = '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg>'; setTimeout(() => botao.textContent = antes, 1600); }
       }).catch(() => prompt('Copie o link:', url));
     }
 
@@ -767,7 +767,7 @@
       const f = FISIOS.find(x => x.id === id);
       if (!f) return;
       const agenda = f.sessoes_futuras
-        ? `\n\n⚠️ ${f.sessoes_futuras} sessão(ões) agendada(s) daqui para frente continuam na agenda da clínica — avise para remanejar.` : '';
+        ? `\n\n${f.sessoes_futuras} sessão(ões) agendada(s) daqui para frente continuam na agenda da clínica — avise para remanejar.` : '';
       if (!confirm(`Excluir ${f.nome} (${f.clinica_nome})?\n\nSai do diretório, da equipe da clínica e perde o acesso ao sistema. `
         + `Sessões, prontuários e financeiro antigos continuam intactos.\n\nFica em "Excluídos" e pode ser restaurado.${agenda}`)) return;
       try {
@@ -842,9 +842,9 @@
 
     /* ================= POSTS SOCIAIS ================= */
     const ST_POST = {
-      pendente: '<span class="badge amber">⏳ Pendente</span>',
-      aprovado: '<span class="badge green">✓ Aprovado</span>',
-      ajustes: '<span class="badge blue">✎ Ajustes pedidos</span>',
+      pendente: '<span class="badge amber"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#ampulheta"></use></svg> Pendente</span>',
+      aprovado: '<span class="badge green"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg> Aprovado</span>',
+      ajustes: '<span class="badge blue"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#editar"></use></svg> Ajustes pedidos</span>',
     };
 
     async function carregarSocial() {
@@ -858,10 +858,10 @@
             <div class="p-sub">${p.legenda.slice(0, 60)}${p.legenda.length > 60 ? '…' : ''}</div></div></div></td>
           <td>${p.data_prevista ? PF.fmtData(p.data_prevista.slice(0,10)) : '—'}</td>
           <td>${ST_POST[p.status] || p.status}</td>
-          <td style="max-width:260px;font-size:.8rem;">${p.status === 'ajustes' && p.comentario ? '💬 ' + p.comentario : '—'}</td>
+          <td style="max-width:260px;font-size:.8rem;">${p.status === 'ajustes' && p.comentario ? '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#conversa"></use></svg> ' + p.comentario : '—'}</td>
           <td style="white-space:nowrap;">
-            ${p.status === 'ajustes' ? `<button class="btn btn-soft btn-sm" onclick="reenviarPost('${p.id}')">↻ Reenviar</button>` : ''}
-            <button class="btn btn-ghost btn-sm" onclick="excluirPost('${p.id}')">🗑</button>
+            ${p.status === 'ajustes' ? `<button class="btn btn-soft btn-sm" onclick="reenviarPost('${p.id}')"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#sincronizar"></use></svg> Reenviar</button>` : ''}
+            <button class="btn btn-ghost btn-sm" onclick="excluirPost('${p.id}')"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#lixeira"></use></svg></button>
           </td>
         </tr>`).join('') || '<tr><td colspan="6" class="empty">Nenhum post criado. Use <b>+ Criar post</b>.</td></tr>';
     }

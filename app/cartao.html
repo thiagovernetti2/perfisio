@@ -73,7 +73,7 @@
       <option value="escuro">Modelo escuro</option>
     </select>
     <a href="equipe.html">← Voltar</a>
-    <button class="primario" onclick="window.print()">🖨 Imprimir</button>
+    <button class="primario" onclick="window.print()"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#imprimir"></use></svg> Imprimir</button>
   </div>
   <div class="dica">Papel A4 · 10 cartões de 90 × 50 mm · imprima em papel couché 250g e corte pelas linhas tracejadas. Nas opções de impressão, deixe "Gráficos de fundo" ligado.</div>
 
@@ -113,9 +113,9 @@
             ${podeQr ? `<div class="c-qr"><img src="/api/public/qrcode/${f.slug}.svg" alt="QR do perfil"></div>` : ''}
           </div>
           <div class="c-base">
-            ${f.whatsapp ? `<div class="c-linha">📱 ${esc(f.whatsapp)}</div>` : (clinica.telefone ? `<div class="c-linha">📞 ${esc(clinica.telefone)}</div>` : '')}
-            ${podeQr ? `<div class="c-linha">🌐 <b>perfis.io/${f.slug}</b></div>` : ''}
-            ${clinica.endereco ? `<div class="c-linha">📍 ${esc(clinica.endereco)}</div>` : ''}
+            ${f.whatsapp ? `<div class="c-linha"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#celular"></use></svg> ${esc(f.whatsapp)}</div>` : (clinica.telefone ? `<div class="c-linha"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#telefone"></use></svg> ${esc(clinica.telefone)}</div>` : '')}
+            ${podeQr ? `<div class="c-linha"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#globo"></use></svg> <b>perfis.io/${f.slug}</b></div>` : ''}
+            ${clinica.endereco ? `<div class="c-linha"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#local"></use></svg> ${esc(clinica.endereco)}</div>` : ''}
           </div>`;
       } else {
         document.getElementById('tituloBarra').textContent = `Cartão da clínica · A4 com 10 unidades`;
@@ -132,10 +132,10 @@
             <div class="c-qr"><img src="/api/public/qrcode-clinica/${clinica.slug || clinica.id}.svg" alt="QR da clínica"></div>
           </div>
           <div class="c-base">
-            ${clinica.telefone ? `<div class="c-linha">📞 ${esc(clinica.telefone)}</div>` : ''}
-            <div class="c-linha">🌐 <b>${esc(site)}</b></div>
-            ${clinica.endereco ? `<div class="c-linha">📍 ${esc(clinica.endereco)}</div>` : ''}
-            ${clinica.horario ? `<div class="c-linha">🕐 ${esc(clinica.horario)}</div>` : ''}
+            ${clinica.telefone ? `<div class="c-linha"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#telefone"></use></svg> ${esc(clinica.telefone)}</div>` : ''}
+            <div class="c-linha"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#globo"></use></svg> <b>${esc(site)}</b></div>
+            ${clinica.endereco ? `<div class="c-linha"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#local"></use></svg> ${esc(clinica.endereco)}</div>` : ''}
+            ${clinica.horario ? `<div class="c-linha"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#relogio"></use></svg> ${esc(clinica.horario)}</div>` : ''}
           </div>`;
       }
       render();

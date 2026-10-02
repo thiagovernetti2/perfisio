@@ -11,23 +11,23 @@
 <body data-page="marketing" data-title="Marketing" data-subtitle="Campanhas de e-mail para seus pacientes">
 
   <div id="smtpBanner" style="display:none;background:var(--amber-soft);border:1px solid #EED9B8;border-radius:12px;padding:14px 18px;margin-bottom:20px;font-size:.86rem;color:var(--amber);">
-    ⚠️ <b>SMTP não configurado</b> — as campanhas rodam em <b>modo simulado</b> (nada é enviado de verdade).
+    <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#aviso"></use></svg> <b>SMTP não configurado</b> — as campanhas rodam em <b>modo simulado</b> (nada é enviado de verdade).
     Para ativar o envio real, defina as variáveis <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code>, <code>SMTP_PASS</code> (e opcionalmente <code>SMTP_FROM</code>) no serviço do Railway e redeploye.
   </div>
 
   <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">
     <div class="stat-card">
-      <div class="s-top"><span class="s-label">Pacientes com e-mail</span><div class="s-ico" style="background:var(--blue-soft);">✉️</div></div>
+      <div class="s-top"><span class="s-label">Pacientes com e-mail</span><div class="s-ico" style="background:var(--blue-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#email"></use></svg></div></div>
       <div class="s-value" id="stEmails">—</div>
       <div class="s-delta"><span class="muted" id="stEmailsSub"></span></div>
     </div>
     <div class="stat-card">
-      <div class="s-top"><span class="s-label">Campanhas criadas</span><div class="s-ico" style="background:var(--primary-soft);">📣</div></div>
+      <div class="s-top"><span class="s-label">Campanhas criadas</span><div class="s-ico" style="background:var(--primary-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#megafone"></use></svg></div></div>
       <div class="s-value" id="stCamps">—</div>
       <div class="s-delta"><span class="muted" id="stCampsSub"></span></div>
     </div>
     <div class="stat-card">
-      <div class="s-top"><span class="s-label">E-mails enviados</span><div class="s-ico" style="background:var(--green-soft);">📤</div></div>
+      <div class="s-top"><span class="s-label">E-mails enviados</span><div class="s-ico" style="background:var(--green-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#upload"></use></svg></div></div>
       <div class="s-value" id="stEnviados">—</div>
       <div class="s-delta"><span class="muted" id="stEnviadosSub"></span></div>
     </div>
@@ -58,7 +58,7 @@
         <div class="field full"><label>Mensagem *</label><textarea id="cCorpo" style="min-height:170px;" placeholder="Olá {{nome}}, ..."></textarea></div>
       </div>
       <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;">
-        <button class="btn btn-primary" id="btnEnviar" onclick="enviar()">📤 Enviar campanha</button>
+        <button class="btn btn-primary" id="btnEnviar" onclick="enviar()"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#upload"></use></svg> Enviar campanha</button>
       </div>
     </div>
 
@@ -76,9 +76,9 @@
     let PACS = [], CAMPS = [], SMTP = false;
 
     const TEMPLATES = [
-      { nome: '🔁 Reativação', filtro: 'inativo', assunto: '{{nome}}, que tal retomar seu tratamento?', corpo: 'Olá {{nome}},\n\nNotamos que faz um tempinho desde sua última sessão na {{clinica}}. Cuidar da recuperação até o fim faz toda a diferença no resultado.\n\nQue tal agendar uma reavaliação? Responda este e-mail ou chame a gente no WhatsApp.\n\nUm abraço,\nEquipe {{clinica}}' },
-      { nome: '⭐ Pós-alta', filtro: 'alta', assunto: 'Como você está se sentindo, {{nome}}?', corpo: 'Olá {{nome}},\n\nJá faz um tempo desde a sua alta na {{clinica}} — queremos saber como você está!\n\nSe sentir qualquer desconforto voltando, não espere piorar: uma sessão de manutenção pode evitar recaídas.\n\nEstamos por aqui. 💚\nEquipe {{clinica}}' },
-      { nome: '💬 Retorno do tratamento', filtro: 'tratamento', assunto: '{{nome}}, como você está?', corpo: 'Olá {{nome}},\n\nAqui é a {{clinica}}. Passando para saber como você tem se sentido desde a última sessão.\n\nQualquer dúvida, é só responder este e-mail ou chamar no WhatsApp.\n\nUm abraço!\nEquipe {{clinica}}' },
+      { nome: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#repetir"></use></svg> Reativação', filtro: 'inativo', assunto: '{{nome}}, que tal retomar seu tratamento?', corpo: 'Olá {{nome}},\n\nNotamos que faz um tempinho desde sua última sessão na {{clinica}}. Cuidar da recuperação até o fim faz toda a diferença no resultado.\n\nQue tal agendar uma reavaliação? Responda este e-mail ou chame a gente no WhatsApp.\n\nUm abraço,\nEquipe {{clinica}}' },
+      { nome: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#estrela"></use></svg> Pós-alta', filtro: 'alta', assunto: 'Como você está se sentindo, {{nome}}?', corpo: 'Olá {{nome}},\n\nJá faz um tempo desde a sua alta na {{clinica}} — queremos saber como você está!\n\nSe sentir qualquer desconforto voltando, não espere piorar: uma sessão de manutenção pode evitar recaídas.\n\nEstamos por aqui.\nEquipe {{clinica}}' },
+      { nome: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#conversa"></use></svg> Retorno do tratamento', filtro: 'tratamento', assunto: '{{nome}}, como você está?', corpo: 'Olá {{nome}},\n\nAqui é a {{clinica}}. Passando para saber como você tem se sentido desde a última sessão.\n\nQualquer dúvida, é só responder este e-mail ou chamar no WhatsApp.\n\nUm abraço!\nEquipe {{clinica}}' },
     ];
 
     async function boot() {
@@ -130,7 +130,7 @@
             <div class="dl-sub">${PF.fmtData(c.criado_em.slice(0,10))} · ${FILTRO_TXT[c.filtro] || c.filtro} · ${c.total} destinatário(s)</div>
           </div>
           ${c.status === 'enviada'
-            ? `<span class="badge green">✓ ${c.enviados}/${c.total}${c.falhas ? ' · ' + c.falhas + ' falhas' : ''}</span>`
+            ? `<span class="badge green"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg> ${c.enviados}/${c.total}${c.falhas ? ' · ' + c.falhas + ' falhas' : ''}</span>`
             : `<span class="badge amber">Simulada</span>`}
         </div>`).join('') || '<div class="empty">Nenhuma campanha ainda. Monte a primeira ao lado.</div>';
     }
@@ -152,7 +152,7 @@
         CAMPS = await PF.api('/api/campanhas');
         render();
       } catch (e) { App.toast(e.message, 'error'); }
-      btn.disabled = false; btn.textContent = '📤 Enviar campanha';
+      btn.disabled = false; btn.innerHTML = '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#upload"></use></svg> Enviar campanha';
     }
 
     boot().catch(e => App.toast(e.message, 'error'));

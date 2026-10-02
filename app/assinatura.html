@@ -26,7 +26,7 @@
 <body data-page="assinatura" data-title="Assinatura" data-subtitle="Seu plano, licenças e cobrança">
 
   <div id="avisoStripe" style="display:none;background:var(--amber-soft);border:1px solid #EED9B8;border-radius:12px;padding:14px 18px;margin-bottom:20px;font-size:.86rem;color:var(--amber);">
-    ⚠️ <b>Pagamento não configurado neste servidor</b> — a assinatura fica em modo demonstração.
+    <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#aviso"></use></svg> <b>Pagamento não configurado neste servidor</b> — a assinatura fica em modo demonstração.
     Defina <code>STRIPE_SECRET_KEY</code> (e <code>STRIPE_WEBHOOK_SECRET</code>) nas variáveis do Railway e redeploye.
   </div>
 
@@ -51,7 +51,7 @@
       </div>
 
       <div class="as-card" style="margin-top:20px;">
-        <h3>📱 Add-on de redes sociais</h3>
+        <h3><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#celular"></use></svg> Add-on de redes sociais</h3>
         <p style="font-size:.88rem;color:var(--text);line-height:1.65;margin-top:8px;">
           Posts prontos todo mês para o Instagram da clínica, com aprovação dentro do PerFisio
           (menu <b>Aprovações</b>). Pode ligar e desligar quando quiser — a cobrança é proporcional.
@@ -134,7 +134,7 @@
       st.className = 'badge ' + cor; st.textContent = rotulo;
 
       const assinante = B.assinante;
-      document.getElementById('planoNome').textContent = assinante ? '💚 PerFisio' : '📍 Fisioterapeuta local';
+      document.getElementById('planoNome').textContent = assinante ? 'PerFisio' : 'Fisioterapeuta local';
       document.getElementById('planoTag').textContent = assinante
         ? 'Consultas e pacientes ilimitados, com todos os módulos liberados.'
         : `Gratuito até ${B.limite_gratis} consultas por mês. Tudo funcionando, sem cartão.`;
@@ -200,14 +200,14 @@
         aviso('Abrindo o checkout seguro da Stripe...', 'info');
         const r = await PF.api('/api/billing/checkout', { method: 'POST', body: { social: !!social } });
         location.href = r.url;
-      } catch (e) { aviso('❌ ' + e.message, 'erro'); }
+      } catch (e) { aviso('' + e.message, 'erro'); }
     }
 
     async function portal() {
       try {
         const r = await PF.api('/api/billing/portal', { method: 'POST' });
         location.href = r.url;
-      } catch (e) { aviso('❌ ' + e.message, 'erro'); }
+      } catch (e) { aviso('' + e.message, 'erro'); }
     }
 
     async function atualizarLicencas() {
@@ -215,7 +215,7 @@
         const r = await PF.api('/api/billing/licencas', { method: 'POST' });
         App.toast(r.mudou ? `Licenças atualizadas para ${r.licencas}` : 'Licenças já estavam corretas');
         carregar();
-      } catch (e) { aviso('❌ ' + e.message, 'erro'); }
+      } catch (e) { aviso('' + e.message, 'erro'); }
     }
 
     async function alternarSocial() {
@@ -225,12 +225,12 @@
         await PF.api('/api/billing/social', { method: 'POST', body: { ativo: ligar } });
         App.toast(ligar ? 'Add-on contratado!' : 'Add-on cancelado');
         carregar();
-      } catch (e) { aviso('❌ ' + e.message, 'erro'); }
+      } catch (e) { aviso('' + e.message, 'erro'); }
     }
 
     (async function inicio() {
       if (params.get('ok')) {
-        aviso('✅ <b>Assinatura confirmada!</b> Já pode usar o PerFisio sem limites.', 'ok');
+        aviso('<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#verificado"></use></svg> <b>Assinatura confirmada!</b> Já pode usar o PerFisio sem limites.', 'ok');
         try { await PF.api('/api/billing/sincronizar', { method: 'POST' }); } catch (e) {}
       } else if (params.get('cancelado')) {
         aviso('Checkout cancelado — nada foi cobrado. Você segue no plano gratuito.', 'info');

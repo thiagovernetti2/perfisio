@@ -13,22 +13,22 @@
   <!-- STATS -->
   <div class="stats-grid">
     <div class="stat-card">
-      <div class="s-top"><span class="s-label">Sessões hoje</span><div class="s-ico" style="background:var(--primary-soft);">📅</div></div>
+      <div class="s-top"><span class="s-label">Sessões hoje</span><div class="s-ico" style="background:var(--primary-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#agenda"></use></svg></div></div>
       <div class="s-value" id="stSessoes">—</div>
       <div class="s-delta"><span class="muted" id="stSessoesSub"></span></div>
     </div>
     <div class="stat-card">
-      <div class="s-top"><span class="s-label">Pacientes em tratamento</span><div class="s-ico" style="background:var(--blue-soft);">👥</div></div>
+      <div class="s-top"><span class="s-label">Pacientes em tratamento</span><div class="s-ico" style="background:var(--blue-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#pessoas"></use></svg></div></div>
       <div class="s-value" id="stPacientes">—</div>
       <div class="s-delta"><span class="muted" id="stPacientesSub"></span></div>
     </div>
     <div class="stat-card">
-      <div class="s-top"><span class="s-label">Receita do mês</span><div class="s-ico" style="background:var(--green-soft);">💰</div></div>
+      <div class="s-top"><span class="s-label">Receita do mês</span><div class="s-ico" style="background:var(--green-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#dinheiro"></use></svg></div></div>
       <div class="s-value" id="stReceita">—</div>
       <div class="s-delta"><span class="muted" id="stReceitaSub"></span></div>
     </div>
     <div class="stat-card">
-      <div class="s-top"><span class="s-label">Taxa de presença (mês)</span><div class="s-ico" style="background:var(--amber-soft);">✅</div></div>
+      <div class="s-top"><span class="s-label">Taxa de presença (mês)</span><div class="s-ico" style="background:var(--amber-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#verificado"></use></svg></div></div>
       <div class="s-value" id="stPresenca">—</div>
       <div class="s-delta"><span class="muted" id="stPresencaSub"></span></div>
     </div>
@@ -63,7 +63,7 @@
     <div>
       <!-- PENDÊNCIAS -->
       <div class="card card-pad" style="margin-bottom:20px;">
-        <h3 style="font-size:.98rem;margin-bottom:14px;">⚠️ Pendências</h3>
+        <h3 style="font-size:.98rem;margin-bottom:14px;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#aviso"></use></svg> Pendências</h3>
         <div class="day-list" id="pendList"><div class="empty">Carregando...</div></div>
       </div>
 
@@ -75,7 +75,7 @@
 
       <!-- PERFIL PÚBLICO -->
       <div class="card card-pad">
-        <h3 style="font-size:.98rem;margin-bottom:10px;">🌐 Perfil no PerFisio</h3>
+        <h3 style="font-size:.98rem;margin-bottom:10px;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#globo"></use></svg> Perfil no PerFisio</h3>
         <div style="font-size:.83rem;color:var(--text-soft);line-height:1.5;" id="perfilInfo">Carregando...</div>
         <div style="display:flex;gap:8px;margin-top:14px;">
           <button class="btn btn-soft btn-sm" onclick="location.href='configuracoes.html'">Editar perfil</button>
@@ -137,7 +137,7 @@
           <div class="dl-time">${s.hora.slice(0,5)}</div>
           <div class="dl-bar" style="background:${f ? f.cor : '#94A8A5'};"></div>
           <div style="flex:1;">
-            <div class="dl-title">${nome} ${s.status==='falta' ? '<span class="badge red">falta</span>' : feito ? '<span class="badge green">✓</span>' : ''}</div>
+            <div class="dl-title">${nome} ${s.status==='falta' ? '<span class="badge red">falta</span>' : feito ? '<span class="badge green"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg></span>' : ''}</div>
             <div class="dl-sub">${s.tipo}${f ? ' · ' + f.nome : ''}</div>
           </div>
           ${!feito && s.status !== 'falta' ? `<button class="btn btn-ghost btn-sm" onclick="checkin('${s.id}')">Check-in</button>` : ''}
@@ -172,7 +172,7 @@
       if (emAval.length) pend.push(['var(--purple)', `${emAval.length} paciente(s) aguardando avaliação`, 'Agende a avaliação inicial na agenda']);
       document.getElementById('pendList').innerHTML = pend.map(([cor, t, s]) =>
         `<div class="dl-item"><div class="dl-bar" style="background:${cor};"></div><div><div class="dl-title">${t}</div><div class="dl-sub">${s}</div></div></div>`
-      ).join('') || '<div class="empty">Tudo em dia! 🎉</div>';
+      ).join('') || '<div class="empty">Tudo em dia! <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#brilho"></use></svg></div>';
 
       /* ---- sessões da semana por fisio ---- */
       const d = new Date(); const dia = d.getDay();
