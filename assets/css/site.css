@@ -63,6 +63,15 @@ body { background: #fff; }
 }
 .post-body ol li b { color: var(--ink); }
 
+/* print da plataforma dentro do artigo */
+.post-fig { margin: 30px 0 0; }
+.post-fig img { display: block; width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--line); box-shadow: var(--shadow); background: #fff; }
+.post-fig figcaption { font-size: .82rem; color: var(--text-soft); text-align: center; margin-top: 10px; line-height: 1.6; }
+.post-body ul { margin: 18px 0 0; padding-left: 0; list-style: none; }
+.post-body ul li { position: relative; padding-left: 26px; margin-top: 12px; color: var(--text); font-size: 1.02rem; line-height: 1.75; }
+.post-body ul li::before { content: '✓'; position: absolute; left: 0; top: 0; color: var(--primary); font-weight: 800; }
+.post-body ul li b { color: var(--ink); }
+
 .post-cta {
   max-width: 760px; margin: 46px auto 0; padding: 28px 6vw; border: 1px solid var(--line);
   border-radius: 18px; background: linear-gradient(180deg, #F0FAF7, #fff); text-align: center;

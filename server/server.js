@@ -3171,6 +3171,24 @@ app.get('/planos.html', async (req, res, next) => {
    Slugs iguais aos do site antigo em WordPress, para não perder o que já ranqueia. */
 const POSTS = [
   {
+    slug: 'como-criar-site-para-fisioterapeuta',
+    titulo: 'Como criar um site para fisioterapeuta em poucos minutos',
+    descricao: 'O passo a passo, com prints da plataforma: o que ter em mãos, como publicar a página com CREFITO, cidade e agenda online, e o que fazer na primeira semana para o link começar a trazer paciente.',
+    data: '2026-10-01', capa: '/assets/img/blog/capa-criar-site.jpg',
+  },
+  {
+    slug: 'o-que-nao-pode-faltar-no-site-do-fisioterapeuta',
+    titulo: 'O que não pode faltar no site de um fisioterapeuta',
+    descricao: 'Checklist de oito itens que o paciente procura antes de marcar — CREFITO visível, especialidade em palavras de paciente, região, preço, agendamento, pacotes, foto e avaliações — e o que fazer com cada um.',
+    data: '2026-10-01', capa: '/assets/img/blog/capa-checklist.jpg',
+  },
+  {
+    slug: 'como-aparecer-no-google-como-fisioterapeuta',
+    titulo: 'Como aparecer no Google como fisioterapeuta na sua cidade',
+    descricao: 'O que a busca local precisa encontrar: página com endereço próprio e cidade, texto do jeito que o paciente fala, listagem da cidade, perfil no Google Empresas e avaliações de verdade.',
+    data: '2026-10-01', capa: '/assets/img/blog/capa-google.jpg',
+  },
+  {
     slug: 'porque-eu-criei-o-perfisio',
     titulo: 'Porque eu criei o Perfisio, site para Fisioterapeutas',
     descricao: 'A história por trás do PerFisio: o que eu vi trabalhando com fisioterapeutas, por que quase todos precisavam da mesma coisa e como a distância afasta paciente e profissional.',
