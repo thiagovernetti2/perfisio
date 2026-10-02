@@ -3210,8 +3210,8 @@ const POSTS = [
 
 /* o WordPress usava barra no fim; manda pra URL canônica sem barra
    (senão os links relativos da página quebram e o Google vê duas URLs) */
-const ROTAS_CONTEUDO = new Set(['/site-para-fisioterapeutas', '/blog', ...POSTS.map(p => `/${p.slug}`)]);
-app.get(/^\/[a-z0-9-]+\/$/, (req, res, next) => {
+const ROTAS_CONTEUDO = new Set(['/site-para-fisioterapeutas', '/blog', ...POSTS.map(p => `/blog/${p.slug}`)]);
+app.get(/^\/[a-z0-9-]+(\/[a-z0-9-]+)?\/$/, (req, res, next) => {
   const semBarra = req.path.slice(0, -1);
   return ROTAS_CONTEUDO.has(semBarra) ? res.redirect(301, semBarra) : next();
 });
@@ -3237,7 +3237,7 @@ app.get('/blog', async (req, res, next) => {
         url: urlPublica(req, '/blog'), inLanguage: 'pt-BR',
         blogPost: POSTS.map(p => ({
           '@type': 'BlogPosting', headline: p.titulo, datePublished: p.data,
-          url: urlPublica(req, `/${p.slug}`),
+          url: urlPublica(req, `/blog/${p.slug}`),
         })),
       },
     });
@@ -3245,19 +3245,21 @@ app.get('/blog', async (req, res, next) => {
 });
 
 for (const post of POSTS) {
-  app.get(`/${post.slug}`, async (req, res, next) => {
+  // os artigos moram em /blog/{slug}; o endereço antigo (raiz, herdado do WordPress) leva 301 para lá
+  app.get(`/${post.slug}`, (req, res) => res.redirect(301, `/blog/${post.slug}`));
+  app.get(`/blog/${post.slug}`, async (req, res, next) => {
     try {
       await servirSeo(res, `${post.slug}.html`, {
         titulo: `${post.titulo} | PerFisio`,
         descricao: post.descricao,
-        url: urlPublica(req, `/${post.slug}`),
+        url: urlPublica(req, `/blog/${post.slug}`),
         tipo: 'article',
         imagem: urlPublica(req, post.capa),
         jsonld: {
           '@context': 'https://schema.org', '@type': 'BlogPosting',
           headline: post.titulo, description: post.descricao, image: urlPublica(req, post.capa),
           datePublished: post.data, dateModified: post.data, inLanguage: 'pt-BR',
-          mainEntityOfPage: urlPublica(req, `/${post.slug}`),
+          mainEntityOfPage: urlPublica(req, `/blog/${post.slug}`),
           publisher: { '@type': 'Organization', name: 'PerFisio', url: `https://${HOST_CANONICO}/` },
         },
       });
@@ -3391,7 +3393,7 @@ app.get('/sitemap.xml', async (req, res) => {
       { loc: '/planos.html', prio: '0.8' },
       { loc: '/site-para-fisioterapeutas', prio: '0.9' },
       { loc: '/blog', prio: '0.6' },
-      ...POSTS.map(p => ({ loc: `/${p.slug}`, prio: '0.6' })),
+      ...POSTS.map(p => ({ loc: `/blog/${p.slug}`, prio: '0.6' })),
       ...cidades.map(c => ({ loc: `/fisioterapeutas-em-${c.slug}`, prio: '0.9' })),
       ...fisios.rows.map(f => ({ loc: caminhoPerfil(f), prio: '0.8' })),
       ...clinicas.rows.map(c => ({ loc: `/clinica/${c.slug}`, prio: '0.7' })),
@@ -3408,7 +3410,7 @@ app.get('/sitemap.xml', async (req, res) => {
 const HTML_CANONICO = new Map([
   ['/index.html', '/'], ['/planos', '/planos.html'], ['/cadastro.html', '/cadastro'],
   ['/site-para-fisioterapeutas.html', '/site-para-fisioterapeutas'], ['/blog.html', '/blog'],
-  ...POSTS.map(p => [`/${p.slug}.html`, `/${p.slug}`]),
+  ...POSTS.map(p => [`/${p.slug}.html`, `/blog/${p.slug}`]),
 ]);
 app.use((req, res, next) => {
   const alvo = (req.method === 'GET' || req.method === 'HEAD') && HTML_CANONICO.get(req.path);
