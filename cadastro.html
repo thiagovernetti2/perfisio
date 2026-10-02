@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Criar conta — PerFisio</title>
+  <meta name="robots" content="noindex">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="assets/img/simbolo-perfisio.svg">
+  <link rel="stylesheet" href="assets/css/app.css">
+  <style>
+    .cad-page { display: flex; min-height: 100vh; }
+    .cad-side {
+      flex: .85; background: var(--ink); color: #fff; position: relative; overflow: hidden;
+      display: flex; flex-direction: column; justify-content: space-between; padding: 44px 48px;
+    }
+    .cad-side::after {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(600px 400px at 85% 10%, rgba(13,161,137,.3), transparent 60%),
+        radial-gradient(500px 400px at 5% 95%, rgba(90,208,187,.12), transparent 60%);
+    }
+    .cad-side .tit { font-size: 1.55rem; font-weight: 800; line-height: 1.32; max-width: 420px; letter-spacing: -.5px; position: relative; z-index: 1; }
+    .cad-side .tit em { color: var(--accent); font-style: normal; }
+    .cad-side ul { list-style: none; padding: 0; margin: 22px 0 0; display: flex; flex-direction: column; gap: 13px; position: relative; z-index: 1; }
+    .cad-side li { display: flex; gap: 11px; font-size: .9rem; color: #CFE0DD; line-height: 1.45; }
+    .cad-side li b { color: #fff; font-weight: 700; }
+    .cad-side .ck { flex: none; width: 22px; height: 22px; border-radius: 7px; background: rgba(90,208,187,.18); color: var(--accent); display: grid; place-items: center; font-size: .72rem; }
+    .cad-main { flex: 1.15; display: grid; place-items: start center; padding: 40px 24px 60px; background: var(--bg); overflow-y: auto; }
+    .cad-card { width: 100%; max-width: 480px; }
+    .cad-card h2 { font-size: 1.4rem; font-weight: 800; color: var(--ink); margin: 0 0 4px; letter-spacing: -.3px; }
+    .cad-card .sub { color: var(--text-soft); font-size: .88rem; margin-bottom: 20px; line-height: 1.55; }
+    /* trilha dos passos */
+    .trilha { display: flex; gap: 6px; margin-bottom: 22px; }
+    .trilha div { flex: 1; height: 5px; border-radius: 99px; background: var(--line); }
+    .trilha div.on { background: var(--primary); }
+    .trilha-txt { font-size: .74rem; font-weight: 700; color: var(--text-soft); letter-spacing: 1.4px; text-transform: uppercase; margin-bottom: 8px; }
+    .erro-box { background: var(--red-soft); color: var(--red); border-radius: 9px; padding: 10px 14px; font-size: .85rem; font-weight: 600; margin-bottom: 14px; display: none; }
+    .cad-passo { display: none; }
+    .cad-passo.on { display: block; }
+    .cad-acoes { display: flex; gap: 10px; align-items: center; margin-top: 22px; }
+    .cad-acoes .btn-primary { flex: 1; justify-content: center; padding: 12px; }
+    .pular { background: none; border: none; color: var(--text-soft); font-size: .82rem; font-weight: 600; cursor: pointer; text-decoration: underline; }
+    /* escolha autônomo x clínica */
+    .tipos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+    .tipo { border: 1.5px solid var(--line); border-radius: 12px; padding: 13px 14px; cursor: pointer; background: #fff; text-align: left; }
+    .tipo.on { border-color: var(--primary); background: var(--primary-soft); }
+    .tipo b { display: block; font-size: .88rem; color: var(--ink); }
+    .tipo small { color: var(--text-soft); font-size: .76rem; }
+    .ou { display: flex; align-items: center; gap: 12px; color: var(--text-soft); font-size: .78rem; font-weight: 600; margin: 16px 0; }
+    .ou::before, .ou::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+    #googleBox { display: none; }
+    .link-campo { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; }
+    .link-campo .pref { padding: 0 2px 0 12px; font-weight: 700; color: var(--text-soft); font-size: .88rem; }
+    .link-campo input { flex: 1; min-width: 80px; border: none; padding: 11px 10px; font-weight: 700; color: var(--primary-dark); font-size: .88rem; outline: none; }
+    .aviso { font-size: .76rem; margin-top: 6px; min-height: 17px; }
+    .foto-linha { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+    .foto-prev { width: 62px; height: 62px; border-radius: 50%; background: var(--line); display: grid; place-items: center; font-size: 1.3rem; background-size: cover; background-position: center; flex: none; }
+    .cad-fim { text-align: center; padding: 10px 0; }
+    .cad-fim .ok { width: 62px; height: 62px; border-radius: 50%; background: var(--primary-soft); color: var(--primary-dark); display: grid; place-items: center; font-size: 1.7rem; margin: 0 auto 14px; }
+    .cad-fim .link { display: inline-block; background: var(--primary-soft); color: var(--primary-dark); font-weight: 800; border-radius: 10px; padding: 11px 16px; margin: 12px 0 18px; font-size: .95rem; }
+    @media (max-width: 980px) { .cad-side { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="cad-page">
+    <aside class="cad-side">
+      <a class="brand" href="index.html"><img src="assets/img/logo-perfisio-branco.svg" alt="PerFisio" width="205" height="35"></a>
+      <div>
+        <div class="tit">Sua página de fisioterapeuta e a <em>gestão da clínica</em> em poucos minutos.</div>
+        <ul>
+          <li><span class="ck">✓</span><div><b>Perfil público</b> com CREFITO, especialidades, fotos e agendamento online.</div></li>
+          <li><span class="ck">✓</span><div><b>Link curto</b> (perfis.io/seu-nome) para a bio do Instagram e o WhatsApp.</div></li>
+          <li><span class="ck">✓</span><div><b>Agenda, prontuário e financeiro</b> no mesmo lugar.</div></li>
+          <li><span class="ck">✓</span><div>Grátis até 10 consultas por mês. Depois, R$ 40 por fisioterapeuta.</div></li>
+        </ul>
+      </div>
+      <div style="position:relative;z-index:1;font-size:.8rem;color:#8FA6A3;">Já tem conta? <a href="login.html" style="color:var(--accent);font-weight:700;">Entrar</a></div>
+    </aside>
+
+    <main class="cad-main">
+      <div class="cad-card">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="trilha-txt" style="flex:1;margin-bottom:8px;" id="trilhaTxt">Passo 1 de 4 · Sua conta</div>
+          <a href="app/dashboard.html" id="irPainel" style="display:none;font-size:.78rem;font-weight:700;color:var(--primary);margin-bottom:8px;">Ir para o painel →</a>
+        </div>
+        <div class="trilha"><div class="on"></div><div></div><div></div><div></div></div>
+        <div class="erro-box" id="erroBox"></div>
+
+        <!-- 1) CONTA -->
+        <section class="cad-passo on" data-passo="1">
+          <h2>Criar sua conta grátis</h2>
+          <div class="sub">Em 4 passos seu perfil fica pronto para receber pacientes.</div>
+
+          <div id="googleBox">
+            <div id="googleBtn"></div>
+            <div class="ou">ou com seu e-mail</div>
+          </div>
+
+          <div class="tipos">
+            <button type="button" class="tipo on" data-tipo="autonomo"><b>Sou autônomo(a)</b><small>Atendo sozinho(a)</small></button>
+            <button type="button" class="tipo" data-tipo="clinica"><b>Tenho clínica</b><small>Com mais profissionais</small></button>
+          </div>
+
+          <div class="field" id="campoClinica" style="display:none;"><label>Nome da clínica</label><input type="text" id="cClinica" placeholder="Ex.: Clínica Movimente"></div>
+          <div class="field"><label>Seu nome completo *</label><input type="text" id="cNome" autocomplete="name" placeholder="Ex.: Camila Rocha"></div>
+          <div class="field"><label>E-mail *</label><input type="email" id="cEmail" autocomplete="email" placeholder="voce@email.com.br"></div>
+          <div class="field"><label>Senha * (mín. 6 caracteres)</label><input type="password" id="cSenha" autocomplete="new-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')criarConta()"></div>
+          <div class="cad-acoes"><button class="btn btn-primary" id="btn1" onclick="criarConta()">Continuar →</button></div>
+          <div style="font-size:.75rem;color:var(--text-soft);margin-top:12px;line-height:1.5;">
+            Ao criar a conta você concorda em receber o e-mail de confirmação. Já tem conta?
+            <a href="login.html" style="color:var(--primary);font-weight:700;">Entrar</a>.
+          </div>
+        </section>
+
+        <!-- 2) PROFISSIONAL -->
+        <section class="cad-passo" data-passo="2">
+          <h2>Seus dados profissionais</h2>
+          <div class="sub">É o que aparece no seu perfil para o paciente — o CREFITO dá a credibilidade.</div>
+          <div class="form-grid">
+            <div class="field"><label>CREFITO</label><input type="text" id="cCrefito" placeholder="CREFITO-5 00.000-F"></div>
+            <div class="field"><label>Especialidade principal</label>
+              <select id="cEsp">
+                <option>Ortopedia e Traumato</option><option>Fisioterapia Esportiva</option><option>Neurofuncional</option>
+                <option>Pilates Clínico · RPG</option><option>Respiratória</option><option>Pélvica</option><option>Geriátrica</option>
+              </select>
+            </div>
+            <div class="field full"><label>WhatsApp (com DDD)</label><input type="text" id="cWhatsapp" placeholder="(53) 9 0000-0000"></div>
+            <div class="field full"><label>Especialidades que aparecem no perfil</label>
+              <div style="display:flex;gap:7px;flex-wrap:wrap;" id="cEspChips"></div>
+            </div>
+            <div class="check-row full" style="padding-bottom:0;"><input type="checkbox" id="cDomiciliar"><label for="cDomiciliar" style="margin:0;font-weight:500;">🏠 Também atendo em domicílio</label></div>
+          </div>
+          <div class="cad-acoes">
+            <button class="btn btn-primary" id="btn2" onclick="salvarProfissional()">Continuar →</button>
+            <button class="pular" onclick="irPara(3)">pular</button>
+          </div>
+        </section>
+
+        <!-- 3) ONDE ATENDE -->
+        <section class="cad-passo" data-passo="3">
+          <h2>Onde você atende</h2>
+          <div class="sub">A cidade monta o endereço do seu perfil e faz você aparecer para quem procura fisioterapia aí.</div>
+          <div class="form-grid">
+            <div class="field"><label>Estado *</label><select id="cUf"></select></div>
+            <div class="field"><label>Cidade *</label><select id="cCidade"></select></div>
+            <div class="field full"><label>Bairro</label><input type="text" id="cBairro" placeholder="Ex.: Centro"></div>
+            <div class="field full"><label>Valor da consulta (R$)</label><input type="number" id="cConsulta" min="0" step="1" placeholder="Ex.: 180"></div>
+          </div>
+          <div class="cad-acoes">
+            <button class="btn btn-primary" id="btn3" onclick="salvarLocal()">Continuar →</button>
+            <button class="pular" onclick="irPara(4)">pular</button>
+          </div>
+        </section>
+
+        <!-- 4) LINK E PERFIL -->
+        <section class="cad-passo" data-passo="4">
+          <h2>Seu link e sua apresentação</h2>
+          <div class="sub">É o link que você coloca na bio do Instagram e manda no WhatsApp.</div>
+          <div class="foto-linha">
+            <div class="foto-prev" id="cFotoPrev">📷</div>
+            <div style="flex:1;">
+              <div style="font-size:.84rem;font-weight:700;color:var(--ink);">Foto de perfil</div>
+              <div style="font-size:.76rem;color:var(--text-soft);">Perfis com foto recebem bem mais contatos.</div>
+            </div>
+            <label class="btn btn-soft btn-sm" style="cursor:pointer;">📤 Enviar<input type="file" id="cFoto" accept="image/jpeg,image/png,image/webp" style="display:none;"></label>
+          </div>
+          <div class="field">
+            <label>Endereço do seu link</label>
+            <div class="link-campo">
+              <span class="pref">perfis.io/</span>
+              <input type="text" id="cSlug" maxlength="40" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="aviso" id="slugAviso"></div>
+          </div>
+          <div class="field"><label>Apresentação (bio)</label><textarea id="cBio" placeholder="Ex.: Atendo corredores e pós-operatório de joelho, no consultório e em domicílio."></textarea></div>
+          <div class="check-row" style="padding-bottom:0;"><input type="checkbox" id="cPublico" checked><label for="cPublico" style="margin:0;font-weight:500;">🌐 Publicar meu perfil no diretório do PerFisio</label></div>
+          <div class="cad-acoes"><button class="btn btn-primary" id="btn4" onclick="finalizar()">Finalizar cadastro →</button></div>
+        </section>
+
+        <!-- FIM -->
+        <section class="cad-passo" data-passo="5">
+          <div class="cad-fim">
+            <div class="ok">✓</div>
+            <h2>Pronto, <span id="fimNome">tudo certo</span>!</h2>
+            <div class="sub" id="fimSub">Seu perfil já está no ar. Divulgue o link abaixo.</div>
+            <div class="link" id="fimLink">perfis.io/</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+              <button class="btn btn-soft" onclick="copiarLink()">📋 Copiar link</button>
+              <a class="btn btn-ghost" id="fimVer" href="#" target="_blank" rel="noopener">Ver meu perfil ↗</a>
+              <a class="btn btn-primary" href="app/dashboard.html">Ir para o meu painel →</a>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/js/app.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/localidade.js"></script>
+  <script>
+    /* ===== onboarding em 4 passos =====
+       A conta nasce no passo 1 (e-mail/senha ou Google); os passos seguintes só completam
+       a ficha do profissional, então ninguém perde o cadastro no meio do caminho. */
+    let passo = 1, tipo = 'autonomo', EU = null, FISIO_ID = null, SLUG_SALVO = '';
+    const loc = ligarLocalidade({ uf: cUf, cidade: cCidade });
+
+    const ACENTOS = new RegExp('[' + String.fromCharCode(0x300) + '-' + String.fromCharCode(0x36f) + ']', 'g');
+    const slugificar = s => String(s || '').toLowerCase().normalize('NFD').replace(ACENTOS, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').replace(/-{2,}/g, '-').slice(0, 40);
+
+    function erro(msg) {
+      const b = document.getElementById('erroBox');
+      b.textContent = msg; b.style.display = 'block';
+      b.scrollIntoView({ block: 'nearest' });
+      setTimeout(() => { b.style.display = 'none'; }, 6000);
+    }
+
+    const TITULOS = { 1: 'Sua conta', 2: 'Dados profissionais', 3: 'Onde você atende', 4: 'Seu link', 5: 'Tudo pronto' };
+    function irPara(p) {
+      passo = p;
+      document.querySelectorAll('.cad-passo').forEach(s => s.classList.toggle('on', Number(s.dataset.passo) === p));
+      document.querySelectorAll('.trilha div').forEach((d, i) => d.classList.toggle('on', i < Math.min(p, 4)));
+      document.getElementById('trilhaTxt').textContent = p > 4 ? 'Cadastro concluído' : `Passo ${p} de 4 · ${TITULOS[p]}`;
+      window.scrollTo({ top: 0 });
+    }
+
+    /* ---------- passo 1: a conta ---------- */
+    document.querySelectorAll('.tipo').forEach(b => b.addEventListener('click', () => {
+      document.querySelectorAll('.tipo').forEach(x => x.classList.remove('on'));
+      b.classList.add('on');
+      tipo = b.dataset.tipo;
+      document.getElementById('campoClinica').style.display = tipo === 'clinica' ? '' : 'none';
+    }));
+
+    async function criarConta() {
+      const btn = document.getElementById('btn1');
+      const nome = cNome.value.trim(), email = cEmail.value.trim();
+      if (!nome || !email || !cSenha.value) { erro('Preencha nome, e-mail e senha'); return; }
+      if (cSenha.value.length < 6) { erro('A senha precisa de ao menos 6 caracteres'); return; }
+      btn.disabled = true; btn.textContent = 'Criando…';
+      try {
+        const r = await PF.api('/api/auth/register', { method: 'POST', body: {
+          clinica: tipo === 'clinica' ? (cClinica.value.trim() || nome) : nome,
+          nome, email, senha: cSenha.value,
+        } });
+        PF.setClinica(null); PF.setSession(r.token, r.usuario);
+        await depoisDaConta();
+      } catch (e) { erro(e.message); }
+      btn.disabled = false; btn.textContent = 'Continuar →';
+    }
+
+    /* conta criada (por e-mail ou pelo Google): carrega a ficha e segue para o passo 2 */
+    async function depoisDaConta() {
+      EU = await PF.api('/api/me');
+      FISIO_ID = EU.fisio_id;
+      PF.setSession(PF.token(), { ...(PF.user() || {}), ...EU });
+      const f = (await PF.get('fisios')).find(x => x.id === FISIO_ID);
+      if (f) {
+        cCrefito.value = f.crefito || '';
+        if (f.esp) cEsp.value = f.esp;
+        cWhatsapp.value = f.whatsapp || '';
+        cDomiciliar.checked = !!f.domiciliar;
+        cBairro.value = f.bairro || '';
+        loc.definir(f.cidade || null);
+        if (f.valor_consulta != null) cConsulta.value = Number(f.valor_consulta);
+        cBio.value = f.bio || '';
+        if (f.publico) cPublico.checked = true; // conta nova nasce despublicada, mas o padrão aqui é publicar
+        SLUG_SALVO = f.slug || '';
+        // especialidades já escolhidas voltam marcadas
+        espSel.clear();
+        (f.especialidades || '').split(',').map(s => s.trim()).filter(Boolean).forEach(k => espSel.add(k));
+        document.querySelectorAll('[data-esp]').forEach(b => b.classList.toggle('active', espSel.has(b.dataset.esp)));
+      }
+      document.getElementById('irPainel').style.display = ''; // a conta já existe: dá para sair daqui
+      cSlug.value = SLUG_SALVO || slugificar(EU.nome);
+      checarSlug();
+      irPara(2);
+    }
+
+    /* ---------- passo 2: dados profissionais ---------- */
+    const ESPECIALIDADES = [
+      ['esportiva', '🏃 Esportiva'], ['ortopedia', '🦴 Ortopedia'], ['pilates', '🧘 Pilates'],
+      ['neuro', '🧠 Neuro'], ['rpg', '🧍 RPG'], ['respiratoria', '🫁 Respiratória'],
+      ['pelvica', '🌸 Pélvica'], ['geriatrica', '👵 Geriátrica'],
+    ];
+    const espSel = new Set();
+    document.getElementById('cEspChips').innerHTML = ESPECIALIDADES.map(([k, l]) =>
+      `<button type="button" class="chip" data-esp="${k}" style="font-size:.78rem;">${l}</button>`).join('');
+    document.querySelectorAll('[data-esp]').forEach(b => b.addEventListener('click', () => {
+      const k = b.dataset.esp;
+      espSel.has(k) ? espSel.delete(k) : espSel.add(k);
+      b.classList.toggle('active', espSel.has(k));
+    }));
+
+    async function salvarFicha(dados, btnId, proximo) {
+      const btn = document.getElementById(btnId);
+      btn.disabled = true; btn.textContent = 'Salvando…';
+      try {
+        await PF.put('fisios', FISIO_ID, dados);
+        irPara(proximo);
+      } catch (e) { erro(e.message); }
+      btn.disabled = false; btn.textContent = proximo > 4 ? 'Finalizar cadastro →' : 'Continuar →';
+    }
+
+    async function salvarProfissional() {
+      const wpp = cWhatsapp.value.trim();
+      if (wpp) PF.api('/api/clinica', { method: 'PUT', body: { telefone: wpp } }).catch(() => {});
+      await salvarFicha({
+        crefito: cCrefito.value.trim() || null, esp: cEsp.value, whatsapp: wpp || null,
+        domiciliar: cDomiciliar.checked, especialidades: [...espSel].join(','),
+      }, 'btn2', 3);
+    }
+
+    /* ---------- passo 3: cidade ---------- */
+    async function salvarLocal() {
+      const cidade = loc.valor();
+      if (!cidade) { erro('Escolha o estado e a cidade — é o que coloca você no mapa do PerFisio'); return; }
+      await salvarFicha({
+        cidade, bairro: cBairro.value.trim() || null,
+        valor_consulta: cConsulta.value === '' ? null : Number(cConsulta.value),
+      }, 'btn3', 4);
+    }
+
+    /* ---------- passo 4: link, foto, bio ---------- */
+    let esperaSlug = null, slugOk = true;
+    function aviso(msg, tipoAviso) {
+      const el = document.getElementById('slugAviso');
+      el.textContent = msg;
+      el.style.color = tipoAviso === 'erro' ? 'var(--red)' : tipoAviso === 'ok' ? 'var(--primary-dark)' : 'var(--text-soft)';
+    }
+    function checarSlug() {
+      const v = slugificar(cSlug.value);
+      if (v !== cSlug.value) cSlug.value = v;
+      clearTimeout(esperaSlug);
+      if (!v || v === SLUG_SALVO) { slugOk = true; aviso('', ''); return; }
+      slugOk = false;
+      aviso('Verificando…', '');
+      esperaSlug = setTimeout(async () => {
+        try {
+          const r = await PF.api(`/api/fisios/slug-disponivel?slug=${encodeURIComponent(v)}&id=${FISIO_ID}`);
+          if (cSlug.value !== v) return;
+          slugOk = !!r.disponivel;
+          aviso(r.disponivel ? `✓ perfis.io/${r.slug} está livre` : r.motivo, r.disponivel ? 'ok' : 'erro');
+        } catch (e) { aviso(e.message, 'erro'); }
+      }, 350);
+    }
+    cSlug.addEventListener('input', checarSlug);
+
+    async function comprimirImagem(file, max = 600) {
+      const bmp = await createImageBitmap(file);
+      const escala = Math.min(1, max / Math.max(bmp.width, bmp.height));
+      const cv = document.createElement('canvas');
+      cv.width = Math.round(bmp.width * escala); cv.height = Math.round(bmp.height * escala);
+      cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+      const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.85));
+      const dados = await new Promise((ok, falhou) => {
+        const fr = new FileReader();
+        fr.onload = () => ok(fr.result.split(',')[1]);
+        fr.onerror = falhou;
+        fr.readAsDataURL(blob);
+      });
+      return { dados, mime: 'image/jpeg' };
+    }
+
+    document.getElementById('cFoto').addEventListener('change', async e => {
+      const f = e.target.files[0]; e.target.value = '';
+      if (!f || !FISIO_ID) return;
+      try {
+        const img = await comprimirImagem(f);
+        await PF.api(`/api/fisios/${FISIO_ID}/foto`, { method: 'POST', body: img });
+        const prev = document.getElementById('cFotoPrev');
+        prev.style.backgroundImage = `url(/api/public/fisio-foto/${FISIO_ID}?v=${Date.now()})`;
+        prev.textContent = '';
+        App.toast('Foto enviada!');
+      } catch (err) { erro(err.message); }
+    });
+
+    async function finalizar() {
+      const btn = document.getElementById('btn4');
+      const slug = slugificar(cSlug.value);
+      if (slug && !slugOk) { erro('Escolha outro endereço para o seu link'); return; }
+      btn.disabled = true; btn.textContent = 'Finalizando…';
+      try {
+        if (slug && slug !== SLUG_SALVO) {
+          const r = await PF.api(`/api/fisios/${FISIO_ID}/slug`, { method: 'PUT', body: { slug } });
+          SLUG_SALVO = r.slug;
+        }
+        await PF.put('fisios', FISIO_ID, { bio: cBio.value.trim() || null, publico: cPublico.checked, ativo: true });
+        const f = (await PF.get('fisios')).find(x => x.id === FISIO_ID) || {};
+        SLUG_SALVO = f.slug || SLUG_SALVO;
+        document.getElementById('fimNome').textContent = (EU.nome || '').split(' ')[0];
+        document.getElementById('fimLink').textContent = 'perfis.io/' + SLUG_SALVO;
+        document.getElementById('fimVer').href = 'https://perfis.io/' + SLUG_SALVO;
+        document.getElementById('fimSub').textContent = cPublico.checked
+          ? 'Seu perfil já está no ar. Divulgue o link abaixo.'
+          : 'Sua conta está pronta. O perfil público está desligado — você liga quando quiser, em Equipe.';
+        irPara(5);
+      } catch (e) { erro(e.message); }
+      btn.disabled = false; btn.textContent = 'Finalizar cadastro →';
+    }
+
+    function copiarLink() {
+      const url = 'https://perfis.io/' + SLUG_SALVO;
+      navigator.clipboard.writeText(url).then(() => App.toast('Link copiado!')).catch(() => prompt('Copie o link:', url));
+    }
+
+    /* ---------- Google (só aparece com GOOGLE_CLIENT_ID configurado) ---------- */
+    (async function prepararGoogle() {
+      let clientId = null;
+      try { clientId = (await (await fetch('/api/public/config')).json()).google; } catch (e) { return; }
+      if (!clientId) return;
+      await new Promise((ok, falhou) => {
+        const s = document.createElement('script');
+        s.src = 'https://accounts.google.com/gsi/client';
+        s.async = true; s.defer = true; s.onload = ok; s.onerror = falhou;
+        document.head.appendChild(s);
+      }).catch(() => {});
+      if (!window.google?.accounts?.id) return;
+      window.google.accounts.id.initialize({ client_id: clientId, callback: entrarComGoogle });
+      window.google.accounts.id.renderButton(document.getElementById('googleBtn'),
+        { theme: 'outline', size: 'large', text: 'signup_with', locale: 'pt-BR', width: 380 });
+      document.getElementById('googleBox').style.display = '';
+    })();
+
+    async function entrarComGoogle(resposta) {
+      try {
+        const r = await PF.api('/api/auth/google', { method: 'POST', body: {
+          credential: resposta.credential,
+          clinica: tipo === 'clinica' ? cClinica.value.trim() : '',
+        } });
+        PF.setClinica(null); PF.setSession(r.token, r.usuario);
+        if (!r.novo && r.usuario.perfil === 'fisio') { location.href = 'app/agenda.html'; return; }
+        await depoisDaConta();
+      } catch (e) { erro(e.message); }
+    }
+
+    /* quem já está logado continua de onde parou, em vez de ver o passo 1 de novo */
+    (async function retomar() {
+      if (!PF.token()) return;
+      try {
+        const eu = await PF.api('/api/me');
+        if (!eu || !eu.fisio_id) return;
+        await depoisDaConta();
+      } catch (e) { /* token velho: segue no passo 1 */ }
+    })();
+  </script>
+</body>
+</html>

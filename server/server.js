@@ -274,6 +274,9 @@ CREATE TABLE IF NOT EXISTS convites_clinica (
   respondido_em timestamptz
 );
 CREATE UNIQUE INDEX IF NOT EXISTS convites_pendente_uniq ON convites_clinica (clinica_id, pessoa_id) WHERE status = 'pendente';
+-- profissional que entra/cadastra com a conta Google (sem senha)
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS google_id text;
+CREATE UNIQUE INDEX IF NOT EXISTS usuarios_google_uk ON usuarios (google_id) WHERE google_id IS NOT NULL;
 CREATE TABLE IF NOT EXISTS posts_sociais (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
@@ -1039,6 +1042,65 @@ app.post('/api/auth/register', async (req, res) => {
     await client.query('ROLLBACK');
     console.error(e);
     res.status(500).json({ erro: 'Erro ao criar conta' });
+  } finally { client.release(); }
+});
+
+/* cadastro e login do profissional com a conta Google: o navegador manda o ID token
+   e o servidor confere com o Google. Quem já tem conta com o mesmo e-mail só entra. */
+app.post('/api/auth/google', async (req, res) => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) return res.status(503).json({ erro: 'Entrar com o Google ainda não está configurado no servidor' });
+  const credential = (req.body || {}).credential;
+  if (!credential) return res.status(400).json({ erro: 'Token do Google ausente' });
+  let g;
+  try {
+    const resp = await fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(credential));
+    g = await resp.json();
+    if (!resp.ok || !g.email) return res.status(401).json({ erro: 'Não foi possível validar sua conta Google' });
+  } catch (e) { console.error('google auth', e); return res.status(500).json({ erro: 'Erro ao falar com o Google' }); }
+  if (g.aud !== clientId) return res.status(401).json({ erro: 'Token do Google não pertence a este site' });
+  if (g.email_verified === 'false' || g.email_verified === false)
+    return res.status(401).json({ erro: 'Seu e-mail do Google não está verificado' });
+
+  const email = String(g.email).toLowerCase();
+  const nome = (g.name || email.split('@')[0]).trim();
+  const achou = (await pool.query(
+    `SELECT u.*, c.nome AS clinica_nome, c.ativa AS clinica_ativa FROM usuarios u
+     LEFT JOIN clinicas c ON c.id = u.clinica_id WHERE u.google_id = $1 OR u.email = $2 LIMIT 1`,
+    [g.sub, email])).rows[0];
+
+  if (achou) { // já tem conta: só entra (e passa a aceitar o Google daqui pra frente)
+    if (!achou.superadmin && achou.clinica_ativa === false)
+      return res.status(403).json({ erro: 'Clínica desativada. Fale com o suporte do PerFisio.' });
+    await pool.query(`UPDATE usuarios SET google_id=$2, email_verificado=true,
+      verificado_em=COALESCE(verificado_em, now()), ultimo_acesso=now() WHERE id=$1`, [achou.id, g.sub]);
+    esquecerPerfil(achou.id);
+    return res.json({
+      novo: false, token: sign(achou),
+      usuario: { id: achou.id, clinica_id: achou.clinica_id, nome: achou.nome, email: achou.email, perfil: achou.perfil,
+        fisio_id: achou.fisio_id, clinica_nome: achou.clinica_nome, superadmin: achou.superadmin, email_verificado: true },
+    });
+  }
+
+  // conta nova: nasce verificada (o Google já confirmou o e-mail), com a clínica e a ficha do profissional
+  const nomeClinica = String((req.body || {}).clinica || '').trim() || nome;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const c = (await client.query('INSERT INTO clinicas (nome,email) VALUES ($1,$2) RETURNING id', [nomeClinica, email])).rows[0];
+    const f = (await client.query('INSERT INTO fisios (clinica_id,nome,cor) VALUES ($1,$2,$3) RETURNING id', [c.id, nome, '#0DA189'])).rows[0];
+    const u = (await client.query(
+      `INSERT INTO usuarios (clinica_id,nome,email,senha_hash,perfil,fisio_id,google_id,email_verificado,verificado_em,ultimo_acesso)
+       VALUES ($1,$2,$3,$4,'gestor',$5,$6,true,now(),now()) RETURNING id, clinica_id, nome, email, perfil, fisio_id`,
+      [c.id, nome, email, bcrypt.hashSync(crypto.randomBytes(24).toString('hex'), 10), f.id, g.sub])).rows[0];
+    await seedClinica(client, c.id);
+    await client.query('COMMIT');
+    await preencherSlugs();
+    res.json({ novo: true, token: sign(u), usuario: { ...u, clinica_nome: nomeClinica, email_verificado: true } });
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('cadastro com google', e);
+    res.status(500).json({ erro: 'Erro ao criar a conta com o Google' });
   } finally { client.release(); }
 });
 
@@ -2939,6 +3001,7 @@ const ROOT = path.join(__dirname, '..');
    Como os links entre as páginas continuam relativos, é aqui que cada host manda
    o visitante para o lugar certo. Sem SITE_HOST definido nada disso roda. */
 const ehDoSistema = p => p === '/login.html' || p === '/login' || p === '/verificar-email.html'
+  || p === '/cadastro' || p === '/cadastro.html' // o cadastro cria a sessão: mora junto com o app
   || p.startsWith('/app/') || p.startsWith('/admin');
 const passaDireto = p => p.startsWith('/api/') || p.startsWith('/assets/') || p.startsWith('/.well-known');
 
@@ -3325,7 +3388,7 @@ app.get('/sitemap.xml', async (req, res) => {
 /* Cada página pública tem UM endereço. As variantes que o express.static também serviria
    (/index.html, /blog.html, /planos…) levam 301 para a versão com canonical. */
 const HTML_CANONICO = new Map([
-  ['/index.html', '/'], ['/planos', '/planos.html'],
+  ['/index.html', '/'], ['/planos', '/planos.html'], ['/cadastro.html', '/cadastro'],
   ['/site-para-fisioterapeutas.html', '/site-para-fisioterapeutas'], ['/blog.html', '/blog'],
   ...POSTS.map(p => [`/${p.slug}.html`, `/${p.slug}`]),
 ]);
