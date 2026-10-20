@@ -685,18 +685,11 @@
       brilho.addColorStop(0, 'rgba(13,161,137,.45)'); brilho.addColorStop(1, 'rgba(13,161,137,0)');
       cx.fillStyle = brilho; cx.fillRect(0, 0, STORY.w, 1400);
 
-      // logo
-      try {
-        const logo = await carregarImagem('../assets/img/logo-perfisio-branco.svg');
-        const larg = 330, alt = larg * (logo.height / logo.width);
-        cx.drawImage(logo, meio - larg / 2, 150, larg, alt);
-      } catch (e) { /* sem logo, o resto continua de pé */ }
-
       // a pergunta que faz o seguidor parar
-      textoCentrado(cx, 'Procurando Fisioterapeuta?', 340, 70, '#FFFFFF', '800', 940, 1.16);
+      textoCentrado(cx, 'Procurando Fisioterapeuta?', 270, 70, '#FFFFFF', '800', 940, 1.16);
 
       // foto (círculo com anel) ou as iniciais
-      const raio = 215, centroY = 760;
+      const raio = 215, centroY = 780;
       cx.save();
       cx.beginPath(); cx.arc(meio, centroY, raio, 0, Math.PI * 2); cx.closePath(); cx.clip();
       let temFoto = false;
@@ -722,16 +715,16 @@
       // não encostar na chamada, que fica em posição fixa lá embaixo
       cx.font = '800 78px Inter, Arial, sans-serif';
       const umaLinha = cx.measureText(f.nome || '').width <= 920;
-      let y = textoCentrado(cx, f.nome, 1090, umaLinha ? 78 : 62, '#FFFFFF', '800', 920, 1.14);
+      let y = textoCentrado(cx, f.nome, 1115, umaLinha ? 78 : 62, '#FFFFFF', '800', 920, 1.14);
       const esp = [f.esp, f.cidade].filter(Boolean).join(' · ');
       if (esp) y = textoCentrado(cx, esp, y + 34, 40, 'rgba(255,255,255,.78)', '600', 880);
       if (f.crefito) y = textoCentrado(cx, f.crefito, y + 24, 34, 'rgba(255,255,255,.55)', '600', 880);
 
       // o convite e, logo abaixo, o endereço do perfil em destaque
       // (sem QR: ninguém aponta a câmera para o próprio story)
-      textoCentrado(cx, 'Veja meu perfil e agende sua consulta.', 1430, 46, '#5AD0BB', '700', 900, 1.25);
+      textoCentrado(cx, 'Veja meu perfil e agende sua consulta.', 1400, 46, '#5AD0BB', '700', 900, 1.25);
 
-      const pilula = { alt: 128, larg: 760, topo: 1570 };
+      const pilula = { alt: 128, larg: 760, topo: 1510 };
       cx.fillStyle = '#FFFFFF';
       cx.beginPath(); cx.roundRect(meio - pilula.larg / 2, pilula.topo, pilula.larg, pilula.alt, pilula.alt / 2); cx.fill();
       cx.font = '800 48px Inter, Arial, sans-serif';
@@ -742,7 +735,13 @@
       cx.fillStyle = '#0F2A2E'; cx.textAlign = 'center';
       cx.fillText(endereco, meio, pilula.topo + pilula.alt / 2 + tamanho / 3);
 
-      textoCentrado(cx, 'perfisio.com.br', STORY.h - 70, 30, 'rgba(255,255,255,.45)', '600');
+      // a marca fecha a peça: logo e, embaixo, o endereço do site
+      try {
+        const logo = await carregarImagem('../assets/img/logo-perfisio-branco.svg');
+        const larg = 250, alt = larg * (logo.height / logo.width);
+        cx.drawImage(logo, meio - larg / 2, 1730, larg, alt);
+      } catch (e) { /* sem logo, fica o endereço */ }
+      textoCentrado(cx, 'www.perfisio.com.br', STORY.h - 70, 30, 'rgba(255,255,255,.55)', '600');
     }
 
     async function abrirCompartilhar(id) {
