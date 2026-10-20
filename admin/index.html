@@ -19,6 +19,17 @@
     .lk code { flex: 1; font-size: .74rem; font-weight: 700; color: var(--primary-dark); white-space: nowrap; }
     .lk .btn { padding: 4px 8px; }
     .lk.off code { color: var(--text-soft); text-decoration: line-through; opacity: .75; }
+    /* assinatura de e-mail */
+    .as-grade { display: grid; grid-template-columns: 1fr 1.1fr; gap: 20px; align-items: start; }
+    .as-previa { border: 1px dashed var(--line); border-radius: 12px; padding: 22px; background: #fff; overflow-x: auto; }
+    .as-botoes { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+    .as-ajuda { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 16px; font-size: .84rem; color: var(--text-soft); line-height: 1.65; }
+    .as-ajuda b { color: var(--ink); }
+    .as-ajuda ul { margin: 8px 0 0; padding-left: 18px; }
+    .as-ajuda li { margin-top: 5px; }
+    .as-nota { margin-top: 10px; font-size: .78rem; }
+    @media (max-width: 1100px) { .as-grade { grid-template-columns: 1fr; } }
+
   </style>
 </head>
 <body>
@@ -53,6 +64,7 @@
         <a class="nav-item" data-sec="fisios" onclick="irSecao('fisios')"><span class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#estetoscopio"></use></svg></span>Profissionais</a>
         <div class="nav-label">Marketing</div>
         <a class="nav-item" data-sec="social" onclick="irSecao('social')"><span class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#celular"></use></svg></span>Posts · Aprovações</a>
+        <a class="nav-item" data-sec="assinatura" onclick="irSecao('assinatura')"><span class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#email"></use></svg></span>Assinatura de e-mail</a>
         <div class="nav-label">Atalhos</div>
         <a class="nav-item" href="../index.html" target="_blank"><span class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#globo"></use></svg></span>Site público</a>
         <a class="nav-item" href="../login.html" target="_blank"><span class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#chave"></use></svg></span>Login das clínicas</a>
@@ -174,6 +186,53 @@
                 <thead><tr><th>Clínica</th><th>Post</th><th>Previsto</th><th>Status</th><th>Feedback da clínica</th><th></th></tr></thead>
                 <tbody id="socialRows"><tr><td colspan="6" class="empty">Carregando...</td></tr></tbody>
               </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ASSINATURA DE E-MAIL (equipe PerFisio) -->
+        <div data-sec-panel="assinatura" style="display:none;">
+          <div class="as-grade">
+            <div class="card">
+              <div class="card-header"><h3>Os seus dados</h3></div>
+              <div class="card-pad">
+                <div style="font-size:.82rem;color:var(--text-soft);line-height:1.6;margin-bottom:14px;">
+                  O logo, a cor e o endereço do site vêm da marca — você preenche só o que é seu.
+                  Nada fica guardado no sistema: o rascunho fica neste navegador.
+                </div>
+                <div class="form-grid">
+                  <div class="field full"><label>Nome *</label><input type="text" id="asNome" maxlength="80" placeholder="Thiago Vernetti"></div>
+                  <div class="field full"><label>Cargo</label><input type="text" id="asCargo" maxlength="80" placeholder="Atendimento ao cliente"></div>
+                  <div class="field full"><label>E-mail *</label><input type="email" id="asEmail" maxlength="80" placeholder="nome@perfisio.com.br"></div>
+                  <div class="field"><label>Celular / WhatsApp</label><input type="tel" id="asCelular" maxlength="40" placeholder="(53) 99999-0000"></div>
+                  <div class="field"><label>Telefone fixo</label><input type="tel" id="asTelefone" maxlength="40" placeholder="(53) 3333-0000"></div>
+                  <div class="field full"><label>Linha livre</label><input type="text" id="asExtra" maxlength="80" placeholder="Seg a sex, das 9h às 18h"></div>
+                </div>
+                <div class="check-row" style="padding-bottom:0;"><input type="checkbox" id="asFrase" checked><label for="asFrase" style="margin:0;font-weight:500;">Incluir a frase da marca <i style="color:var(--text-soft);font-style:normal;">(“Gestão e captação de pacientes para fisioterapeutas”)</i></label></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><h3>Como vai chegar</h3></div>
+              <div class="card-pad">
+                <div style="font-size:.82rem;color:var(--text-soft);margin-bottom:12px;">É a assinatura de verdade, não um desenho dela.</div>
+                <div class="as-previa" id="asPrevia"></div>
+                <div class="as-botoes">
+                  <button class="btn btn-primary" id="asCopiar">Copiar assinatura</button>
+                  <button class="btn btn-soft" id="asCopiarHtml">Copiar o código HTML</button>
+                </div>
+                <div class="as-ajuda">
+                  <b>Onde colar</b>
+                  <ul>
+                    <li><b>Gmail:</b> engrenagem → <i>Ver todas as configurações</i> → role até <i>Assinatura</i> → cole com Ctrl+V (⌘V).</li>
+                    <li><b>Outlook (web):</b> engrenagem → <i>Conta</i> → <i>Assinaturas</i> → cole no editor.</li>
+                    <li><b>Apple Mail:</b> Mail → <i>Configurações</i> → <i>Assinaturas</i> → desmarque “Sempre usar a fonte padrão” antes de colar.</li>
+                    <li>Se o seu programa pedir o <b>código</b>, use o segundo botão.</li>
+                  </ul>
+                  <p class="as-nota">O logo é carregado do nosso site quando a pessoa abre a mensagem. Alguns programas
+                    perguntam antes de mostrar imagens — é normal, e o resto da assinatura continua legível sem ele.</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -308,6 +367,7 @@
       clinicas: ['Clínicas', 'Contas, equipes e acessos'],
       fisios: ['Profissionais', 'Fisioterapeutas de todas as clínicas'],
       social: ['Posts · Aprovações', 'Conteúdo para as redes das clínicas'],
+      assinatura: ['Assinatura de e-mail', 'A mesma cara em toda mensagem que sai da equipe'],
     };
     function irSecao(sec) {
       document.querySelectorAll('#admNav .nav-item[data-sec]').forEach(n => n.classList.toggle('active', n.dataset.sec === sec));
@@ -921,6 +981,133 @@
         renderClinicas();
       } catch (e) { App.toast(e.message, 'error'); }
     }
+
+    /* ===== Assinatura de e-mail da equipe =====
+       A pessoa preenche o que é dela; o logo, a cor e o site vêm da marca. Dois botões:
+       copiar pronta (para colar no Gmail) e copiar o código (para quem configura por HTML).
+
+       O HTML é tabela com estilo em cada tag, de propósito: o Outlook do Windows desenha
+       e-mail com o motor do Word (sem <style>, sem flex) e o Gmail descarta o <style> que
+       vem junto. A barra colorida é uma CÉLULA com fundo, não um border-left — borda de
+       célula é a primeira coisa que o Word engole.
+
+       O logo é PNG e por endereço absoluto: e-mail não é navegador (Gmail e Outlook
+       descartam <img> de SVG) e quem recebe a mensagem não tem sessão aqui. O arquivo é
+       gerado do mesmo SVG do site, no dobro do tamanho de exibição por causa das telas
+       retina; se a marca mudar, ele precisa ser refeito. */
+    (function assinaturaEmail() {
+      const COR = '#0DA189';
+      const MARCA = {
+        nome: 'PerFisio',
+        logo: 'https://www.perfisio.com.br/assets/img/logo-perfisio-email.png',
+        largura: 166, altura: 28,
+        siteTexto: 'perfisio.com.br',
+        siteUrl: 'https://www.perfisio.com.br',
+        frase: 'Gestão e captação de pacientes para fisioterapeutas',
+      };
+      const CHAVE = 'pf_assinatura_equipe_v1';
+      const CAMPOS = ['nome', 'cargo', 'email', 'celular', 'telefone', 'extra'];
+      const $$ = id => document.getElementById(id);
+      const esc = s => String(s == null ? '' : s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+
+      let d = { nome: '', cargo: '', email: '', celular: '', telefone: '', extra: '', frase: true };
+      try { d = { ...d, ...JSON.parse(localStorage.getItem(CHAVE) || '{}') }; } catch (e) {}
+      const guardar = () => { try { localStorage.setItem(CHAVE, JSON.stringify(d)); } catch (e) {} };
+
+      /* telefone: guardamos o que foi digitado e mostramos formatado; o link usa só os
+         dígitos. Se tem o 55 do país na frente, decide-se pelo TAMANHO — "começa com 55"
+         erraria justamente no DDD 55 (Santa Maria), mandando o link para outra pessoa. */
+      const digitos = t => String(t || '').replace(/\D/g, '');
+      const semPais = n => (n.length === 12 || n.length === 13) && n.startsWith('55') ? n.slice(2) : n;
+      function telefoneBonito(t) {
+        const n = semPais(digitos(t));
+        if (n.length === 11) return `(${n.slice(0,2)}) ${n[2]} ${n.slice(3,7)}-${n.slice(7)}`;
+        if (n.length === 10) return `(${n.slice(0,2)}) ${n.slice(2,6)}-${n.slice(6)}`;
+        return String(t || '').trim();
+      }
+      const zapUrl = t => {
+        const n = semPais(digitos(t));
+        return (n.length === 10 || n.length === 11) ? 'https://wa.me/55' + n : null;
+      };
+
+      function montarHTML() {
+        const linha = (txt, estilo = '') => `<div style="font-size:13px;line-height:19px;color:#15233B;${estilo}">${txt}</div>`;
+        const p = [];
+        p.push(`<div style="font-size:15px;line-height:21px;font-weight:bold;color:#0F2A2E;">${esc(d.nome || 'Seu nome')}</div>`);
+        if (d.cargo) p.push(linha(esc(d.cargo), 'color:#6B7686;'));
+        p.push('<div style="font-size:8px;line-height:8px;">&nbsp;</div>');
+        if (d.email) p.push(linha(`<a href="mailto:${esc(d.email)}" style="color:${COR};text-decoration:none;">${esc(d.email)}</a>`));
+        if (d.celular) {
+          const url = zapUrl(d.celular), txt = esc(telefoneBonito(d.celular));
+          p.push(linha(url ? `<a href="${url}" style="color:#15233B;text-decoration:none;">${txt}</a>` : txt));
+        }
+        if (d.telefone) p.push(linha(esc(telefoneBonito(d.telefone))));
+        p.push(linha(`<a href="${MARCA.siteUrl}" style="color:${COR};text-decoration:none;font-weight:bold;">${MARCA.siteTexto}</a>`, 'padding-top:2px;'));
+        if (d.frase) p.push(linha(esc(MARCA.frase), 'color:#8A94A6;font-size:11px;line-height:16px;padding-top:4px;'));
+        if (d.extra) p.push(linha(esc(d.extra), 'color:#8A94A6;font-size:11px;line-height:16px;'));
+
+        return `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;">
+  <tr>
+    <td style="padding:0 16px 0 0;vertical-align:top;">
+      <img src="${MARCA.logo}" width="${MARCA.largura}" height="${MARCA.altura}" alt="${MARCA.nome}" style="display:block;border:0;outline:none;text-decoration:none;">
+    </td>
+    <td width="3" style="width:3px;background-color:${COR};font-size:1px;line-height:1px;">&nbsp;</td>
+    <td style="padding:0 0 0 16px;vertical-align:top;">
+      ${p.join('\n      ')}
+    </td>
+  </tr>
+</table>`;
+      }
+
+      /* a versão em texto puro vai junto na cópia: cliente que não aceita HTML pega esta */
+      function montarTexto() {
+        const l = [d.nome || 'Seu nome'];
+        if (d.cargo) l.push(d.cargo);
+        l.push(MARCA.nome);
+        if (d.email) l.push(d.email);
+        if (d.celular) l.push(telefoneBonito(d.celular));
+        if (d.telefone) l.push(telefoneBonito(d.telefone));
+        l.push(MARCA.siteTexto);
+        if (d.extra) l.push(d.extra);
+        return l.join('\n');
+      }
+
+      const pintar = () => { $$('asPrevia').innerHTML = montarHTML(); };
+
+      CAMPOS.forEach(c => {
+        const el = $$('as' + c[0].toUpperCase() + c.slice(1));
+        el.value = d[c] || '';
+        el.addEventListener('input', () => { d[c] = el.value; guardar(); pintar(); });
+      });
+      $$('asFrase').checked = !!d.frase;
+      $$('asFrase').addEventListener('change', () => { d.frase = $$('asFrase').checked; guardar(); pintar(); });
+
+      /* dois formatos na mesma cópia: HTML para o campo de assinatura e texto puro para
+         quem não aceita HTML — sem o text/plain, colar num campo simples devolve a tabela */
+      $$('asCopiar').addEventListener('click', async () => {
+        const html = montarHTML(), texto = montarTexto();
+        try {
+          await navigator.clipboard.write([new ClipboardItem({
+            'text/html': new Blob([html], { type: 'text/html' }),
+            'text/plain': new Blob([texto], { type: 'text/plain' }),
+          })]);
+          App.toast('Assinatura copiada — cole no seu e-mail.');
+        } catch (e) {
+          const sel = getSelection(), faixa = document.createRange();
+          faixa.selectNodeContents($$('asPrevia'));
+          sel.removeAllRanges(); sel.addRange(faixa);
+          const deu = document.execCommand('copy');
+          sel.removeAllRanges();
+          App.toast(deu ? 'Assinatura copiada — cole no seu e-mail.' : 'Não consegui copiar. Selecione a prévia e use Ctrl+C.', deu ? 'success' : 'error');
+        }
+      });
+      $$('asCopiarHtml').addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(montarHTML()); App.toast('Código HTML copiado.'); }
+        catch (e) { App.toast('Não consegui copiar o código.', 'error'); }
+      });
+
+      pintar();
+    })();
 
     boot();
   </script>

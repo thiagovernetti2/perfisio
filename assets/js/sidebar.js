@@ -14,7 +14,7 @@
   /* fisioterapeuta acessa só a agenda dele e o prontuário dos pacientes dele —
      o servidor recusa o resto; aqui a gente só não mostra o que ele não pode usar */
   const SO_AGENDA = usuario.perfil === 'fisio';
-  const PAGINAS_DO_FISIO = ['agenda', 'prontuarios', 'assinatura-email'];
+  const PAGINAS_DO_FISIO = ['agenda', 'prontuarios'];
   if (SO_AGENDA && page && !PAGINAS_DO_FISIO.includes(page)) { location.replace('agenda.html'); return; }
 
   /* os ícones vêm do sprite (assets/img/icones.svg), sólidos e de cor única */
@@ -24,7 +24,6 @@
     { label: 'Principal' },
     { id: 'agenda',      href: 'agenda.html',      ico: 'agenda',     text: 'Minha agenda' },
     { id: 'prontuarios', href: 'prontuarios.html', ico: 'prontuario', text: 'Prontuários' },
-    { id: 'assinatura-email', href: 'assinatura-email.html', ico: 'email', text: 'Assinatura de e-mail' },
   ] : [
     { label: 'Principal' },
     { id: 'dashboard',     href: 'dashboard.html',     ico: 'grafico',      text: 'Dashboard' },
@@ -35,11 +34,10 @@
     { id: 'prontuarios',   href: 'prontuarios.html',   ico: 'prontuario',   text: 'Prontuários' },
     { id: 'financeiro',    href: 'financeiro.html',    ico: 'cartao',       text: 'Financeiro' },
     { id: 'marketing',     href: 'marketing.html',     ico: 'megafone',     text: 'Marketing' },
-    { id: 'assinatura-email', href: 'assinatura-email.html', ico: 'email', text: 'Assinatura de e-mail' },
     { id: 'aprovacoes',    href: 'aprovacoes.html',    ico: 'celular',      text: 'Aprovações' },
     { id: 'equipe',        href: 'equipe.html',        ico: 'estetoscopio', text: 'Equipe' },
     { id: 'relatorios',    href: 'relatorios.html',    ico: 'subindo',      text: 'Relatórios' },
-    { id: 'assinatura',    href: 'assinatura.html',    ico: 'recibo',       text: 'Plano e cobrança' },
+    { id: 'assinatura',    href: 'assinatura.html',    ico: 'recibo',       text: 'Assinatura' },
     { id: 'configuracoes', href: 'configuracoes.html', ico: 'engrenagem',   text: 'Configurações' },
   ];
 

@@ -41,7 +41,11 @@ window.PF = (function () {
     });
     if (res.status === 401 && !path.startsWith('/api/auth') && !path.startsWith('/api/public')) {
       localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); localStorage.removeItem(CLINICA_KEY);
-      location.href = location.pathname.includes('/app/') ? '../login.html' : 'login.html';
+      // o superadmin tem a própria tela de entrada dentro da página; mandá-lo para
+      // /admin/login.html (que não existe) deixava o painel inalcançável quando deslogado
+      if (!location.pathname.includes('/admin')) {
+        location.href = location.pathname.includes('/app/') ? '../login.html' : 'login.html';
+      }
       throw new Error('Não autenticado');
     }
     const data = await res.json().catch(() => ({}));
