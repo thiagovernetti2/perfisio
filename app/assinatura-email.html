@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assinatura de e-mail — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="../assets/img/simbolo-perfisio.svg">
+  <link rel="stylesheet" href="../assets/css/app.css">
+  <style>
+    .as-grade { display: grid; grid-template-columns: 1fr 1.1fr; gap: 20px; align-items: start; }
+    .as-previa { border: 1px dashed var(--line); border-radius: 12px; padding: 22px; background: #fff; overflow-x: auto; }
+    .as-botoes { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+    .as-ajuda { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 16px; font-size: .84rem; color: var(--text-soft); line-height: 1.65; }
+    .as-ajuda b { color: var(--ink); }
+    .as-ajuda ul { margin: 8px 0 0; padding-left: 18px; }
+    .as-ajuda li { margin-top: 5px; }
+    .as-nota { margin-top: 10px; font-size: .78rem; }
+    @media (max-width: 1000px) { .as-grade { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body data-page="assinatura-email" data-title="Assinatura de e-mail" data-subtitle="A mesma cara em toda mensagem que sai da clínica">
+
+  <div class="as-grade">
+    <div class="card">
+      <div class="card-header"><h3>Os seus dados</h3></div>
+      <div class="card-pad">
+        <div style="font-size:.82rem;color:var(--text-soft);line-height:1.6;margin-bottom:14px;">
+          Já preenchemos com o que está no seu cadastro. O que você mudar aqui vale só para a assinatura —
+          nada é alterado no seu perfil, e nada fica guardado no sistema.
+        </div>
+        <div class="form-grid">
+          <div class="field full"><label>Nome *</label><input type="text" id="asNome" maxlength="80" placeholder="Camila Rocha"></div>
+          <div class="field"><label>Cargo ou especialidade</label><input type="text" id="asCargo" maxlength="80" placeholder="Fisioterapeuta esportiva"></div>
+          <div class="field"><label>CREFITO</label><input type="text" id="asCrefito" maxlength="40" placeholder="CREFITO-5 123456-F"></div>
+          <div class="field"><label>Clínica</label><input type="text" id="asClinica" maxlength="80" placeholder="Clínica Movimento"></div>
+          <div class="field"><label>E-mail *</label><input type="email" id="asEmail" maxlength="80" placeholder="voce@clinica.com.br"></div>
+          <div class="field"><label>Celular / WhatsApp</label><input type="tel" id="asCelular" maxlength="40" placeholder="(53) 99999-0000"></div>
+          <div class="field"><label>Telefone fixo</label><input type="tel" id="asTelefone" maxlength="40" placeholder="(53) 3333-0000"></div>
+          <div class="field full"><label>Linha livre</label><input type="text" id="asExtra" maxlength="80" placeholder="Seg a sex, das 8h às 19h"></div>
+        </div>
+        <div class="check-row"><input type="checkbox" id="asLink" checked><label for="asLink" style="margin:0;font-weight:500;">Incluir meu link de agendamento <span id="asLinkTxt" style="color:var(--text-soft);"></span></label></div>
+        <div class="check-row"><input type="checkbox" id="asFoto" checked><label for="asFoto" style="margin:0;font-weight:500;">Incluir a imagem (logo da clínica ou sua foto)</label></div>
+        <div class="check-row" style="padding-bottom:0;"><input type="checkbox" id="asCrefitoOn" checked><label for="asCrefitoOn" style="margin:0;font-weight:500;">Mostrar o CREFITO</label></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h3>Como vai chegar</h3></div>
+      <div class="card-pad">
+        <div style="font-size:.82rem;color:var(--text-soft);margin-bottom:12px;">É a assinatura de verdade, não um desenho dela.</div>
+        <div class="as-previa" id="asPrevia"></div>
+
+        <div class="as-botoes">
+          <button class="btn btn-primary" id="asCopiar">Copiar assinatura</button>
+          <button class="btn btn-soft" id="asCopiarHtml">Copiar o código HTML</button>
+        </div>
+
+        <div class="as-ajuda">
+          <b>Onde colar</b>
+          <ul>
+            <li><b>Gmail:</b> engrenagem → <i>Ver todas as configurações</i> → role até <i>Assinatura</i> → cole com Ctrl+V (⌘V).</li>
+            <li><b>Outlook (web):</b> engrenagem → <i>Conta</i> → <i>Assinaturas</i> → cole no editor.</li>
+            <li><b>Apple Mail:</b> Mail → <i>Configurações</i> → <i>Assinaturas</i> → desmarque “Sempre usar a fonte padrão” antes de colar.</li>
+            <li>Se o seu programa pedir o <b>código</b>, use o segundo botão.</li>
+          </ul>
+          <p class="as-nota">A imagem é carregada do nosso servidor quando a pessoa abre a mensagem. Alguns programas
+            perguntam antes de mostrar imagens — é normal, e o resto da assinatura continua legível sem ela.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/sidebar.js"></script>
+  <script>
+    /* ===== Gerador de assinatura de e-mail =====
+       Monta a assinatura com os dados do cadastro e devolve dois botões: copiar pronta
+       (para colar no Gmail) e copiar o código (para quem configura por HTML).
+
+       O HTML é tabela com estilo em cada tag, de propósito: o Outlook do Windows desenha
+       e-mail com o motor do Word (sem <style>, sem flex) e o Gmail descarta o <style> que
+       vem junto. A barra colorida é uma CÉLULA com fundo, não um border-left, porque borda
+       de célula é a primeira coisa que o Word engole.
+
+       As imagens precisam de endereço ABSOLUTO e público: quem abre a mensagem não tem
+       sessão no PerFisio. Por isso o site público, e não o host do painel. */
+    const COR = '#0DA189';
+    const SITE = 'https://www.perfisio.com.br';
+    const CURTO = 'https://perfis.io';
+    const CHAVE = 'pf_assinatura_v1';
+
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s == null ? '' : s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+
+    const CAMPOS = ['nome', 'cargo', 'crefito', 'clinica', 'email', 'celular', 'telefone', 'extra'];
+    let d = { nome: '', cargo: '', crefito: '', clinica: '', email: '', celular: '', telefone: '', extra: '',
+              link: true, foto: true, crefitoOn: true };
+    let IMAGEM = null, PERFIL = null; // url da imagem e endereço público do perfil
+
+    /* ---------- telefone ----------
+       Guardamos o que a pessoa digitou e mostramos formatado; o link do WhatsApp usa só os
+       dígitos. Se tem o 55 do país na frente, decide-se pelo TAMANHO: "começa com 55" erra
+       justamente no DDD 55 (Santa Maria), e o link iria para outra pessoa. */
+    const digitos = t => String(t || '').replace(/\D/g, '');
+    const semPais = n => (n.length === 12 || n.length === 13) && n.startsWith('55') ? n.slice(2) : n;
+    function telefoneBonito(t) {
+      const n = semPais(digitos(t));
+      if (n.length === 11) return `(${n.slice(0,2)}) ${n[2]} ${n.slice(3,7)}-${n.slice(7)}`;
+      if (n.length === 10) return `(${n.slice(0,2)}) ${n.slice(2,6)}-${n.slice(6)}`;
+      return String(t || '').trim();
+    }
+    const zapUrl = t => {
+      const n = semPais(digitos(t));
+      return (n.length === 10 || n.length === 11) ? 'https://wa.me/55' + n : null;
+    };
+
+    function montarHTML() {
+      const linha = (txt, estilo = '') => `<div style="font-size:13px;line-height:19px;color:#15233B;${estilo}">${txt}</div>`;
+      const p = [];
+      p.push(`<div style="font-size:15px;line-height:21px;font-weight:bold;color:#0F2A2E;">${esc(d.nome || 'Seu nome')}</div>`);
+      const sub = [d.cargo, d.crefitoOn && d.crefito ? d.crefito : ''].filter(Boolean).join(' · ');
+      if (sub) p.push(linha(esc(sub), 'color:#6B7686;'));
+      if (d.clinica) p.push(linha(esc(d.clinica), 'color:#6B7686;'));
+      p.push('<div style="font-size:8px;line-height:8px;">&nbsp;</div>');
+      if (d.email) p.push(linha(`<a href="mailto:${esc(d.email)}" style="color:${COR};text-decoration:none;">${esc(d.email)}</a>`));
+      if (d.celular) {
+        const url = zapUrl(d.celular), txt = esc(telefoneBonito(d.celular));
+        p.push(linha(url ? `<a href="${url}" style="color:#15233B;text-decoration:none;">${txt}</a>` : txt));
+      }
+      if (d.telefone) p.push(linha(esc(telefoneBonito(d.telefone))));
+      if (d.link && PERFIL) p.push(linha(
+        `<a href="${esc(PERFIL.url)}" style="color:${COR};text-decoration:none;font-weight:bold;">${esc(PERFIL.texto)}</a>`
+        + '<span style="color:#8A94A6;"> · agende online</span>', 'padding-top:2px;'));
+      if (d.extra) p.push(linha(esc(d.extra), 'color:#8A94A6;font-size:11px;line-height:16px;padding-top:4px;'));
+
+      const img = d.foto && IMAGEM
+        ? `<td style="padding:0 16px 0 0;vertical-align:top;">
+      <img src="${esc(IMAGEM)}" width="74" height="74" alt="${esc(d.nome || 'Foto')}" style="display:block;border:0;outline:none;text-decoration:none;border-radius:37px;">
+    </td>` : '';
+
+      return `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;">
+  <tr>
+    ${img}<td width="3" style="width:3px;background-color:${COR};font-size:1px;line-height:1px;">&nbsp;</td>
+    <td style="padding:0 0 0 16px;vertical-align:top;">
+      ${p.join('\n      ')}
+    </td>
+  </tr>
+</table>`;
+    }
+
+    /* a versão em texto puro vai junto na cópia: cliente que não aceita HTML pega esta */
+    function montarTexto() {
+      const l = [d.nome || 'Seu nome'];
+      const sub = [d.cargo, d.crefitoOn && d.crefito ? d.crefito : ''].filter(Boolean).join(' · ');
+      if (sub) l.push(sub);
+      if (d.clinica) l.push(d.clinica);
+      if (d.email) l.push(d.email);
+      if (d.celular) l.push(telefoneBonito(d.celular));
+      if (d.telefone) l.push(telefoneBonito(d.telefone));
+      if (d.link && PERFIL) l.push(PERFIL.url.replace(/^https?:\/\//, '') + ' — agende online');
+      if (d.extra) l.push(d.extra);
+      return l.join('\n');
+    }
+
+    const pintar = () => { $('asPrevia').innerHTML = montarHTML(); };
+    const guardar = () => { try { localStorage.setItem(CHAVE, JSON.stringify(d)); } catch (e) {} };
+
+    async function boot() {
+      const eu = await PF.api('/api/me').catch(() => PF.user() || {});
+      const fisios = await PF.get('fisios').catch(() => []);
+      const meu = fisios.find(f => f.id === eu.fisio_id) || null;
+      const clinica = await PF.api('/api/clinica').catch(() => null);
+
+      // o que o cadastro já sabe — a pessoa só ajusta
+      d.nome = eu.nome || '';
+      d.email = eu.email || '';
+      d.cargo = (meu && meu.esp) || '';
+      d.crefito = (meu && meu.crefito) || '';
+      d.clinica = eu.clinica_nome || (clinica && clinica.nome) || '';
+      d.celular = (meu && meu.whatsapp) || (clinica && clinica.telefone) || '';
+      // o fixo da clínica só entra se não for o mesmo número que já está no celular
+      if (clinica && clinica.telefone && digitos(clinica.telefone) !== digitos(d.celular)) d.telefone = clinica.telefone;
+
+      if (meu && meu.slug) PERFIL = { url: `${CURTO}/${meu.slug}`, texto: `perfis.io/${meu.slug}` };
+      else if (clinica && clinica.slug) PERFIL = { url: `${SITE}/clinica/${clinica.slug}`, texto: `perfisio.com.br/clinica/${clinica.slug}` };
+
+      // imagem: o logo da clínica tem preferência; senão, a foto do profissional
+      if (clinica && clinica.tem_logo) IMAGEM = `${SITE}/api/public/clinica-logo/${clinica.id}`;
+      else if (meu && meu.tem_foto) IMAGEM = `${SITE}/api/public/fisio-foto/${meu.id}`;
+
+      // o que a pessoa já tinha ajustado aqui vence o cadastro
+      try { d = { ...d, ...JSON.parse(localStorage.getItem(CHAVE) || '{}') }; } catch (e) {}
+
+      CAMPOS.forEach(c => {
+        const el = $('as' + c[0].toUpperCase() + c.slice(1));
+        el.value = d[c] || '';
+        el.addEventListener('input', () => { d[c] = el.value; guardar(); pintar(); });
+      });
+      [['asLink', 'link'], ['asFoto', 'foto'], ['asCrefitoOn', 'crefitoOn']].forEach(([id, chave]) => {
+        $(id).checked = !!d[chave];
+        $(id).addEventListener('change', () => { d[chave] = $(id).checked; guardar(); pintar(); });
+      });
+      $('asLinkTxt').textContent = PERFIL ? `(${PERFIL.texto})` : '(seu perfil público ainda não está ativo)';
+      if (!PERFIL) { $('asLink').checked = false; $('asLink').disabled = true; }
+      if (!IMAGEM) {
+        $('asFoto').checked = false; $('asFoto').disabled = true;
+        $('asFoto').closest('.check-row').querySelector('label').innerHTML =
+          'Incluir a imagem <span style="color:var(--text-soft);">(envie o logo em Configurações ou sua foto em Equipe)</span>';
+      }
+      pintar();
+    }
+
+    /* ---------- copiar ----------
+       Dois formatos na mesma cópia: HTML para o campo de assinatura e texto puro para quem
+       não aceita HTML. Sem o text/plain, colar num campo simples devolve a tabela em código. */
+    $('asCopiar').addEventListener('click', async () => {
+      const html = montarHTML(), texto = montarTexto();
+      try {
+        await navigator.clipboard.write([new ClipboardItem({
+          'text/html': new Blob([html], { type: 'text/html' }),
+          'text/plain': new Blob([texto], { type: 'text/plain' }),
+        })]);
+        App.toast('Assinatura copiada — cole no seu e-mail.');
+      } catch (e) {
+        // navegador sem permissão para a área de transferência: seleciona a prévia e copia
+        const sel = getSelection(), faixa = document.createRange();
+        faixa.selectNodeContents($('asPrevia'));
+        sel.removeAllRanges(); sel.addRange(faixa);
+        const deu = document.execCommand('copy');
+        sel.removeAllRanges();
+        App.toast(deu ? 'Assinatura copiada — cole no seu e-mail.' : 'Não consegui copiar. Selecione a prévia e use Ctrl+C.', deu ? 'success' : 'error');
+      }
+    });
+
+    $('asCopiarHtml').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(montarHTML()); App.toast('Código HTML copiado.'); }
+      catch (e) { App.toast('Não consegui copiar o código.', 'error'); }
+    });
+
+    boot().catch(e => App.toast(e.message, 'error'));
+  </script>
+</body>
+</html>
