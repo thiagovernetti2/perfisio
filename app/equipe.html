@@ -163,6 +163,36 @@
     </div>
   </div>
 
+  <!-- MODAL COMPARTILHAR (imagem para stories) -->
+  <div class="modal-overlay" id="mShare">
+    <div class="modal" style="max-width:720px;">
+      <div class="modal-head">
+        <h3 id="shareTitulo">Compartilhar perfil</h3>
+        <button class="close" onclick="App.closeModal('mShare')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="share-grade">
+          <div class="share-previa"><canvas id="shareCanvas" width="1080" height="1920"></canvas></div>
+          <div>
+            <div style="font-size:.86rem;color:var(--text);line-height:1.6;">
+              Imagem no tamanho dos stories (1080×1920), com o logo do PerFisio, a foto, o nome e o
+              QR code que leva ao perfil. O link vai junto no texto.
+            </div>
+            <div class="link-curto" style="margin-top:14px;"><code id="shareLink">perfis.io/</code>
+              <button class="btn btn-ghost btn-sm" title="Copiar link" onclick="copiarLinkShare(this)"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#copiar"></use></svg></button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px;">
+              <button class="btn btn-primary" id="btnShareNativo" onclick="compartilharStory()"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#instagram"></use></svg> Compartilhar</button>
+              <button class="btn btn-soft" onclick="baixarStory()"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#baixar"></use></svg> Baixar imagem</button>
+              <a class="btn btn-ghost" id="shareAbrir" href="#" target="_blank" rel="noopener"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#abrir"></use></svg> Abrir o perfil</a>
+            </div>
+            <div style="font-size:.76rem;color:var(--text-soft);line-height:1.6;margin-top:14px;" id="shareDica"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL CONVITE (profissional que já usa o PerFisio em outra clínica) -->
   <div class="modal-overlay" id="mConvite">
     <div class="modal" style="max-width:480px;">
@@ -229,6 +259,10 @@
     .pac-op input { margin-top: 2px; accent-color: var(--primary); }
     .pac-op small { display: block; color: var(--text-soft); font-size: .72rem; margin-top: 1px; }
     .pac-vazio { font-size: .78rem; color: var(--text-soft); }
+    .share-grade { display: grid; grid-template-columns: 270px 1fr; gap: 22px; align-items: start; }
+    .share-previa { border-radius: 14px; overflow: hidden; background: var(--ink); box-shadow: var(--shadow); }
+    .share-previa canvas { display: block; width: 100%; height: auto; }
+    @media (max-width: 620px) { .share-grade { grid-template-columns: 1fr; } .share-previa { max-width: 230px; margin: 0 auto; } }
     .pro-vinculo { margin-top: 6px; font-size: .72rem; font-weight: 700; color: #2D7DD2; }
     .convites { margin-bottom: 16px; }
     .convite-linha { display: flex; gap: 8px 10px; align-items: center; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--line); font-size: .82rem; }
@@ -393,6 +427,11 @@
                    title="Cartaz A4 com QR code para o paciente avaliar"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#etiqueta"></use></svg> Cartaz</a>`
               : `<button class="btn btn-ghost btn-sm" disabled
                    title="Ative o perfil público para gerar o cartaz de avaliação"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#etiqueta"></use></svg> Cartaz</button>`}
+            ${f.publico && f.slug
+              ? `<button class="btn btn-ghost btn-sm" onclick="abrirCompartilhar('${f.id}')"
+                   title="Imagem pronta para os stories, com o link do perfil"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#instagram"></use></svg> Compartilhar</button>`
+              : `<button class="btn btn-ghost btn-sm" disabled
+                   title="Ative o perfil público para compartilhar nas redes"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#instagram"></use></svg> Compartilhar</button>`}
             <button class="btn btn-ghost btn-sm" onclick="location.href='agenda.html'"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#agenda"></use></svg> Agenda</button>
             <button class="btn btn-soft btn-sm" onclick="abrirEditar('${f.id}')">Editar</button>
           </div>
@@ -600,6 +639,161 @@
       prCoord.value = (!vazio && f.lat != null && f.lng != null) ? `${Number(f.lat).toFixed(6)}, ${Number(f.lng).toFixed(6)}` : '';
       fotoPrev(!vazio && !!f.foto_mime);
       carregarGaleria();
+    }
+
+    /* ===== compartilhar o perfil nas redes =====
+       Monta no navegador uma imagem 1080×1920 (tamanho dos stories) com o logo do PerFisio,
+       a foto, o nome, a especialidade e o QR code do perfil. No celular vai pelo compartilhar
+       do sistema, com a imagem e o link juntos; no computador, baixa o arquivo. */
+    const STORY = { w: 1080, h: 1920 };
+    let SHARE = null; // { fisio, link }
+
+    const carregarImagem = src => new Promise((ok, falhou) => {
+      const i = new Image();
+      i.onload = () => ok(i); i.onerror = falhou;
+      i.src = src;
+    });
+
+    /* o QR vem como SVG sem width/height, e sem tamanho declarado o canvas não desenha
+       em todos os navegadores — por isso o tamanho entra antes, num blob */
+    async function carregarSvg(url, lado) {
+      const txt = await (await fetch(url)).text();
+      const endereco = URL.createObjectURL(new Blob([txt.replace('<svg', `<svg width="${lado}" height="${lado}"`)], { type: 'image/svg+xml' }));
+      try { return await carregarImagem(endereco); }
+      finally { setTimeout(() => URL.revokeObjectURL(endereco), 4000); }
+    }
+
+    function textoCentrado(cx, texto, y, tamanho, cor, peso = '700', larguraMax = 900, entrelinha = 1.18) {
+      cx.font = `${peso} ${tamanho}px Inter, Arial, sans-serif`;
+      cx.fillStyle = cor;
+      cx.textAlign = 'center';
+      const palavras = String(texto || '').split(' ');
+      const linhas = [];
+      let atual = '';
+      palavras.forEach(p => {
+        const tenta = atual ? atual + ' ' + p : p;
+        if (cx.measureText(tenta).width > larguraMax && atual) { linhas.push(atual); atual = p; }
+        else atual = tenta;
+      });
+      if (atual) linhas.push(atual);
+      linhas.forEach((l, i) => cx.fillText(l, STORY.w / 2, y + i * tamanho * entrelinha));
+      return y + linhas.length * tamanho * entrelinha;
+    }
+
+    async function desenharStory(f) {
+      const cv = document.getElementById('shareCanvas');
+      const cx = cv.getContext('2d');
+      const meio = STORY.w / 2;
+
+      // fundo: o petróleo da marca com um brilho verde em cima
+      const fundo = cx.createLinearGradient(0, 0, STORY.w, STORY.h);
+      fundo.addColorStop(0, '#0F2A2E'); fundo.addColorStop(1, '#09211F');
+      cx.fillStyle = fundo; cx.fillRect(0, 0, STORY.w, STORY.h);
+      const brilho = cx.createRadialGradient(meio, 520, 60, meio, 520, 820);
+      brilho.addColorStop(0, 'rgba(13,161,137,.45)'); brilho.addColorStop(1, 'rgba(13,161,137,0)');
+      cx.fillStyle = brilho; cx.fillRect(0, 0, STORY.w, 1400);
+
+      // logo
+      try {
+        const logo = await carregarImagem('../assets/img/logo-perfisio-branco.svg');
+        const larg = 330, alt = larg * (logo.height / logo.width);
+        cx.drawImage(logo, meio - larg / 2, 150, larg, alt);
+      } catch (e) { /* sem logo, o resto continua de pé */ }
+
+      // foto (círculo com anel) ou as iniciais
+      const raio = 215, centroY = 700;
+      cx.save();
+      cx.beginPath(); cx.arc(meio, centroY, raio, 0, Math.PI * 2); cx.closePath(); cx.clip();
+      let temFoto = false;
+      if (f.tem_foto) {
+        try {
+          const foto = await carregarImagem(`/api/public/fisio-foto/${f.id}?v=${Date.now()}`);
+          const lado = Math.min(foto.width, foto.height);
+          cx.drawImage(foto, (foto.width - lado) / 2, (foto.height - lado) / 2, lado, lado, meio - raio, centroY - raio, raio * 2, raio * 2);
+          temFoto = true;
+        } catch (e) { /* cai nas iniciais */ }
+      }
+      if (!temFoto) {
+        cx.fillStyle = f.cor || '#0DA189';
+        cx.fillRect(meio - raio, centroY - raio, raio * 2, raio * 2);
+        cx.fillStyle = '#fff'; cx.font = '800 150px Inter, Arial, sans-serif'; cx.textAlign = 'center';
+        cx.fillText(App.iniciais(f.nome), meio, centroY + 52);
+      }
+      cx.restore();
+      cx.lineWidth = 10; cx.strokeStyle = 'rgba(255,255,255,.9)';
+      cx.beginPath(); cx.arc(meio, centroY, raio + 5, 0, Math.PI * 2); cx.stroke();
+
+      // nome, especialidade e CREFITO — nome comprido entra menor para o bloco não
+      // encostar na chamada, que fica em posição fixa junto com o QR lá embaixo
+      cx.font = '800 78px Inter, Arial, sans-serif';
+      const umaLinha = cx.measureText(f.nome || '').width <= 920;
+      let y = textoCentrado(cx, f.nome, 1000, umaLinha ? 78 : 62, '#FFFFFF', '800', 920, 1.14);
+      const esp = [f.esp, f.cidade].filter(Boolean).join(' · ');
+      if (esp) y = textoCentrado(cx, esp, y + 34, 40, 'rgba(255,255,255,.78)', '600', 880);
+      if (f.crefito) y = textoCentrado(cx, f.crefito, y + 24, 34, 'rgba(255,255,255,.55)', '600', 880);
+
+      // chamada
+      textoCentrado(cx, 'Agende sua consulta online', 1318, 44, '#5AD0BB', '700', 900);
+
+      // QR num cartão branco
+      const ladoQr = 300, caixa = ladoQr + 56, topo = 1380;
+      cx.fillStyle = '#fff';
+      cx.beginPath(); cx.roundRect(meio - caixa / 2, topo, caixa, caixa, 36); cx.fill();
+      try {
+        const qr = await carregarSvg(`/api/public/qrcode/${encodeURIComponent(f.slug)}.svg`, ladoQr);
+        cx.drawImage(qr, meio - ladoQr / 2, topo + 28, ladoQr, ladoQr);
+      } catch (e) { /* sem QR, fica o link abaixo */ }
+
+      // link e rodapé
+      textoCentrado(cx, 'perfis.io/' + f.slug, topo + caixa + 64, 46, '#FFFFFF', '800', 980);
+      textoCentrado(cx, 'perfisio.com.br', STORY.h - 48, 30, 'rgba(255,255,255,.45)', '600');
+    }
+
+    async function abrirCompartilhar(id) {
+      const f = FISIOS.find(x => x.id === id);
+      if (!f || !f.slug) return;
+      SHARE = { fisio: f, link: 'https://perfis.io/' + f.slug };
+      document.getElementById('shareTitulo').textContent = 'Compartilhar — ' + f.nome;
+      document.getElementById('shareLink').textContent = 'perfis.io/' + f.slug;
+      document.getElementById('shareAbrir').href = SHARE.link;
+      const podeNativo = !!(navigator.canShare && navigator.canShare({ files: [new File([new Blob()], 'x.jpg', { type: 'image/jpeg' })] }));
+      document.getElementById('btnShareNativo').style.display = podeNativo ? '' : 'none';
+      document.getElementById('shareDica').textContent = podeNativo
+        ? 'No celular, escolha o Instagram e a imagem abre direto nos stories.'
+        : 'No computador: baixe a imagem e envie para o celular, ou poste pelo Instagram no navegador.';
+      App.openModal('mShare');
+      try { await desenharStory(f); }
+      catch (e) { App.toast('Não consegui montar a imagem: ' + e.message, 'error'); }
+    }
+
+    // JPEG em vez de PNG: mesma imagem com um quinto do peso, e o Instagram recomprime de qualquer jeito
+    const blobDoStory = () => new Promise(r => document.getElementById('shareCanvas').toBlob(r, 'image/jpeg', 0.92));
+
+    async function baixarStory() {
+      const blob = await blobDoStory();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `perfisio-${SHARE.fisio.slug}.jpg`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      App.toast('Imagem baixada — poste nos stories e cole o link.');
+    }
+
+    async function compartilharStory() {
+      const blob = await blobDoStory();
+      const arquivo = new File([blob], `perfisio-${SHARE.fisio.slug}.jpg`, { type: 'image/jpeg' });
+      const texto = `${SHARE.fisio.nome} no PerFisio — agende sua consulta: ${SHARE.link}`;
+      if (navigator.canShare && navigator.canShare({ files: [arquivo] })) {
+        try { await navigator.share({ files: [arquivo], text: texto }); return; }
+        catch (e) { if (e.name === 'AbortError') return; }
+      }
+      baixarStory();
+    }
+
+    function copiarLinkShare(botao) {
+      navigator.clipboard.writeText(SHARE.link)
+        .then(() => { App.toast('Link copiado!'); if (botao) { const antes = botao.innerHTML; botao.innerHTML = '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg>'; setTimeout(() => botao.innerHTML = antes, 1600); } })
+        .catch(() => App.toast('Copie manualmente: ' + SHARE.link, 'error'));
     }
 
     /* ---------- acesso ao sistema (usuários & permissões) ---------- */
