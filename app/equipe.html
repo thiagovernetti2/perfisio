@@ -176,7 +176,7 @@
           <div>
             <div style="font-size:.86rem;color:var(--text);line-height:1.6;">
               Imagem no tamanho dos stories (1080×1920), com o logo do PerFisio, a foto, o nome e o
-              QR code que leva ao perfil. O link vai junto no texto.
+              endereço do seu perfil. O link vai junto no texto, para o seguidor tocar.
             </div>
             <div class="link-curto" style="margin-top:14px;"><code id="shareLink">perfis.io/</code>
               <button class="btn btn-ghost btn-sm" title="Copiar link" onclick="copiarLinkShare(this)"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#copiar"></use></svg></button>
@@ -643,7 +643,7 @@
 
     /* ===== compartilhar o perfil nas redes =====
        Monta no navegador uma imagem 1080×1920 (tamanho dos stories) com o logo do PerFisio,
-       a foto, o nome, a especialidade e o QR code do perfil. No celular vai pelo compartilhar
+       a foto, o nome, a especialidade e o endereço do perfil. No celular vai pelo compartilhar
        do sistema, com a imagem e o link juntos; no computador, baixa o arquivo. */
     const STORY = { w: 1080, h: 1920 };
     let SHARE = null; // { fisio, link }
@@ -654,14 +654,6 @@
       i.src = src;
     });
 
-    /* o QR vem como SVG sem width/height, e sem tamanho declarado o canvas não desenha
-       em todos os navegadores — por isso o tamanho entra antes, num blob */
-    async function carregarSvg(url, lado) {
-      const txt = await (await fetch(url)).text();
-      const endereco = URL.createObjectURL(new Blob([txt.replace('<svg', `<svg width="${lado}" height="${lado}"`)], { type: 'image/svg+xml' }));
-      try { return await carregarImagem(endereco); }
-      finally { setTimeout(() => URL.revokeObjectURL(endereco), 4000); }
-    }
 
     function textoCentrado(cx, texto, y, tamanho, cor, peso = '700', larguraMax = 900, entrelinha = 1.18) {
       cx.font = `${peso} ${tamanho}px Inter, Arial, sans-serif`;
@@ -700,8 +692,11 @@
         cx.drawImage(logo, meio - larg / 2, 150, larg, alt);
       } catch (e) { /* sem logo, o resto continua de pé */ }
 
+      // a pergunta que faz o seguidor parar
+      textoCentrado(cx, 'Procurando Fisioterapeuta?', 340, 70, '#FFFFFF', '800', 940, 1.16);
+
       // foto (círculo com anel) ou as iniciais
-      const raio = 215, centroY = 700;
+      const raio = 215, centroY = 760;
       cx.save();
       cx.beginPath(); cx.arc(meio, centroY, raio, 0, Math.PI * 2); cx.closePath(); cx.clip();
       let temFoto = false;
@@ -723,30 +718,31 @@
       cx.lineWidth = 10; cx.strokeStyle = 'rgba(255,255,255,.9)';
       cx.beginPath(); cx.arc(meio, centroY, raio + 5, 0, Math.PI * 2); cx.stroke();
 
-      // nome, especialidade e CREFITO — nome comprido entra menor para o bloco não
-      // encostar na chamada, que fica em posição fixa junto com o QR lá embaixo
+      // nome, especialidade e CREFITO — nome comprido entra menor para o bloco
+      // não encostar na chamada, que fica em posição fixa lá embaixo
       cx.font = '800 78px Inter, Arial, sans-serif';
       const umaLinha = cx.measureText(f.nome || '').width <= 920;
-      let y = textoCentrado(cx, f.nome, 1000, umaLinha ? 78 : 62, '#FFFFFF', '800', 920, 1.14);
+      let y = textoCentrado(cx, f.nome, 1090, umaLinha ? 78 : 62, '#FFFFFF', '800', 920, 1.14);
       const esp = [f.esp, f.cidade].filter(Boolean).join(' · ');
       if (esp) y = textoCentrado(cx, esp, y + 34, 40, 'rgba(255,255,255,.78)', '600', 880);
       if (f.crefito) y = textoCentrado(cx, f.crefito, y + 24, 34, 'rgba(255,255,255,.55)', '600', 880);
 
-      // chamada
-      textoCentrado(cx, 'Agende sua consulta online', 1318, 44, '#5AD0BB', '700', 900);
+      // o convite e, logo abaixo, o endereço do perfil em destaque
+      // (sem QR: ninguém aponta a câmera para o próprio story)
+      textoCentrado(cx, 'Veja meu perfil e agende sua consulta.', 1430, 46, '#5AD0BB', '700', 900, 1.25);
 
-      // QR num cartão branco
-      const ladoQr = 300, caixa = ladoQr + 56, topo = 1380;
-      cx.fillStyle = '#fff';
-      cx.beginPath(); cx.roundRect(meio - caixa / 2, topo, caixa, caixa, 36); cx.fill();
-      try {
-        const qr = await carregarSvg(`/api/public/qrcode/${encodeURIComponent(f.slug)}.svg`, ladoQr);
-        cx.drawImage(qr, meio - ladoQr / 2, topo + 28, ladoQr, ladoQr);
-      } catch (e) { /* sem QR, fica o link abaixo */ }
+      const pilula = { alt: 128, larg: 760, topo: 1570 };
+      cx.fillStyle = '#FFFFFF';
+      cx.beginPath(); cx.roundRect(meio - pilula.larg / 2, pilula.topo, pilula.larg, pilula.alt, pilula.alt / 2); cx.fill();
+      cx.font = '800 48px Inter, Arial, sans-serif';
+      let endereco = 'perfis.io/' + f.slug, tamanho = 48;
+      while (cx.measureText(endereco).width > pilula.larg - 80 && tamanho > 28) {
+        tamanho -= 2; cx.font = `800 ${tamanho}px Inter, Arial, sans-serif`;
+      }
+      cx.fillStyle = '#0F2A2E'; cx.textAlign = 'center';
+      cx.fillText(endereco, meio, pilula.topo + pilula.alt / 2 + tamanho / 3);
 
-      // link e rodapé
-      textoCentrado(cx, 'perfis.io/' + f.slug, topo + caixa + 64, 46, '#FFFFFF', '800', 980);
-      textoCentrado(cx, 'perfisio.com.br', STORY.h - 48, 30, 'rgba(255,255,255,.45)', '600');
+      textoCentrado(cx, 'perfisio.com.br', STORY.h - 70, 30, 'rgba(255,255,255,.45)', '600');
     }
 
     async function abrirCompartilhar(id) {
