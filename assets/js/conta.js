@@ -111,6 +111,9 @@ window.Conta = (function () {
       s.async = true; s.defer = true; s.onload = ok; s.onerror = falhou;
       document.head.appendChild(s);
     }).catch(() => {});
+      // o onload nem sempre chega (script em cache, bloqueio momentâneo): espera o
+      // objeto do Google aparecer por até 3s antes de desistir
+      for (let i = 0; i < 30 && !window.google?.accounts?.id; i++) await new Promise(r => setTimeout(r, 100));
     if (!window.google?.accounts?.id) return;
     window.google.accounts.id.initialize({ client_id: clientId, callback: entrarComGoogle });
     window.google.accounts.id.renderButton(overlay.querySelector('#ctaGoogle'),
