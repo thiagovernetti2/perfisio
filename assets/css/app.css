@@ -437,3 +437,94 @@ table.data tbody tr:hover { background: #F9FBFA; }
 .sino-item em { display: block; font-style: normal; font-size: .79rem; color: var(--text-soft); line-height: 1.5; margin-top: 2px; }
 .sino-item time { display: block; font-size: .7rem; color: var(--text-soft); margin-top: 4px; }
 .sino-vazio { padding: 26px 16px; text-align: center; color: var(--text-soft); font-size: .84rem; }
+
+/* ---------- LOJA (site público e painel) ----------
+   As "fotos" dos produtos são o ícone sólido do sprite sobre um fundo tingido
+   com a cor do produto — honesto e leve, sem foto de banco de imagem. */
+.lj-faixa { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  background: linear-gradient(100deg, var(--primary), var(--accent)); color: #fff;
+  border-radius: 14px; padding: 14px 18px; font-size: .9rem; font-weight: 600; line-height: 1.5; }
+.lj-faixa .i { width: 1.5em; height: 1.5em; flex: none; }
+.lj-faixa b { font-weight: 800; }
+.lj-faixa a { color: #fff; text-decoration: underline; font-weight: 800; }
+
+.lj-filtros { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 20px 0 18px; }
+.lj-busca { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--line);
+  border-radius: 10px; padding: 8px 12px; color: var(--text-soft); margin-left: auto; }
+.lj-busca input { border: none; outline: none; background: none; font-family: inherit; font-size: .86rem; width: 200px; color: var(--text); }
+
+.lj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; }
+.lj-card { display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line);
+  border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); transition: transform .15s, box-shadow .15s; }
+.lj-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+.lj-art { position: relative; aspect-ratio: 5 / 4; display: grid; place-items: center;
+  background: var(--primary-soft);
+  background-image: linear-gradient(145deg, #fff 10%, color-mix(in srgb, var(--c, var(--primary)) 20%, #fff) 100%);
+  border-bottom: 1px solid var(--line); }
+.lj-art .i { width: 42%; height: 42%; color: var(--c, var(--primary)); vertical-align: 0; }
+.lj-art .lj-tag { position: absolute; top: 10px; left: 10px; }
+.lj-corpo { padding: 14px 16px 16px; display: flex; flex-direction: column; flex: 1; gap: 4px; }
+.lj-cat { font-size: .68rem; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: var(--text-soft); }
+.lj-nome { font-size: .93rem; font-weight: 700; color: var(--ink); line-height: 1.35; }
+.lj-resumo { font-size: .79rem; color: var(--text-soft); line-height: 1.5; margin-top: 3px; }
+.lj-precos { margin-top: auto; padding-top: 12px; }
+.lj-de { font-size: .74rem; color: var(--text-soft); text-decoration: line-through; }
+.lj-preco { font-size: 1.12rem; font-weight: 800; color: var(--ink); }
+.lj-fisio { font-size: .75rem; font-weight: 700; color: var(--primary-dark); margin-top: 2px; }
+.lj-acoes { display: flex; gap: 8px; margin-top: 12px; }
+.lj-acoes .btn { flex: 1; justify-content: center; }
+
+/* gaveta do carrinho */
+.lj-btn-cart { position: relative; }
+.lj-btn-cart .lj-contador { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 99px; background: var(--primary); color: #fff; font-size: .66rem; font-weight: 800; line-height: 18px;
+  text-align: center; box-shadow: 0 0 0 2px #fff; }
+.lj-veu { position: fixed; inset: 0; background: rgba(15, 42, 46, .45); z-index: 240; opacity: 0; pointer-events: none; transition: opacity .18s; }
+.lj-veu.abre { opacity: 1; pointer-events: auto; }
+.lj-gaveta { position: fixed; top: 0; right: 0; bottom: 0; width: 420px; max-width: 94vw; background: var(--bg);
+  z-index: 250; display: flex; flex-direction: column; transform: translateX(104%); transition: transform .22s ease;
+  box-shadow: -14px 0 40px rgba(12, 46, 42, .2); }
+.lj-gaveta.abre { transform: none; }
+.lj-gaveta-topo { display: flex; align-items: center; gap: 10px; padding: 16px 18px; background: #fff; border-bottom: 1px solid var(--line); }
+.lj-gaveta-topo h3 { font-size: 1rem; font-weight: 800; color: var(--ink); }
+.lj-gaveta-topo .fechar { margin-left: auto; background: none; border: none; color: var(--text-soft); cursor: pointer; padding: 4px; }
+.lj-gaveta-corpo { flex: 1; overflow-y: auto; padding: 16px 18px; }
+.lj-gaveta-pe { padding: 14px 18px 18px; background: #fff; border-top: 1px solid var(--line); }
+.lj-item { display: flex; gap: 11px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.lj-item:last-child { border-bottom: none; }
+.lj-item .mini { flex: none; width: 46px; height: 46px; border-radius: 10px; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--c, var(--primary)) 14%, #fff); color: var(--c, var(--primary)); }
+.lj-item .mini .i { width: 60%; height: 60%; vertical-align: 0; }
+.lj-item .nome { font-size: .84rem; font-weight: 700; color: var(--ink); line-height: 1.35; }
+.lj-item .linha { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.lj-qtd { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.lj-qtd button { background: none; border: none; cursor: pointer; color: var(--text-soft); padding: 4px 8px; display: grid; place-items: center; font-family: inherit; }
+.lj-qtd button:hover { color: var(--primary-dark); }
+.lj-qtd span { font-size: .8rem; font-weight: 700; color: var(--ink); min-width: 20px; text-align: center; }
+.lj-item .val { margin-left: auto; font-size: .86rem; font-weight: 800; color: var(--ink); }
+.lj-item .tirar { background: none; border: none; color: var(--text-soft); cursor: pointer; font-size: .74rem; font-weight: 600; font-family: inherit; }
+.lj-item .tirar:hover { color: var(--red); }
+.lj-conta { font-size: .85rem; color: var(--text-soft); }
+.lj-conta div { display: flex; justify-content: space-between; padding: 3px 0; }
+.lj-conta .desc { color: var(--green); font-weight: 700; }
+.lj-conta .total { border-top: 1px solid var(--line); margin-top: 7px; padding-top: 9px; font-size: 1.02rem; font-weight: 800; color: var(--ink); }
+.lj-aviso { background: var(--primary-soft); color: var(--primary-dark); border-radius: 10px; padding: 11px 13px;
+  font-size: .8rem; font-weight: 600; line-height: 1.5; margin-bottom: 12px; display: flex; gap: 9px; }
+.lj-aviso .i { flex: none; }
+.lj-aviso a { color: var(--primary-dark); text-decoration: underline; }
+.lj-vazio { text-align: center; color: var(--text-soft); font-size: .86rem; padding: 40px 10px; }
+.lj-ok { text-align: center; padding: 26px 6px; }
+.lj-ok .codigo { font-size: 1.5rem; font-weight: 900; color: var(--ink); letter-spacing: 1px; margin: 10px 0 4px; }
+
+@media (max-width: 720px) {
+  .lj-busca { margin-left: 0; width: 100%; }
+  .lj-busca input { width: 100%; }
+}
+
+/* no celular o cabeçalho da loja quebra em duas linhas: com o botão do carrinho
+   os links não cabem em uma só e empurravam a página para o lado */
+@media (max-width: 760px) {
+  .lp-header.lp-loja { padding-inline: 4vw; gap: 8px; }
+  .lp-header.lp-loja nav { gap: 10px; }
+  .lj-rotulo { display: none; }
+}

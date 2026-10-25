@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loja — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="../assets/img/simbolo-perfisio.svg">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body data-page="loja" data-title="Loja" data-subtitle="Material e equipamento com 5% de desconto para quem usa o PerFisio">
+
+  <div class="page-head">
+    <div>
+      <h2>Loja do PerFisio</h2>
+      <div class="sub">Eletroterapia, pilates, terapia manual, avaliação e consumíveis — entregues na clínica.</div>
+    </div>
+    <button class="btn btn-primary" type="button" data-loja-cart>
+      <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#carrinho"></use></svg> Carrinho</button>
+  </div>
+
+  <div class="lj-faixa" id="faixaDesconto">
+    <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#desconto"></use></svg>
+    <span style="flex:1;min-width:260px;">
+      <b>Você tem 5% de desconto em todos os pedidos</b> porque usa o PerFisio. O desconto entra sozinho no
+      carrinho — sem cupom e sem valor mínimo. Frete grátis acima de R$ 399.
+    </span>
+  </div>
+
+  <div class="tabs" id="abasLoja" style="margin-top:22px;">
+    <button class="tab active" data-tab="catalogo">Catálogo</button>
+    <button class="tab" data-tab="pedidos">Meus pedidos</button>
+  </div>
+
+  <div data-tab-panel="catalogo">
+    <div class="lj-filtros" id="filtros">
+      <span class="chip active" data-cat="">Todos</span>
+      <label class="lj-busca">
+        <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#busca"></use></svg>
+        <input type="search" id="busca" placeholder="Buscar produto, categoria ou marca">
+      </label>
+    </div>
+    <div class="lj-grid" id="grid">
+      <div class="lj-vazio" style="grid-column:1/-1;">Carregando produtos...</div>
+    </div>
+  </div>
+
+  <div data-tab-panel="pedidos" style="display:none;">
+    <div class="card" id="listaPedidos">
+      <div class="lj-vazio">Carregando pedidos...</div>
+    </div>
+  </div>
+
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/sidebar.js"></script>
+  <script src="../assets/js/loja.js"></script>
+  <script>
+    App.initTabs(document.getElementById('abasLoja'));
+
+    const grid = document.getElementById('grid');
+    const filtros = document.getElementById('filtros');
+    const busca = document.getElementById('busca');
+    let produtos = [], categoria = '', termo = '';
+
+    const visiveis = () => produtos.filter(p => {
+      if (categoria && p.categoria !== categoria) return false;
+      if (!termo) return true;
+      const t = termo.toLowerCase();
+      return [p.nome, p.resumo, p.categoria, p.marca].some(x => String(x || '').toLowerCase().includes(t));
+    });
+
+    function desenhar() {
+      const lista = visiveis();
+      grid.innerHTML = lista.length
+        ? lista.map(p => Loja.cartao(p, { novaAba: true })).join('')
+        : '<div class="lj-vazio" style="grid-column:1/-1;">Nenhum produto encontrado com esse filtro.</div>';
+    }
+
+    filtros.addEventListener('click', e => {
+      const chip = e.target.closest('.chip');
+      if (!chip) return;
+      filtros.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c === chip));
+      categoria = chip.dataset.cat;
+      desenhar();
+    });
+    busca.addEventListener('input', () => { termo = busca.value.trim(); desenhar(); });
+    document.addEventListener('loja:resumo', e => {
+      desenhar();
+      // clínica sem assinatura ativa ainda vê o catálogo, mas sem a promessa do desconto
+      if (!e.detail.profissional) document.getElementById('faixaDesconto').hidden = true;
+    });
+
+    const ROTULO = { novo: ['amber', 'aguardando confirmação'], pago: ['blue', 'pago'], enviado: ['purple', 'enviado'],
+      entregue: ['green', 'entregue'], cancelado: ['gray', 'cancelado'] };
+
+    function desenharPedidos(pedidos) {
+      const box = document.getElementById('listaPedidos');
+      if (!pedidos.length) {
+        box.innerHTML = `<div class="lj-vazio">Nenhum pedido ainda. O que você comprar aqui aparece nesta lista.</div>`;
+        return;
+      }
+      box.innerHTML = `<div class="table-wrap"><table class="data">
+        <thead><tr><th>Pedido</th><th>Itens</th><th>Situação</th><th style="text-align:right;">Desconto</th><th style="text-align:right;">Total</th></tr></thead>
+        <tbody>${pedidos.map(p => {
+          const [cor, texto] = ROTULO[p.status] || ['gray', p.status];
+          const itens = (p.itens || []);
+          return `<tr>
+            <td><div class="p-name" style="font-weight:700;">${Loja.esc(p.codigo)}</div>
+                <div class="p-sub" style="font-size:.74rem;color:var(--text-soft);">${PF.fmtData(p.criado_em.slice(0, 10))}</div></td>
+            <td style="font-size:.82rem;line-height:1.5;">${itens.map(i => `${i.qtd}× ${Loja.esc(i.nome)}`).join('<br>') || '—'}</td>
+            <td><span class="badge ${cor}">${texto}</span></td>
+            <td style="text-align:right;font-size:.82rem;color:var(--green);font-weight:700;">
+              ${p.desconto > 0 ? '− ' + Loja.moeda(p.desconto) : '—'}</td>
+            <td style="text-align:right;font-weight:800;">${Loja.moeda(p.total)}</td>
+          </tr>`;
+        }).join('')}</tbody></table></div>`;
+    }
+
+    async function carregarPedidos() {
+      try { desenharPedidos(await PF.api('/api/loja/pedidos')); }
+      catch (e) { document.getElementById('listaPedidos').innerHTML = `<div class="lj-vazio">${Loja.esc(e.message)}</div>`; }
+    }
+
+    async function boot() {
+      try {
+        const d = await Loja.pedir('/api/public/loja/produtos');
+        produtos = d.produtos;
+        Loja.registrar(produtos);
+        d.categorias.forEach(c => {
+          const chip = document.createElement('span');
+          chip.className = 'chip';
+          chip.dataset.cat = c.categoria;
+          chip.textContent = `${c.categoria} (${c.n})`;
+          filtros.insertBefore(chip, filtros.querySelector('.lj-busca'));
+        });
+        desenhar();
+      } catch (e) {
+        grid.innerHTML = '<div class="lj-vazio" style="grid-column:1/-1;">Não foi possível carregar os produtos agora.</div>';
+      }
+      Loja.iniciar();
+      carregarPedidos();
+      // pedido fechado aqui dentro: a lista de pedidos já se atualiza
+      document.addEventListener('loja:pedido', () => carregarPedidos());
+      if (new URLSearchParams(location.search).get('pedido')) {
+        document.querySelector('[data-tab="pedidos"]').click();
+      }
+    }
+
+    boot();
+  </script>
+</body>
+</html>

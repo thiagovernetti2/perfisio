@@ -65,6 +65,9 @@
         <div class="nav-label">Marketing</div>
         <a class="nav-item" data-sec="social" onclick="irSecao('social')"><span class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#celular"></use></svg></span>Posts · Aprovações</a>
         <a class="nav-item" data-sec="assinatura" onclick="irSecao('assinatura')"><span class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#email"></use></svg></span>Assinatura de e-mail</a>
+        <div class="nav-label">Loja</div>
+        <a class="nav-item" data-sec="produtos" onclick="irSecao('produtos')"><span class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#loja"></use></svg></span>Produtos</a>
+        <a class="nav-item" data-sec="pedidos" onclick="irSecao('pedidos')"><span class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#carrinho"></use></svg></span>Pedidos</a>
         <div class="nav-label">Atalhos</div>
         <a class="nav-item" href="../index.html" target="_blank"><span class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#globo"></use></svg></span>Site público</a>
         <a class="nav-item" href="../login.html" target="_blank"><span class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#chave"></use></svg></span>Login das clínicas</a>
@@ -237,6 +240,94 @@
           </div>
         </div>
 
+        <!-- PRODUTOS DA LOJA -->
+        <div data-sec-panel="produtos" style="display:none;">
+          <div class="card">
+            <div class="card-header">
+              <h3>Catálogo da loja <span id="prodTotal" style="font-weight:600;color:var(--text-soft);font-size:.78rem;"></span></h3>
+              <button class="btn btn-primary btn-sm" onclick="abrirProduto()">+ Produto</button>
+            </div>
+            <div style="padding:0 16px 10px;font-size:.82rem;color:var(--text-soft);line-height:1.6;">
+              O catálogo é um só para todo o PerFisio. Fisioterapeuta logado no painel ganha
+              <b id="prodDesconto">5%</b> em todo o pedido — para mudar o percentual, defina
+              <code>LOJA_DESCONTO_FISIO</code> no Railway.
+            </div>
+            <div class="table-wrap" style="padding-top:4px;">
+              <table class="data">
+                <thead><tr><th>Produto</th><th>Categoria</th><th style="text-align:right;">Preço</th>
+                  <th style="text-align:right;">Com 5%</th><th style="text-align:right;">Estoque</th><th>Situação</th><th></th></tr></thead>
+                <tbody id="prodRows"><tr><td colspan="7" class="empty">Carregando...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- PEDIDOS DA LOJA -->
+        <div data-sec-panel="pedidos" style="display:none;">
+          <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">
+            <div class="stat-card">
+              <div class="s-top"><span class="s-label">Pedidos</span><div class="s-ico" style="background:var(--primary-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#carrinho"></use></svg></div></div>
+              <div class="s-value" id="pdTotal">—</div><div class="s-delta"><span class="muted" id="pdTotalSub"></span></div>
+            </div>
+            <div class="stat-card">
+              <div class="s-top"><span class="s-label">Vendido</span><div class="s-ico" style="background:var(--green-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#dinheiro"></use></svg></div></div>
+              <div class="s-value" id="pdValor">—</div><div class="s-delta"><span class="muted">soma dos pedidos não cancelados</span></div>
+            </div>
+            <div class="stat-card">
+              <div class="s-top"><span class="s-label">Desconto dado</span><div class="s-ico" style="background:var(--blue-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#desconto"></use></svg></div></div>
+              <div class="s-value" id="pdDesconto">—</div><div class="s-delta"><span class="muted">aos profissionais do PerFisio</span></div>
+            </div>
+            <div class="stat-card">
+              <div class="s-top"><span class="s-label">A confirmar</span><div class="s-ico" style="background:var(--amber-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#ampulheta"></use></svg></div></div>
+              <div class="s-value" id="pdNovos">—</div><div class="s-delta"><span class="muted">pedidos ainda sem pagamento</span></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3>Todos os pedidos</h3></div>
+            <div class="table-wrap" style="padding-top:8px;">
+              <table class="data">
+                <thead><tr><th>Pedido</th><th>Cliente</th><th>Entrega</th><th>Itens</th>
+                  <th style="text-align:right;">Total</th><th>Situação</th></tr></thead>
+                <tbody id="pedRows"><tr><td colspan="6" class="empty">Carregando...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PRODUTO DA LOJA -->
+  <div class="modal-overlay" id="mProduto">
+    <div class="modal wide">
+      <div class="modal-head">
+        <h3 id="pdTitulo">Novo produto</h3>
+        <button class="close" onclick="App.closeModal('mProduto')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field full"><label>Nome *</label><input type="text" id="pdNome" placeholder="Ex.: Ultrassom terapêutico 1 e 3 MHz"></div>
+          <div class="field"><label>Categoria</label><input type="text" id="pdCategoria" list="pdCats" placeholder="Eletroterapia">
+            <datalist id="pdCats"></datalist></div>
+          <div class="field"><label>Marca</label><input type="text" id="pdMarca" placeholder="Movetec"></div>
+          <div class="field"><label>Preço (R$) *</label><input type="number" id="pdPreco" min="0" step="0.01"></div>
+          <div class="field"><label>Preço antigo (R$)</label><input type="number" id="pdPrecoDe" min="0" step="0.01" placeholder="deixe vazio se não houver oferta"></div>
+          <div class="field"><label>Estoque</label><input type="number" id="pdEstoque" min="0" step="1" value="10"></div>
+          <div class="field"><label>Ícone (sprite)</label><input type="text" id="pdIcone" value="caixa" placeholder="caixa, pilates, halteres, spa..."></div>
+          <div class="field"><label>Cor</label><input type="color" id="pdCor" value="#0DA189" style="height:42px;padding:4px;"></div>
+          <div class="field"><label>&nbsp;</label>
+            <div class="check-row"><input type="checkbox" id="pdDestaque"><label for="pdDestaque" style="margin:0;font-weight:500;">Destaque na loja</label></div>
+          </div>
+          <div class="field full"><label>Resumo (uma linha, aparece no cartão)</label><input type="text" id="pdResumo"></div>
+          <div class="field full"><label>Descrição</label><textarea id="pdDescricao" style="min-height:90px;"></textarea></div>
+          <div class="field full"><label>Especificações (uma por linha)</label><textarea id="pdSpecs" style="min-height:80px;" placeholder="1 MHz e 3 MHz&#10;Cabeçote de 5 cm²"></textarea></div>
+          <div class="check-row"><input type="checkbox" id="pdAtivo" checked><label for="pdAtivo" style="margin:0;font-weight:500;">Ativo (visível na loja)</label></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal('mProduto')">Cancelar</button>
+        <button class="btn btn-primary" id="btnPd" onclick="salvarProduto()">Salvar</button>
       </div>
     </div>
   </div>
@@ -368,6 +459,8 @@
       fisios: ['Profissionais', 'Fisioterapeutas de todas as clínicas'],
       social: ['Posts · Aprovações', 'Conteúdo para as redes das clínicas'],
       assinatura: ['Assinatura de e-mail', 'A mesma cara em toda mensagem que sai da equipe'],
+      produtos: ['Produtos da loja', 'Catálogo único — quem usa o PerFisio tem 5% em todo pedido'],
+      pedidos: ['Pedidos da loja', 'Pedidos do site e dos painéis das clínicas'],
     };
     function irSecao(sec) {
       document.querySelectorAll('#admNav .nav-item[data-sec]').forEach(n => n.classList.toggle('active', n.dataset.sec === sec));
@@ -440,7 +533,9 @@
       renderClinicas();
       carregarFisios();
       carregarSocial();
-      const opts = clinicas.filter(c => c.ativa).map(c => ` 7 `).join('');
+      carregarProdutos().catch(e => console.error('loja (produtos):', e.message));
+      carregarPedidos().catch(e => console.error('loja (pedidos):', e.message));
+      const opts = clinicas.filter(c => c.ativa).map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
       document.getElementById('mfClinica').innerHTML = opts;
       preencherClinicasSocial();
     }
@@ -450,8 +545,8 @@
       const comPlano = CLINICAS.filter(c => c.ativa && c.plano_social);
       const sel = document.getElementById('psClinica');
       sel.innerHTML = comPlano.length
-        ? comPlano.map(c => ` 8 `).join('')
-        : ' 9 ';
+        ? comPlano.map(c => `<option value="${c.id}">${c.nome}</option>`).join('')
+        : '<option value="">Nenhuma clínica com o plano contratado</option>';
       sel.disabled = !comPlano.length;
       document.getElementById('psAviso').style.display = comPlano.length ? 'none' : '';
       document.getElementById('psContagem').textContent = comPlano.length
@@ -657,7 +752,7 @@
           <div class="field" style="flex:1;min-width:130px;"><label>Novo usuário</label><input type="text" id="nuNome" placeholder="Nome"></div>
           <div class="field" style="flex:1;min-width:150px;"><label>&nbsp;</label><input type="email" id="nuEmail" placeholder="email@clinica.com"></div>
           <div class="field"><label>&nbsp;</label>
-            <select id="nuPerfil"> 10  11  12 </select>
+            <select id="nuPerfil"><option value="gestor">Gestor</option><option value="fisio">Fisioterapeuta</option><option value="recepcao">Recepção</option></select>
           </div>
           <button class="btn btn-soft btn-sm" style="margin-bottom:2px;" onclick="criarUsuario()">＋ Criar</button>
         </div>`;
@@ -1108,6 +1203,121 @@
 
       pintar();
     })();
+
+    /* ---------- LOJA: produtos e pedidos ---------- */
+    let PRODUTOS = [], LOJA_CFG = { desconto: 5 }, produtoEditId = null;
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const dinheiro = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
+    const comDesconto = v => dinheiro(Number(v) * (1 - LOJA_CFG.desconto / 100));
+
+    async function carregarProdutos() {
+      const d = await PF.api('/api/admin/produtos');
+      PRODUTOS = d.produtos; LOJA_CFG = d.loja || LOJA_CFG;
+      document.getElementById('prodDesconto').textContent = LOJA_CFG.desconto + '%';
+      document.getElementById('prodTotal').textContent =
+        `· ${PRODUTOS.length} produtos (${PRODUTOS.filter(p => p.ativo).length} ativos)`;
+      const cats = [...new Set(PRODUTOS.map(p => p.categoria))].sort();
+      document.getElementById('pdCats').innerHTML = cats.map(c => `<option value="${esc(c)}"></option>`).join('');
+      document.getElementById('prodRows').innerHTML = PRODUTOS.map(p => `
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:10px;">
+            <span style="width:30px;height:30px;border-radius:8px;display:grid;place-items:center;flex:none;background:${esc(p.cor)}22;color:${esc(p.cor)};">
+              <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#${esc(p.icone || 'caixa')}"></use></svg></span>
+            <div><div class="p-name" style="font-weight:600;">${esc(p.nome)}${p.destaque ? ' <span class="badge primary">destaque</span>' : ''}</div>
+              <div class="p-sub" style="font-size:.74rem;color:var(--text-soft);">${esc(p.marca || '')}${p.teste ? ' · produto de teste' : ''}</div></div>
+          </div></td>
+          <td style="font-size:.82rem;">${esc(p.categoria)}</td>
+          <td style="text-align:right;font-weight:700;">${dinheiro(p.preco)}</td>
+          <td style="text-align:right;font-size:.82rem;color:var(--primary-dark);font-weight:700;">${comDesconto(p.preco)}</td>
+          <td style="text-align:right;">${p.estoque}</td>
+          <td><span class="badge ${p.ativo ? 'green' : 'gray'}">${p.ativo ? 'na loja' : 'oculto'}</span></td>
+          <td style="white-space:nowrap;">
+            <a class="btn btn-ghost btn-sm" href="/loja/${esc(p.slug)}" target="_blank" title="Ver na loja">
+              <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#externo"></use></svg></a>
+            <button class="btn btn-soft btn-sm" onclick="abrirProduto('${p.id}')">Editar</button>
+            <button class="btn btn-ghost btn-sm" onclick="excluirProduto('${p.id}')" title="Excluir">
+              <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#lixeira"></use></svg></button>
+          </td>
+        </tr>`).join('') || '<tr><td colspan="7" class="empty">Nenhum produto. Use <b>+ Produto</b>.</td></tr>';
+    }
+
+    function abrirProduto(id) {
+      produtoEditId = id || null;
+      const p = id ? PRODUTOS.find(x => x.id === id) : null;
+      document.getElementById('pdTitulo').textContent = p ? p.nome : 'Novo produto';
+      const v = (campo, valor) => { document.getElementById(campo).value = valor == null ? '' : valor; };
+      v('pdNome', p && p.nome); v('pdCategoria', p ? p.categoria : 'Eletroterapia'); v('pdMarca', p && p.marca);
+      v('pdPreco', p && p.preco); v('pdPrecoDe', p && p.preco_de); v('pdEstoque', p ? p.estoque : 10);
+      v('pdIcone', p ? p.icone : 'caixa'); v('pdResumo', p && p.resumo); v('pdDescricao', p && p.descricao);
+      v('pdSpecs', p && Array.isArray(p.especificacoes) ? p.especificacoes.join('\n') : '');
+      document.getElementById('pdCor').value = p ? p.cor : '#0DA189';
+      document.getElementById('pdDestaque').checked = !!(p && p.destaque);
+      document.getElementById('pdAtivo').checked = p ? !!p.ativo : true;
+      App.openModal('mProduto');
+    }
+
+    async function salvarProduto() {
+      const btn = document.getElementById('btnPd');
+      const corpo = {
+        nome: pdNome.value.trim(), categoria: pdCategoria.value.trim() || 'Geral', marca: pdMarca.value.trim() || null,
+        resumo: pdResumo.value.trim() || null, descricao: pdDescricao.value.trim() || null,
+        especificacoes: pdSpecs.value.split('\n').map(s => s.trim()).filter(Boolean),
+        preco: Number(pdPreco.value) || 0, preco_de: pdPrecoDe.value === '' ? null : Number(pdPrecoDe.value),
+        estoque: parseInt(pdEstoque.value, 10) || 0, icone: pdIcone.value.trim() || 'caixa',
+        cor: pdCor.value, destaque: pdDestaque.checked, ativo: pdAtivo.checked,
+      };
+      if (!corpo.nome) { App.toast('Informe o nome do produto', 'error'); return; }
+      btn.disabled = true; btn.textContent = 'Salvando...';
+      try {
+        if (produtoEditId) await PF.api('/api/admin/produtos/' + produtoEditId, { method: 'PUT', body: corpo });
+        else await PF.api('/api/admin/produtos', { method: 'POST', body: corpo });
+        App.closeModal('mProduto');
+        App.toast('Produto salvo');
+        await carregarProdutos();
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false; btn.textContent = 'Salvar';
+    }
+
+    async function excluirProduto(id) {
+      const p = PRODUTOS.find(x => x.id === id);
+      if (!confirm(`Excluir "${p ? p.nome : 'produto'}" da loja? Os pedidos antigos continuam com o item registrado.`)) return;
+      try { await PF.api('/api/admin/produtos/' + id, { method: 'DELETE' }); App.toast('Produto excluído'); await carregarProdutos(); }
+      catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    const ST_PEDIDO = ['novo', 'pago', 'enviado', 'entregue', 'cancelado'];
+    async function carregarPedidos() {
+      const pedidos = await PF.api('/api/admin/pedidos');
+      const validos = pedidos.filter(p => p.status !== 'cancelado');
+      document.getElementById('pdTotal').textContent = pedidos.length;
+      document.getElementById('pdTotalSub').textContent = `${pedidos.filter(p => p.profissional).length} de profissionais do PerFisio`;
+      document.getElementById('pdValor').textContent = App.money(validos.reduce((s, p) => s + Number(p.total), 0));
+      document.getElementById('pdDesconto').textContent = App.money(validos.reduce((s, p) => s + Number(p.desconto), 0));
+      document.getElementById('pdNovos').textContent = pedidos.filter(p => p.status === 'novo').length;
+      document.getElementById('pedRows').innerHTML = pedidos.map(p => `
+        <tr>
+          <td><div class="p-name" style="font-weight:700;">${esc(p.codigo)}</div>
+            <div class="p-sub" style="font-size:.74rem;color:var(--text-soft);">${PF.fmtData(p.criado_em.slice(0, 10))}</div></td>
+          <td><div class="p-name">${esc(p.nome)}</div>
+            <div class="p-sub" style="font-size:.74rem;color:var(--text-soft);">${esc(p.email)} · ${esc(p.telefone || '')}</div>
+            ${p.clinica_nome ? `<div class="p-sub" style="font-size:.72rem;color:var(--primary-dark);font-weight:700;">${esc(p.clinica_nome)} · ${p.desconto_pct}% off</div>` : ''}</td>
+          <td style="font-size:.78rem;max-width:230px;line-height:1.5;">${esc(p.endereco || '—')}<br>${esc(p.cidade || '')} ${p.cep ? '· ' + esc(p.cep) : ''}
+            ${p.obs ? `<br><em style="color:var(--text-soft);">${esc(p.obs)}</em>` : ''}</td>
+          <td style="font-size:.78rem;line-height:1.5;">${(p.itens || []).map(i => `${i.qtd}× ${esc(i.nome)}`).join('<br>') || '—'}</td>
+          <td style="text-align:right;">
+            <div style="font-weight:800;">${dinheiro(p.total)}</div>
+            ${p.desconto > 0 ? `<div style="font-size:.72rem;color:var(--green);font-weight:700;">− ${dinheiro(p.desconto)}</div>` : ''}
+            <div style="font-size:.72rem;color:var(--text-soft);">frete ${p.frete ? dinheiro(p.frete) : 'grátis'}</div></td>
+          <td><select onchange="mudarStatusPedido('${p.id}', this.value)" style="font-size:.8rem;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-family:inherit;">
+            ${ST_PEDIDO.map(s => `<option value="${s}"${s === p.status ? ' selected' : ''}>${s}</option>`).join('')}
+          </select></td>
+        </tr>`).join('') || '<tr><td colspan="6" class="empty">Nenhum pedido ainda.</td></tr>';
+    }
+
+    async function mudarStatusPedido(id, status) {
+      try { await PF.api('/api/admin/pedidos/' + id, { method: 'PUT', body: { status } }); App.toast('Situação atualizada'); await carregarPedidos(); }
+      catch (e) { App.toast(e.message, 'error'); await carregarPedidos(); }
+    }
 
     boot();
   </script>

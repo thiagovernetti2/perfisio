@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loja do PerFisio — equipamento e material para fisioterapia</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="/assets/img/simbolo-perfisio.svg">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <link rel="stylesheet" href="/assets/css/site.css">
+  <style>
+    .loja-hero { padding: 54px 6vw 10px; max-width: 1180px; margin: 0 auto; }
+    .loja-hero .kicker { font-size: .78rem; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; color: var(--primary-dark); }
+    .loja-hero h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 900; color: var(--ink); letter-spacing: -1px; margin-top: 12px; }
+    .loja-hero p { color: var(--text-soft); font-size: 1rem; margin: 13px 0 22px; max-width: 620px; line-height: 1.7; }
+    .loja-wrap { max-width: 1180px; margin: 0 auto; padding: 0 6vw 10px; }
+    .loja-vantagens { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin: 52px 0 10px; }
+    .loja-vant { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+    .loja-vant .i { width: 26px; height: 26px; color: var(--primary); vertical-align: 0; }
+    .loja-vant b { display: block; font-size: .95rem; color: var(--ink); margin: 10px 0 5px; }
+    .loja-vant span { font-size: .84rem; color: var(--text-soft); line-height: 1.6; }
+    .loja-cta { background: var(--ink); color: #fff; border-radius: 18px; padding: 34px 36px; margin: 46px 0 0;
+      display: flex; gap: 22px; align-items: center; flex-wrap: wrap; }
+    .loja-cta h3 { font-size: 1.3rem; font-weight: 800; letter-spacing: -.4px; }
+    .loja-cta p { color: #9FB4B1; font-size: .92rem; margin-top: 8px; line-height: 1.65; max-width: 560px; }
+    .loja-cta .btn { padding: 12px 24px; }
+    .loja-pedido { background: var(--green-soft); border: 1px solid #BDE4D2; border-radius: 14px;
+      padding: 16px 18px; margin: 0 0 22px; font-size: .88rem; color: var(--ink); line-height: 1.6; }
+    @media (max-width: 900px) { .loja-vantagens { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="lp-header lp-loja">
+    <a class="logo" href="/"><img src="/assets/img/logo-perfisio.svg" alt="PerFisio" width="176" height="30"></a>
+    <nav>
+      <a href="/#profissionais">Encontrar fisioterapeuta</a>
+      <a href="/site-para-fisioterapeutas">Para fisioterapeutas</a>
+      <a href="/loja" style="color:var(--ink);">Loja</a>
+      <a href="/planos.html">Planos</a>
+      <a href="/blog">Blog</a>
+      <button class="btn btn-ghost btn-sm" type="button" data-loja-cart aria-label="Abrir carrinho">
+        <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#carrinho"></use></svg> <span class="lj-rotulo">Carrinho</span></button>
+      <a href="/login.html" class="btn btn-primary btn-sm">Entrar</a>
+    </nav>
+  </header>
+
+  <section class="loja-hero">
+    <div class="kicker">Loja</div>
+    <h1>Equipamento e material para a sua clínica</h1>
+    <p>Eletroterapia, pilates, terapia manual, avaliação e consumíveis — selecionados para quem atende
+      todos os dias. Entrega para todo o Brasil e nota fiscal em nome da clínica.</p>
+    <div class="lj-faixa">
+      <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#desconto"></use></svg>
+      <span style="flex:1;min-width:260px;">
+        <b>Fisioterapeuta que usa o PerFisio tem 5% de desconto</b> em todos os pedidos da loja.
+        Entre com a sua conta e o desconto já aparece no carrinho.
+      </span>
+      <a href="/cadastro">Criar minha conta grátis →</a>
+    </div>
+  </section>
+
+  <div class="loja-wrap">
+    <div id="pedidoBox" hidden></div>
+
+    <div class="lj-filtros" id="filtros">
+      <span class="chip active" data-cat="">Todos</span>
+      <label class="lj-busca">
+        <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#busca"></use></svg>
+        <input type="search" id="busca" placeholder="Buscar produto, categoria ou marca">
+      </label>
+    </div>
+
+    <div class="lj-grid" id="grid">
+      <div class="lj-vazio" style="grid-column:1/-1;">Carregando produtos...</div>
+    </div>
+
+    <div class="loja-vantagens">
+      <div class="loja-vant">
+        <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#desconto"></use></svg>
+        <b>5% para quem usa o PerFisio</b>
+        <span>O desconto entra sozinho no carrinho quando você está logado na sua conta do PerFisio — em todos os
+          produtos, sem valor mínimo e sem cupom.</span>
+      </div>
+      <div class="loja-vant">
+        <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#frete"></use></svg>
+        <b>Frete grátis acima de R$ 399</b>
+        <span>Abaixo disso, frete fixo de R$ 29,90 para todo o Brasil. O prazo é confirmado por e-mail junto
+          com o pagamento.</span>
+      </div>
+      <div class="loja-vant">
+        <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#recibo"></use></svg>
+        <b>Nota fiscal da clínica</b>
+        <span>Pedido feito de dentro do painel já sai no CNPJ cadastrado e fica registrado em Loja, junto dos
+          pedidos anteriores.</span>
+      </div>
+    </div>
+
+    <div class="loja-cta">
+      <div style="flex:1;min-width:280px;">
+        <h3>Ainda não usa o PerFisio?</h3>
+        <p>Agenda, prontuário eletrônico, financeiro e um perfil público que traz paciente — R$ 40 por
+          fisioterapeuta/mês. E 5% de desconto em tudo que você comprar aqui.</p>
+      </div>
+      <a class="btn btn-primary" href="/cadastro">Criar conta grátis</a>
+      <a class="btn btn-ghost" href="/planos.html" style="background:transparent;color:#fff;border-color:rgba(255,255,255,.3);">Ver planos</a>
+    </div>
+  </div>
+
+  <footer class="lp-footer">
+    <b style="color:var(--ink);">PerFisio</b> © 2026 — Conectando pacientes e fisioterapeutas ·
+    <a href="/">Início</a> · <a href="/site-para-fisioterapeutas">Para fisioterapeutas</a> ·
+    <a href="/loja">Loja</a> · <a href="/planos.html">Planos</a> · <a href="/blog">Blog</a>
+  </footer>
+
+  <script src="/assets/js/app.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/loja.js"></script>
+  <script>
+    const grid = document.getElementById('grid');
+    const filtros = document.getElementById('filtros');
+    const busca = document.getElementById('busca');
+    let produtos = [], categoria = '', termo = '';
+
+    const visiveis = () => produtos.filter(p => {
+      if (categoria && p.categoria !== categoria) return false;
+      if (!termo) return true;
+      const t = termo.toLowerCase();
+      return [p.nome, p.resumo, p.categoria, p.marca].some(x => String(x || '').toLowerCase().includes(t));
+    });
+
+    function desenhar() {
+      const lista = visiveis();
+      grid.innerHTML = lista.length
+        ? lista.map(p => Loja.cartao(p)).join('')
+        : '<div class="lj-vazio" style="grid-column:1/-1;">Nenhum produto encontrado com esse filtro.</div>';
+    }
+
+    async function carregar() {
+      try {
+        const d = await Loja.pedir('/api/public/loja/produtos');
+        produtos = d.produtos;
+        Loja.registrar(produtos);
+        d.categorias.forEach(c => {
+          const chip = document.createElement('span');
+          chip.className = 'chip';
+          chip.dataset.cat = c.categoria;
+          chip.textContent = `${c.categoria} (${c.n})`;
+          filtros.insertBefore(chip, filtros.querySelector('.lj-busca'));
+        });
+        // link de categoria (vindo da página do produto) já abre filtrado
+        const cat = new URLSearchParams(location.search).get('cat');
+        const chipCat = cat && [...filtros.querySelectorAll('.chip')].find(c => c.dataset.cat === cat);
+        if (chipCat) chipCat.click();
+        desenhar();
+      } catch (e) {
+        grid.innerHTML = `<div class="lj-vazio" style="grid-column:1/-1;">Não foi possível carregar os produtos agora.</div>`;
+      }
+    }
+
+    filtros.addEventListener('click', e => {
+      const chip = e.target.closest('.chip');
+      if (!chip) return;
+      filtros.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c === chip));
+      categoria = chip.dataset.cat;
+      desenhar();
+    });
+    busca.addEventListener('input', () => { termo = busca.value.trim(); desenhar(); });
+    // o desconto do profissional chega depois: os preços dos cartões se atualizam
+    document.addEventListener('loja:resumo', desenhar);
+
+    carregar();
+    Loja.iniciar();
+
+    /* volta do checkout (ou link do pedido): mostra a situação do pedido no topo */
+    (async function situacaoDoPedido() {
+      const codigo = new URLSearchParams(location.search).get('pedido');
+      if (!codigo) return;
+      const box = document.getElementById('pedidoBox');
+      try {
+        const p = await Loja.pedir('/api/public/loja/pedido/' + encodeURIComponent(codigo));
+        const rotulo = { novo: 'aguardando confirmação', pago: 'pago', enviado: 'enviado', entregue: 'entregue', cancelado: 'cancelado' }[p.status] || p.status;
+        box.className = 'loja-pedido';
+        box.innerHTML = `<b>Pedido ${Loja.esc(p.codigo)} · ${rotulo}</b><br>
+          ${p.itens.reduce((s, i) => s + i.qtd, 0)} item(ns) · total de ${Loja.moeda(p.total)}
+          ${p.desconto > 0 ? ` (com ${p.desconto_pct}% de desconto do PerFisio)` : ''}.
+          Nossa equipe confirma o pagamento e o prazo de entrega por e-mail.`;
+        box.hidden = false;
+      } catch (e) { /* código inválido: não mostra nada */ }
+    })();
+  </script>
+</body>
+</html>

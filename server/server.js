@@ -311,6 +311,54 @@ CREATE TABLE IF NOT EXISTS fisio_fotos (
   nome text, mime text NOT NULL, dados bytea NOT NULL,
   criado_em timestamptz NOT NULL DEFAULT now()
 );
+-- loja: catálogo único do PerFisio (não é por clínica). Quem usa o PerFisio
+-- ganha 5% em todo o pedido; o desconto fica gravado no pedido, não no produto.
+CREATE TABLE IF NOT EXISTS produtos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug text UNIQUE,
+  nome text NOT NULL,
+  categoria text NOT NULL DEFAULT 'Geral',
+  marca text,
+  resumo text,
+  descricao text,
+  especificacoes jsonb NOT NULL DEFAULT '[]'::jsonb,
+  preco numeric(10,2) NOT NULL DEFAULT 0,
+  preco_de numeric(10,2),
+  estoque int NOT NULL DEFAULT 0,
+  icone text NOT NULL DEFAULT 'caixa',
+  cor text NOT NULL DEFAULT '#0DA189',
+  destaque boolean NOT NULL DEFAULT false,
+  ativo boolean NOT NULL DEFAULT true,
+  teste boolean NOT NULL DEFAULT false,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS pedidos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  codigo text NOT NULL UNIQUE,
+  clinica_id uuid REFERENCES clinicas(id) ON DELETE SET NULL,
+  usuario_id uuid REFERENCES usuarios(id) ON DELETE SET NULL,
+  nome text NOT NULL, email text NOT NULL, telefone text,
+  cep text, endereco text, cidade text, obs text,
+  profissional boolean NOT NULL DEFAULT false,
+  desconto_pct numeric(5,2) NOT NULL DEFAULT 0,
+  subtotal numeric(10,2) NOT NULL DEFAULT 0,
+  desconto numeric(10,2) NOT NULL DEFAULT 0,
+  frete numeric(10,2) NOT NULL DEFAULT 0,
+  total numeric(10,2) NOT NULL DEFAULT 0,
+  status text NOT NULL DEFAULT 'novo',
+  pagamento text,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS pedidos_clinica_idx ON pedidos (clinica_id, criado_em DESC);
+CREATE TABLE IF NOT EXISTS pedido_itens (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  pedido_id uuid NOT NULL REFERENCES pedidos(id) ON DELETE CASCADE,
+  produto_id uuid REFERENCES produtos(id) ON DELETE SET NULL,
+  nome text NOT NULL,
+  qtd int NOT NULL DEFAULT 1,
+  preco numeric(10,2) NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS pedido_itens_idx ON pedido_itens (pedido_id);
 `;
 
 /* migração de dados: pacientes com histórico ganham um tratamento inicial */
@@ -615,6 +663,9 @@ const REGRAS_FISIO = [
   // sino de avisos: o filtro por fisio_id acontece na própria rota
   { m: 'GET', re: /^\/api\/notificacoes$/ },
   { m: 'POST', re: /^\/api\/notificacoes\/lidas$/ },
+  // loja: o fisioterapeuta compra material e vê os pedidos da clínica dele
+  { m: 'GET', re: /^\/api\/loja\/(resumo|pedidos)$/ },
+  { m: 'POST', re: /^\/api\/loja\/pedidos$/ },
   // convites de outras clínicas e horários ocupados fora desta
   { m: 'GET', re: /^\/api\/convites$/ },
   { m: 'POST', re: /^\/api\/convites\/[\w-]+\/(aceitar|recusar)$/ },
@@ -2292,6 +2343,453 @@ app.post('/api/billing/sincronizar', auth, async (req, res) => {
 });
 
 /* ---------- CRUD GENÉRICO (escopado por clínica) ---------- */
+/* ============ LOJA ============
+   Catálogo único do PerFisio (não é por clínica). Quem usa o sistema tem 5% em
+   todo o pedido: o desconto é calculado aqui, a partir do login — nunca no
+   navegador — e fica gravado no pedido. */
+const LOJA = {
+  desconto: Number(process.env.LOJA_DESCONTO_FISIO || 5), // % para quem usa o PerFisio
+  frete: 29.9,
+  freteGratis: 399,
+};
+const centavos = v => Math.round(Number(v) * 100) / 100;
+const PRODUTO_COLS = `id, slug, nome, categoria, marca, resumo, descricao, especificacoes,
+  preco::float8 AS preco, preco_de::float8 AS preco_de, estoque, icone, cor, destaque, ativo`;
+
+/* 34 produtos de teste — o superadmin edita, desativa ou apaga em /admin.
+   Entram uma única vez, quando a tabela está vazia, marcados como teste. */
+const PRODUTOS_TESTE = [
+  { nome: 'Eletroestimulador TENS/FES 4 canais', categoria: 'Eletroterapia', marca: 'Movetec', preco: 1290, preco_de: 1490, estoque: 12, icone: 'batimento', cor: '#2D7DD2', destaque: true,
+    resumo: 'Quatro canais independentes, 24 programas e bateria para o dia inteiro de atendimento.',
+    descricao: 'Aparelho de eletroestimulação para analgesia (TENS) e estimulação motora (FES) com quatro canais independentes, o que permite atender duas regiões ao mesmo tempo. Tela com os parâmetros de cada canal, 24 programas prontos e modo manual para montar o protocolo da sua avaliação.',
+    especificacoes: ['4 canais independentes', '24 programas + modo manual', 'Bateria de lítio, 10h de uso', 'Acompanha 8 eletrodos e maleta', '1 ano de garantia'] },
+  { nome: 'Ultrassom terapêutico 1 e 3 MHz', categoria: 'Eletroterapia', marca: 'Movetec', preco: 2390, preco_de: null, estoque: 8, icone: 'medidor', cor: '#2D7DD2', destaque: true,
+    resumo: 'Duas frequências no mesmo cabeçote, contínuo e pulsado, para lesões superficiais e profundas.',
+    descricao: 'Ultrassom de uso clínico com cabeçote de 5 cm² e duas frequências: 3 MHz para tecidos superficiais e 1 MHz para estruturas profundas. Emissão contínua ou pulsada, temporizador e aviso sonoro de fim de sessão.',
+    especificacoes: ['1 MHz e 3 MHz', 'Contínuo e pulsado (10%, 20%, 50%)', 'Cabeçote de 5 cm² à prova de respingo', 'Suporte de bancada incluso', 'Registro de uso por sessão'] },
+  { nome: 'Laser terapêutico 808 nm', categoria: 'Eletroterapia', marca: 'Fotonic', preco: 3890, preco_de: 4290, estoque: 5, icone: 'brilho', cor: '#7C5CBF', destaque: false,
+    resumo: 'Laser de baixa potência para dor e reparo tecidual, com dose por ponto em joules.',
+    descricao: 'Equipamento de laserterapia de baixa intensidade com emissão em 808 nm. A dose é definida em joules por ponto e o aparelho avisa quando a aplicação termina, o que torna o protocolo repetível entre sessões e entre profissionais da clínica.',
+    especificacoes: ['808 nm · 100 mW', 'Dose em joules por ponto', 'Caneta com ponteira autoclavável', 'Óculos de proteção (2 pares)', 'Calibração anual recomendada'] },
+  { nome: 'Infravermelho de pedestal 250W', categoria: 'Eletroterapia', marca: 'Movetec', preco: 740, preco_de: null, estoque: 15, icone: 'brilho', cor: '#D9820B', destaque: false,
+    resumo: 'Aquecimento superficial antes da terapia manual, com haste regulável e timer.',
+    descricao: 'Pedestal de infravermelho com haste e cabeçote reguláveis para posicionar o calor exatamente sobre a região a ser tratada. Timer mecânico de 60 minutos e base com rodízios para circular entre as macas.',
+    especificacoes: ['Lâmpada de 250W (sobressalente inclusa)', 'Altura de 90 a 180 cm', 'Timer de até 60 min', 'Base com 5 rodízios', 'Bivolt'] },
+  { nome: 'Eletrodos autoadesivos 5x5 cm (kit 20)', categoria: 'Eletroterapia', marca: 'Movetec', preco: 89, preco_de: null, estoque: 60, icone: 'caixa', cor: '#2D7DD2', destaque: false,
+    resumo: 'Vinte eletrodos de silicone-carbono com gel aderente, para 30 a 40 aplicações cada.',
+    descricao: 'Eletrodos autoadesivos para TENS e FES, com gel condutivo já aplicado. Cada peça rende de 30 a 40 aplicações se guardada no filme plástico original e na geladeira.',
+    especificacoes: ['20 unidades de 5 x 5 cm', 'Conector pino 2 mm', 'Gel hipoalergênico', 'Validade de 24 meses'] },
+  { nome: 'Gel condutor 1L (caixa com 6)', categoria: 'Eletroterapia', marca: 'Vita Clinic', preco: 119, preco_de: 139, estoque: 40, icone: 'caixa', cor: '#1E9E6A', destaque: false,
+    resumo: 'Gel neutro para ultrassom e eletroterapia, sem corante e sem perfume.',
+    descricao: 'Gel de contato de alta condutividade, transparente, sem corantes e sem fragrância — pensado para pele sensível. A caixa com seis litros costuma cobrer um mês de clínica com duas macas em uso.',
+    especificacoes: ['6 frascos de 1 litro', 'pH neutro', 'Não mancha roupa de cama', 'Compatível com ultrassom e TENS'] },
+
+  { nome: 'Maca elétrica 2 motores', categoria: 'Terapia manual', marca: 'Ortolinha', preco: 4790, preco_de: 5290, estoque: 4, icone: 'spa', cor: '#0DA189', destaque: true,
+    resumo: 'Altura e dorso elétricos no pedal: o paciente sobe e desce sem esforço de ninguém.',
+    descricao: 'Maca de atendimento com dois motores — altura e elevação de dorso — acionados por pedal, o que libera as suas mãos durante a mobilização. Estrutura em aço com pintura epóxi, estofado em courvin de 40 mm e orifício facial com tampa.',
+    especificacoes: ['Altura de 50 a 90 cm', 'Capacidade de 180 kg', 'Estofado 40 mm em courvin', 'Orifício facial com tampa', 'Pedal de acionamento'] },
+  { nome: 'Maca fixa estofada 3 seções', categoria: 'Terapia manual', marca: 'Ortolinha', preco: 1690, preco_de: null, estoque: 9, icone: 'spa', cor: '#0DA189', destaque: false,
+    resumo: 'A maca de sempre: três seções reguláveis, estrutura reforçada e porta-rolo de papel.',
+    descricao: 'Maca fixa de três seções com dorso e pernas reguláveis por cremalheira. Vem com porta-rolo de papel na cabeceira e pés com ponteiras antiderrapantes.',
+    especificacoes: ['1,85 x 0,60 m', 'Capacidade de 150 kg', 'Dorso e pernas reguláveis', 'Porta-rolo de papel incluso'] },
+  { nome: 'Óleo de massagem neutro 1L', categoria: 'Terapia manual', marca: 'Vita Clinic', preco: 64, preco_de: null, estoque: 50, icone: 'spa', cor: '#1E9E6A', destaque: false,
+    resumo: 'Deslizamento longo, sem cheiro e sem resíduo pegajoso ao fim do atendimento.',
+    descricao: 'Óleo vegetal de massagem com toque seco: mantém o deslizamento pelos 20 minutos da manobra sem precisar reaplicar e sai da pele sem película.',
+    especificacoes: ['1 litro com válvula pump', 'Sem perfume e sem corante', 'Vegano', 'Não mancha tecido'] },
+  { nome: 'Kit ventosas de silicone (12 peças)', categoria: 'Terapia manual', marca: 'Fisiomax', preco: 149, preco_de: 179, estoque: 25, icone: 'caixa', cor: '#7C5CBF', destaque: false,
+    resumo: 'Doze ventosas de silicone em quatro diâmetros, para sucção manual e deslizante.',
+    descricao: 'Ventosas de silicone médico com paredes flexíveis: a sucção é feita pela própria mão, o que dá controle fino da intensidade e permite a técnica deslizante com óleo.',
+    especificacoes: ['12 peças · 4 diâmetros', 'Silicone médico autoclavável', 'Estojo rígido incluso', 'Guia de pontos impresso'] },
+  { nome: 'Martelo neurológico de Buck', categoria: 'Terapia manual', marca: 'Fisiomax', preco: 79, preco_de: null, estoque: 35, icone: 'mao', cor: '#D9820B', destaque: false,
+    resumo: 'Cabeça de borracha dupla com agulha e pincel para exame de sensibilidade.',
+    descricao: 'Martelo de reflexos com cabeça de borracha de duas durezas, cabo em aço inoxidável e, na extremidade, agulha e pincel para o exame de sensibilidade.',
+    especificacoes: ['Cabo em aço inox', 'Cabeça de borracha dupla', 'Agulha e pincel no cabo', 'Comprimento de 23 cm'] },
+  { nome: 'Pistola de massagem 5 níveis', categoria: 'Terapia manual', marca: 'Fisiomax', preco: 699, preco_de: 899, estoque: 18, icone: 'musculo', cor: '#0F2A2E', destaque: true,
+    resumo: 'Percussão profunda e silenciosa, com quatro ponteiras e bateria de 6 horas.',
+    descricao: 'Massageador de percussão para liberação miofascial e preparação do tecido antes do exercício. Cinco níveis de intensidade, motor silencioso (abaixo de 45 dB) e bateria que atravessa um dia de atendimentos.',
+    especificacoes: ['5 níveis · até 3.200 rpm', '4 ponteiras intercambiáveis', 'Bateria de 6 horas', 'Menos de 45 dB', 'Estojo de transporte'] },
+
+  { nome: 'Reformer de madeira com torre', categoria: 'Pilates e Studio', marca: 'Studio Linha', preco: 7490, preco_de: 7990, estoque: 3, icone: 'pilates', cor: '#0DA189', destaque: true,
+    resumo: 'Reformer completo com torre, cinco molas e carrinho sobre rolamentos silenciosos.',
+    descricao: 'Reformer em madeira maciça com torre acoplada, cinco molas de carga progressiva, carrinho sobre rolamentos de precisão e apoios de ombro ajustáveis. Vem com alças, barra de pés de três alturas e caixa de extensão.',
+    especificacoes: ['2,40 x 0,75 m', '5 molas progressivas', 'Carrinho sobre rolamentos', 'Torre com barras e molas', 'Entrega e montagem orçadas à parte'] },
+  { nome: 'Cadillac compacto', categoria: 'Pilates e Studio', marca: 'Studio Linha', preco: 8900, preco_de: null, estoque: 2, icone: 'pilates', cor: '#7C5CBF', destaque: false,
+    resumo: 'Trapézio completo em formato reduzido, para studios de até 20 m².',
+    descricao: 'Cadillac de dimensões reduzidas que mantém todos os acessórios do trapézio tradicional: barra push-through, trapézio, alças, molas de braço e perna. Pensado para quem precisa do aparelho completo em uma sala pequena.',
+    especificacoes: ['2,10 x 0,90 x 2,00 m', 'Barra push-through', 'Trapézio e alças', '8 molas', 'Madeira maciça com verniz PU'] },
+  { nome: 'Ladder barrel (barril)', categoria: 'Pilates e Studio', marca: 'Studio Linha', preco: 2290, preco_de: null, estoque: 6, icone: 'pilates', cor: '#D9820B', destaque: false,
+    resumo: 'Extensão de coluna e alongamento de cadeia anterior com distância regulável.',
+    descricao: 'Barril com escada de distância regulável, para trabalho de extensão de coluna, alongamento da cadeia anterior e mobilidade de ombro. Estofado firme em courvin e madeira maciça.',
+    especificacoes: ['Distância escada-barril regulável', 'Estofado firme em courvin', 'Madeira maciça', 'Capacidade de 150 kg'] },
+  { nome: 'Step chair com molas', categoria: 'Pilates e Studio', marca: 'Studio Linha', preco: 3190, preco_de: 3490, estoque: 5, icone: 'pilates', cor: '#2D7DD2', destaque: false,
+    resumo: 'Pedal duplo, quatro molas e degrau: força de membros inferiores com pouco espaço.',
+    descricao: 'Chair com pedal dividido, quatro molas de carga diferente e degrau para subida. Ocupa menos de um metro quadrado e cobre a maior parte do repertório de fortalecimento em pé e sentado.',
+    especificacoes: ['Pedal duplo independente', '4 molas', 'Alças laterais', '0,60 x 0,60 m de base'] },
+  { nome: 'Bola suíça 65 cm (par)', categoria: 'Pilates e Studio', marca: 'Fisiomax', preco: 189, preco_de: null, estoque: 30, icone: 'pilates', cor: '#1E9E6A', destaque: false,
+    resumo: 'Par de bolas antiestouro de 65 cm, com bomba e plugues.',
+    descricao: 'Bolas de PVC antiestouro: se perfuradas, esvaziam lentamente em vez de estourar. Superfície levemente texturizada para não escorregar e bomba manual inclusa.',
+    especificacoes: ['2 bolas de 65 cm', 'Antiestouro até 300 kg', 'Bomba manual inclusa', 'Livre de ftalatos'] },
+  { nome: 'Kit 3 overballs 25 cm', categoria: 'Pilates e Studio', marca: 'Fisiomax', preco: 97, preco_de: null, estoque: 45, icone: 'pilates', cor: '#0DA189', destaque: false,
+    resumo: 'As três bolinhas que resolvem metade das aulas de solo.',
+    descricao: 'Overballs de 25 cm em três cores, com válvula para ajustar a pressão conforme o exercício. Acompanha canudo para insuflar.',
+    especificacoes: ['3 unidades de 25 cm', 'Válvula para ajuste de pressão', 'Canudo incluso', 'PVC sem ftalatos'] },
+
+  { nome: 'Kit faixas elásticas 5 níveis', categoria: 'Fortalecimento', marca: 'Fisiomax', preco: 129, preco_de: 159, estoque: 55, icone: 'alongamento', cor: '#1E9E6A', destaque: true,
+    resumo: 'Cinco cargas de látex em 1,5 m cada, do nível mais leve ao extraforte.',
+    descricao: 'Faixas elásticas de látex em cinco resistências, 1,5 metro cada, numeradas por cor. Servem do pós-operatório recente ao fortalecimento avançado — e cabem na bolsa do atendimento domiciliar.',
+    especificacoes: ['5 faixas de 1,5 m', 'Látex natural', 'Tabela de carga impressa', 'Bolsa de transporte'] },
+  { nome: 'Mini bands (kit 4)', categoria: 'Fortalecimento', marca: 'Fisiomax', preco: 69, preco_de: null, estoque: 70, icone: 'alongamento', cor: '#D9820B', destaque: false,
+    resumo: 'Quatro argolas de tecido que não enrolam na coxa durante o agachamento.',
+    descricao: 'Mini bands em tecido com faixa interna de silicone: ficam no lugar durante agachamento, abdução e marcha lateral, sem subir nem enrolar como as de látex.',
+    especificacoes: ['4 argolas de tecido', 'Faixa de silicone interna', 'Cargas leve a extraforte', 'Laváveis'] },
+  { nome: 'Halteres emborrachados 1 a 5 kg (jogo)', categoria: 'Fortalecimento', marca: 'Movetec', preco: 349, preco_de: 399, estoque: 14, icone: 'halteres', cor: '#2D7DD2', destaque: false,
+    resumo: 'Jogo com pares de 1, 2, 3, 4 e 5 kg, com suporte vertical.',
+    descricao: 'Halteres sextavados com revestimento emborrachado — não rolam no chão e não marcam o piso. O jogo vem com suporte vertical que ocupa pouco espaço na sala.',
+    especificacoes: ['Pares de 1, 2, 3, 4 e 5 kg', 'Revestimento emborrachado', 'Formato sextavado', 'Suporte vertical incluso'] },
+  { nome: 'Caneleiras de peso 1 kg (par)', categoria: 'Fortalecimento', marca: 'Movetec', preco: 89, preco_de: null, estoque: 40, icone: 'perna', cor: '#7C5CBF', destaque: false,
+    resumo: 'Par de caneleiras com velcro reforçado e forro que não escapa no suor.',
+    descricao: 'Caneleiras de 1 kg cada com enchimento de areia fina e distribuição uniforme do peso. Velcro de 7 cm e forro interno aderente, para não girar durante o exercício.',
+    especificacoes: ['2 unidades de 1 kg', 'Velcro reforçado de 7 cm', 'Forro interno aderente', 'Também em 2 kg e 3 kg sob encomenda'] },
+  { nome: 'Prancha de equilíbrio proprioceptiva', categoria: 'Fortalecimento', marca: 'Fisiomax', preco: 179, preco_de: null, estoque: 22, icone: 'pe', cor: '#D9820B', destaque: false,
+    resumo: 'Base de madeira com semiesfera e inclinação regulável em três níveis.',
+    descricao: 'Prancha de madeira com semiesfera central removível e três alturas de inclinação, para progressão do treino proprioceptivo de tornozelo e joelho. Superfície antiderrapante.',
+    especificacoes: ['40 cm de diâmetro', '3 níveis de inclinação', 'Semiesfera removível', 'Capacidade de 120 kg'] },
+  { nome: 'Disco de equilíbrio inflável', categoria: 'Fortalecimento', marca: 'Fisiomax', preco: 119, preco_de: null, estoque: 33, icone: 'pe', cor: '#1E9E6A', destaque: false,
+    resumo: 'Instabilidade dosada pela pressão de ar — do leve ao desafiador no mesmo disco.',
+    descricao: 'Disco inflável de 33 cm cuja dificuldade você regula pela quantidade de ar. Com uma face lisa e outra texturizada, serve para treino de tornozelo em pé e para estímulo sensorial sentado.',
+    especificacoes: ['33 cm de diâmetro', 'Faces lisa e texturizada', 'Bomba inclusa', 'Capacidade de 120 kg'] },
+  { nome: 'Tubing com alças (3 cargas)', categoria: 'Fortalecimento', marca: 'Fisiomax', preco: 99, preco_de: null, estoque: 48, icone: 'braco', cor: '#2D7DD2', destaque: false,
+    resumo: 'Três tubos com alças emborrachadas e âncora de porta para treino de membro superior.',
+    descricao: 'Extensores tubulares com alças emborrachadas, mosquetão e âncora de porta — o conjunto que transforma qualquer sala, ou a casa do paciente, em ponto de ancoragem para o treino de membro superior.',
+    especificacoes: ['3 tubos (leve, médio, forte)', 'Alças emborrachadas', 'Âncora de porta inclusa', 'Mosquetões de aço'] },
+  { nome: 'Rolo de liberação miofascial 90 cm', categoria: 'Fortalecimento', marca: 'Fisiomax', preco: 149, preco_de: 169, estoque: 26, icone: 'musculo', cor: '#7C5CBF', destaque: false,
+    resumo: 'EVA de alta densidade que não deforma depois de meses de uso diário.',
+    descricao: 'Rolo de 90 cm em EVA de alta densidade, comprido o bastante para apoiar toda a coluna em decúbito dorsal e firme o suficiente para aguentar uso diário sem achatar.',
+    especificacoes: ['90 x 15 cm', 'EVA de alta densidade', 'Superfície lisa', 'Capacidade de 150 kg'] },
+
+  { nome: 'Goniômetro profissional (kit 3)', categoria: 'Avaliação', marca: 'Vita Clinic', preco: 139, preco_de: null, estoque: 38, icone: 'medidor', cor: '#2D7DD2', destaque: false,
+    resumo: 'Três tamanhos em acrílico cristal, de dedos a quadril, com escala legível.',
+    descricao: 'Kit com goniômetros de 14, 20 e 36 cm em acrílico cristal, escala de 360° em dois sentidos e gravação a laser que não apaga com álcool.',
+    especificacoes: ['3 peças: 14, 20 e 36 cm', 'Escala 360° bidirecional', 'Acrílico cristal', 'Gravação a laser'] },
+  { nome: 'Dinamômetro de preensão manual', categoria: 'Avaliação', marca: 'Vita Clinic', preco: 459, preco_de: 519, estoque: 11, icone: 'mao', cor: '#0DA189', destaque: true,
+    resumo: 'Força de preensão em kgf com memória das últimas 19 medidas.',
+    descricao: 'Dinamômetro digital de preensão palmar com empunhadura ajustável em cinco posições, leitura em kgf e lbs e memória das 19 últimas medições — número objetivo para acompanhar evolução e colocar no prontuário.',
+    especificacoes: ['0 a 90 kgf', 'Memória de 19 medições', 'Empunhadura em 5 posições', 'Precisão de ±0,5 kgf', 'Tabela de referência por idade'] },
+  { nome: 'Fita métrica clínica + adipômetro', categoria: 'Avaliação', marca: 'Vita Clinic', preco: 189, preco_de: null, estoque: 29, icone: 'medidor', cor: '#D9820B', destaque: false,
+    resumo: 'Perimetria e dobras cutâneas no mesmo kit, com estojo e ficha de registro.',
+    descricao: 'Fita métrica retrátil com travamento e adipômetro clínico de pressão constante, para perimetria de membro e dobras cutâneas. Acompanha fichas de registro e estojo rígido.',
+    especificacoes: ['Fita de 2 m com trava', 'Adipômetro de pressão constante', 'Estojo rígido', '50 fichas de registro'] },
+  { nome: 'Oxímetro de pulso de dedo', categoria: 'Avaliação', marca: 'Vita Clinic', preco: 169, preco_de: 199, estoque: 31, icone: 'coracao', cor: '#D64545', destaque: false,
+    resumo: 'Saturação e frequência cardíaca em dois segundos, com curva pletismográfica.',
+    descricao: 'Oxímetro de dedo com display colorido, curva pletismográfica e desligamento automático. Essencial para o atendimento cardiorrespiratório e para controlar esforço durante o exercício.',
+    especificacoes: ['SpO₂ 70 a 100%', 'Curva pletismográfica', 'Desliga sozinho em 8 s', '2 pilhas AAA inclusas', 'Cordão de pescoço'] },
+  { nome: 'Estetoscópio + esfigmomanômetro', categoria: 'Avaliação', marca: 'Vita Clinic', preco: 239, preco_de: null, estoque: 24, icone: 'estetoscopio', cor: '#0DA189', destaque: false,
+    resumo: 'Dupla clássica da avaliação, com braçadeira adulto e estojo.',
+    descricao: 'Estetoscópio de dupla campânula e esfigmomanômetro aneroide com braçadeira adulto em nylon. Vem com estojo e manual de calibração.',
+    especificacoes: ['Estetoscópio duplo', 'Aneroide com braçadeira adulto', 'Estojo com zíper', 'Garantia de 2 anos'] },
+  { nome: 'Balança digital 180 kg com régua', categoria: 'Avaliação', marca: 'Ortolinha', preco: 1290, preco_de: 1390, estoque: 7, icone: 'medidor', cor: '#0F2A2E', destaque: false,
+    resumo: 'Peso, altura e IMC na primeira consulta, em plataforma de uso clínico.',
+    descricao: 'Balança de plataforma com capacidade de 180 kg, divisão de 50 g, régua antropométrica de até 2 m e cálculo automático de IMC no display.',
+    especificacoes: ['Até 180 kg · divisão de 50 g', 'Régua até 2 m', 'IMC no display', 'Bivolt com bateria interna', 'Certificada pelo Inmetro'] },
+
+  { nome: 'Papel lençol 70 cm (fardo com 6)', categoria: 'Consumíveis', marca: 'Vita Clinic', preco: 139, preco_de: null, estoque: 52, icone: 'caixa', cor: '#1E9E6A', destaque: false,
+    resumo: 'Seis rolos de 50 m, picotados, que não grudam no courvin.',
+    descricao: 'Papel lençol de 70 cm de largura em bobinas de 50 metros, com picote a cada 50 cm. Celulose virgem, resistente ao óleo de massagem e sem desmanchar com o suor.',
+    especificacoes: ['6 rolos de 70 cm x 50 m', 'Picote a cada 50 cm', 'Celulose virgem', '100% biodegradável'] },
+  { nome: 'Kinesio tape 5 cm x 5 m (kit 6)', categoria: 'Consumíveis', marca: 'Fisiomax', preco: 169, preco_de: 199, estoque: 36, icone: 'etiqueta', cor: '#7C5CBF', destaque: true,
+    resumo: 'Seis rolos em cores diferentes, com adesivo que aguenta banho por 4 dias.',
+    descricao: 'Bandagem elástica de algodão com adesivo acrílico ondulado, elasticidade de 140% e boa aderência mesmo em pele úmida. Seis rolos para montar o estoque da clínica de uma vez.',
+    especificacoes: ['6 rolos de 5 cm x 5 m', 'Elasticidade de 140%', 'Resiste de 3 a 5 dias com banho', 'Algodão hipoalergênico', 'Livre de látex'] },
+  { nome: 'Álcool gel 70% 1L (6 unidades)', categoria: 'Consumíveis', marca: 'Vita Clinic', preco: 89, preco_de: null, estoque: 58, icone: 'protecao', cor: '#2D7DD2', destaque: false,
+    resumo: 'Seis litros com válvula pump, para maca, bancada e recepção.',
+    descricao: 'Álcool gel 70% com glicerina e válvula pump em cada frasco, para distribuir entre a maca, a bancada de avaliação e a recepção.',
+    especificacoes: ['6 frascos de 1 litro', 'Álcool etílico 70% INPM', 'Com glicerina', 'Válvula pump inclusa', 'Registro na Anvisa'] },
+  { nome: 'Lençol de maca descartável (100 un)', categoria: 'Consumíveis', marca: 'Vita Clinic', preco: 109, preco_de: 129, estoque: 44, icone: 'caixa', cor: '#1E9E6A', destaque: false,
+    resumo: 'Cem lençóis em TNT com elástico, para quem não quer lavar roupa de cama.',
+    descricao: 'Lençóis descartáveis em TNT de 20 g com elástico nas pontas: vestem a maca em segundos e não escorregam durante a mobilização.',
+    especificacoes: ['100 unidades', '0,90 x 2,00 m com elástico', 'TNT 20 g', 'Atóxico e hipoalergênico'] },
+];
+
+async function seedLoja() {
+  const { rows } = await pool.query('SELECT count(*)::int AS n FROM produtos');
+  if (rows[0].n) return;
+  for (const p of PRODUTOS_TESTE) {
+    await pool.query(
+      `INSERT INTO produtos (slug, nome, categoria, marca, resumo, descricao, especificacoes,
+         preco, preco_de, estoque, icone, cor, destaque, teste)
+       VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11,$12,$13,true)
+       ON CONFLICT (slug) DO NOTHING`,
+      [slugificar(p.nome), p.nome, p.categoria, p.marca, p.resumo, p.descricao,
+        JSON.stringify(p.especificacoes || []), p.preco, p.preco_de, p.estoque, p.icone, p.cor, !!p.destaque]);
+  }
+  console.log(`✅ Loja: ${PRODUTOS_TESTE.length} produtos de teste cadastrados`);
+}
+
+app.get('/api/public/loja/produtos', async (req, res) => {
+  const where = ['ativo']; const vals = [];
+  if (req.query.categoria) { vals.push(String(req.query.categoria)); where.push(`categoria = $${vals.length}`); }
+  if (req.query.q) {
+    vals.push('%' + String(req.query.q).trim() + '%');
+    where.push(`(nome ILIKE $${vals.length} OR resumo ILIKE $${vals.length} OR categoria ILIKE $${vals.length} OR marca ILIKE $${vals.length})`);
+  }
+  const [produtos, categorias] = await Promise.all([
+    pool.query(`SELECT ${PRODUTO_COLS} FROM produtos WHERE ${where.join(' AND ')}
+                ORDER BY destaque DESC, categoria, nome`, vals),
+    pool.query(`SELECT categoria, count(*)::int AS n FROM produtos WHERE ativo GROUP BY categoria ORDER BY categoria`),
+  ]);
+  res.json({ loja: LOJA, categorias: categorias.rows, produtos: produtos.rows });
+});
+
+app.get('/api/public/loja/produtos/:slug', async (req, res) => {
+  const r = await pool.query(`SELECT ${PRODUTO_COLS} FROM produtos WHERE slug=$1 AND ativo`, [req.params.slug]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Produto não encontrado' });
+  const p = r.rows[0];
+  const outros = await pool.query(
+    `SELECT ${PRODUTO_COLS} FROM produtos WHERE ativo AND categoria=$1 AND id <> $2 ORDER BY destaque DESC, nome LIMIT 4`,
+    [p.categoria, p.id]);
+  res.json({ loja: LOJA, produto: p, relacionados: outros.rows });
+});
+
+/* quem está pedindo: visitante do site (sem token) ou profissional logado no
+   painel — só o segundo tem os 5%, e isso vem do banco, não do navegador */
+async function quemPede(req) {
+  const h = req.headers.authorization || '';
+  if (!h.startsWith('Bearer ')) return null;
+  let p;
+  try { p = jwt.verify(h.slice(7), JWT_SECRET); } catch { return null; }
+  if (!p.uid || p.tipo === 'conta') return null;
+  const r = await pool.query(
+    `SELECT u.id, u.nome, u.email, u.clinica_id, c.nome AS clinica_nome,
+            (c.id IS NOT NULL AND c.ativa AND c.excluida_em IS NULL) AS clinica_ok
+     FROM usuarios u LEFT JOIN clinicas c ON c.id = u.clinica_id WHERE u.id = $1`, [p.uid]);
+  if (!r.rowCount) return null;
+  const u = r.rows[0];
+  return {
+    usuario_id: u.id, nome: u.nome, email: u.email,
+    cid: u.clinica_ok ? u.clinica_id : null, clinica_nome: u.clinica_nome,
+    profissional: !!u.clinica_ok,
+  };
+}
+
+// quanto fica o pedido — a mesma conta serve para a tela e para o pedido gravado
+function contaDoPedido(linhas, pct) {
+  const subtotal = centavos(linhas.reduce((s, l) => s + l.preco * l.qtd, 0));
+  const desconto = centavos(subtotal * pct / 100);
+  const frete = subtotal - desconto >= LOJA.freteGratis ? 0 : LOJA.frete;
+  return { subtotal, desconto, frete, total: centavos(subtotal - desconto + frete) };
+}
+
+app.get('/api/loja/resumo', async (req, res) => {
+  const quem = await quemPede(req);
+  res.json({
+    loja: LOJA,
+    profissional: !!(quem && quem.profissional),
+    desconto_pct: quem && quem.profissional ? LOJA.desconto : 0,
+    nome: quem ? quem.nome : null, email: quem ? quem.email : null,
+    clinica_nome: quem ? quem.clinica_nome : null,
+  });
+});
+
+app.post('/api/loja/pedidos', async (req, res) => {
+  const b = req.body || {};
+  const pedidos = Array.isArray(b.itens) ? b.itens : [];
+  const ids = [...new Set(pedidos.map(i => String((i || {}).id || '')).filter(id => UUID.test(id)))];
+  if (!ids.length) return res.status(400).json({ erro: 'Seu carrinho está vazio' });
+
+  const quem = await quemPede(req);
+  const nome = String(b.nome || (quem && quem.nome) || '').trim();
+  const email = String(b.email || (quem && quem.email) || '').trim().toLowerCase();
+  if (nome.length < 3) return res.status(400).json({ erro: 'Informe o nome de quem vai receber' });
+  if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email)) return res.status(400).json({ erro: 'Informe um e-mail válido' });
+  if (!String(b.telefone || '').replace(/\D/g, '').match(/^\d{10,13}$/)) return res.status(400).json({ erro: 'Informe um telefone com DDD' });
+  if (String(b.endereco || '').trim().length < 8) return res.status(400).json({ erro: 'Informe o endereço completo de entrega' });
+  if (!String(b.cidade || '').trim()) return res.status(400).json({ erro: 'Informe a cidade de entrega' });
+
+  const prod = await pool.query(
+    `SELECT id, nome, preco::float8 AS preco FROM produtos WHERE ativo AND id = ANY($1::uuid[])`, [ids]);
+  const linhas = [];
+  for (const it of pedidos) {
+    const p = prod.rows.find(x => x.id === String((it || {}).id));
+    if (!p) continue;
+    const qtd = Math.max(1, Math.min(99, parseInt((it || {}).qtd, 10) || 1));
+    linhas.push({ produto_id: p.id, nome: p.nome, qtd, preco: p.preco });
+  }
+  if (!linhas.length) return res.status(400).json({ erro: 'Os produtos do carrinho não estão mais disponíveis' });
+
+  const pct = quem && quem.profissional ? LOJA.desconto : 0;
+  const conta = contaDoPedido(linhas, pct);
+
+  const cliente = await pool.connect();
+  let pedido;
+  try {
+    await cliente.query('BEGIN');
+    for (let tentativa = 0; tentativa < 5 && !pedido; tentativa++) {
+      const codigo = 'PF' + Math.random().toString(36).slice(2, 8).toUpperCase();
+      const r = await cliente.query(
+        `INSERT INTO pedidos (codigo, clinica_id, usuario_id, nome, email, telefone, cep, endereco, cidade, obs,
+           profissional, desconto_pct, subtotal, desconto, frete, total)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+         ON CONFLICT (codigo) DO NOTHING RETURNING id, codigo`,
+        [codigo, quem ? quem.cid : null, quem ? quem.usuario_id : null, nome, email,
+          String(b.telefone || '').trim(), String(b.cep || '').trim(), String(b.endereco || '').trim(),
+          String(b.cidade || '').trim(), String(b.obs || '').trim() || null,
+          pct > 0, pct, conta.subtotal, conta.desconto, conta.frete, conta.total]);
+      if (r.rowCount) pedido = r.rows[0];
+    }
+    if (!pedido) throw new Error('não foi possível gerar o código do pedido');
+    for (const l of linhas) {
+      await cliente.query('INSERT INTO pedido_itens (pedido_id, produto_id, nome, qtd, preco) VALUES ($1,$2,$3,$4,$5)',
+        [pedido.id, l.produto_id, l.nome, l.qtd, l.preco]);
+    }
+    await cliente.query('COMMIT');
+  } catch (e) {
+    await cliente.query('ROLLBACK').catch(() => {});
+    throw e;
+  } finally { cliente.release(); }
+
+  if (quem && quem.cid) {
+    await notificar({
+      cid: quem.cid, tipo: 'info', titulo: `Pedido ${pedido.codigo} registrado`,
+      texto: `${linhas.reduce((s, l) => s + l.qtd, 0)} item(ns) · ${reaisBR(conta.total)}${pct ? ` (já com ${pct}% de desconto)` : ''}`,
+      link: `/app/loja.html?pedido=${pedido.codigo}`,
+    });
+  }
+
+  // com Stripe configurado, o pagamento sai na hora; sem ele, a equipe confirma o pedido
+  let checkout = null;
+  if (stripe) {
+    try {
+      const sessao = await stripe.checkout.sessions.create({
+        mode: 'payment', customer_email: email,
+        line_items: [
+          ...linhas.map(l => ({
+            quantity: l.qtd,
+            price_data: {
+              currency: 'brl', unit_amount: Math.round(l.preco * (1 - pct / 100) * 100),
+              product_data: { name: l.nome + (pct ? ` (-${pct}%)` : '') },
+            },
+          })),
+          ...(conta.frete ? [{ quantity: 1, price_data: { currency: 'brl', unit_amount: Math.round(conta.frete * 100), product_data: { name: 'Frete' } } }] : []),
+        ],
+        success_url: `https://${HOST_CANONICO}/loja?pedido=${pedido.codigo}&pago=1`,
+        cancel_url: `https://${HOST_CANONICO}/loja?pedido=${pedido.codigo}`,
+        metadata: { pedido: pedido.codigo },
+      });
+      checkout = sessao.url;
+      await pool.query('UPDATE pedidos SET pagamento=$2 WHERE id=$1', [pedido.id, 'stripe:' + sessao.id]);
+    } catch (e) { console.error('checkout da loja falhou:', e.message); }
+  }
+
+  res.status(201).json({ codigo: pedido.codigo, ...conta, desconto_pct: pct, profissional: pct > 0, checkout });
+});
+
+app.get('/api/public/loja/pedido/:codigo', async (req, res) => {
+  const r = await pool.query(
+    `SELECT codigo, nome, cidade, status, profissional, desconto_pct::float8 AS desconto_pct,
+            subtotal::float8 AS subtotal, desconto::float8 AS desconto, frete::float8 AS frete,
+            total::float8 AS total, criado_em
+     FROM pedidos WHERE upper(codigo) = upper($1)`, [String(req.params.codigo || '').trim()]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Pedido não encontrado' });
+  const itens = await pool.query(
+    'SELECT nome, qtd, preco::float8 AS preco FROM pedido_itens WHERE pedido_id = (SELECT id FROM pedidos WHERE codigo=$1)',
+    [r.rows[0].codigo]);
+  res.json({ ...r.rows[0], itens: itens.rows });
+});
+
+// pedidos da clínica logada (aparecem no painel, em Loja)
+app.get('/api/loja/pedidos', auth, async (req, res) => {
+  const r = await pool.query(
+    `SELECT p.id, p.codigo, p.status, p.profissional, p.desconto_pct::float8 AS desconto_pct,
+            p.subtotal::float8 AS subtotal, p.desconto::float8 AS desconto, p.frete::float8 AS frete,
+            p.total::float8 AS total, p.criado_em, p.cidade,
+            coalesce(json_agg(json_build_object('nome', i.nome, 'qtd', i.qtd, 'preco', i.preco::float8))
+              FILTER (WHERE i.id IS NOT NULL), '[]') AS itens
+     FROM pedidos p LEFT JOIN pedido_itens i ON i.pedido_id = p.id
+     WHERE p.clinica_id = $1 GROUP BY p.id ORDER BY p.criado_em DESC LIMIT 60`, [req.auth.cid]);
+  res.json(r.rows);
+});
+
+/* gestão da loja: só superadmin */
+app.get('/api/admin/produtos', superauth, async (req, res) => {
+  const r = await pool.query(`SELECT ${PRODUTO_COLS}, teste, criado_em FROM produtos ORDER BY categoria, nome`);
+  res.json({ loja: LOJA, produtos: r.rows });
+});
+
+const CAMPOS_PRODUTO = ['nome', 'categoria', 'marca', 'resumo', 'descricao', 'preco', 'preco_de',
+  'estoque', 'icone', 'cor', 'destaque', 'ativo'];
+
+app.post('/api/admin/produtos', superauth, async (req, res) => {
+  const b = req.body || {};
+  if (!String(b.nome || '').trim()) return res.status(400).json({ erro: 'Informe o nome do produto' });
+  let slug = slugificar(b.nome);
+  const dup = await pool.query('SELECT 1 FROM produtos WHERE slug=$1', [slug]);
+  if (dup.rowCount) slug += '-' + Date.now().toString(36).slice(-4);
+  const r = await pool.query(
+    `INSERT INTO produtos (slug, nome, categoria, marca, resumo, descricao, especificacoes,
+       preco, preco_de, estoque, icone, cor, destaque, ativo)
+     VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11,$12,$13,$14) RETURNING ${PRODUTO_COLS}`,
+    [slug, String(b.nome).trim(), b.categoria || 'Geral', b.marca || null, b.resumo || null, b.descricao || null,
+      JSON.stringify(Array.isArray(b.especificacoes) ? b.especificacoes : []),
+      Number(b.preco) || 0, b.preco_de ? Number(b.preco_de) : null, parseInt(b.estoque, 10) || 0,
+      b.icone || 'caixa', b.cor || '#0DA189', !!b.destaque, b.ativo !== false]);
+  res.status(201).json(r.rows[0]);
+});
+
+app.put('/api/admin/produtos/:id', superauth, async (req, res) => {
+  const b = req.body || {};
+  const sets = []; const vals = [req.params.id];
+  for (const c of CAMPOS_PRODUTO) {
+    if (!(c in b)) continue;
+    let v = b[c];
+    if (c === 'preco' || c === 'preco_de') v = v === '' || v === null ? null : Number(v);
+    if (c === 'estoque') v = parseInt(v, 10) || 0;
+    if (c === 'destaque' || c === 'ativo') v = !!v;
+    vals.push(v); sets.push(`${c}=$${vals.length}`);
+  }
+  if (Array.isArray(b.especificacoes)) { vals.push(JSON.stringify(b.especificacoes)); sets.push(`especificacoes=$${vals.length}::jsonb`); }
+  if (!sets.length) return res.status(400).json({ erro: 'Nada para alterar' });
+  const r = await pool.query(`UPDATE produtos SET ${sets.join(', ')} WHERE id=$1 RETURNING ${PRODUTO_COLS}`, vals);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Produto não encontrado' });
+  res.json(r.rows[0]);
+});
+
+app.delete('/api/admin/produtos/:id', superauth, async (req, res) => {
+  const r = await pool.query('DELETE FROM produtos WHERE id=$1', [req.params.id]);
+  res.json({ removidos: r.rowCount });
+});
+
+app.get('/api/admin/pedidos', superauth, async (req, res) => {
+  const r = await pool.query(
+    `SELECT p.id, p.codigo, p.status, p.nome, p.email, p.telefone, p.cep, p.endereco, p.cidade, p.obs,
+            p.profissional, p.desconto_pct::float8 AS desconto_pct, p.subtotal::float8 AS subtotal,
+            p.desconto::float8 AS desconto, p.frete::float8 AS frete, p.total::float8 AS total,
+            p.pagamento, p.criado_em, c.nome AS clinica_nome,
+            coalesce(json_agg(json_build_object('nome', i.nome, 'qtd', i.qtd, 'preco', i.preco::float8))
+              FILTER (WHERE i.id IS NOT NULL), '[]') AS itens
+     FROM pedidos p LEFT JOIN clinicas c ON c.id = p.clinica_id
+     LEFT JOIN pedido_itens i ON i.pedido_id = p.id
+     GROUP BY p.id, c.nome ORDER BY p.criado_em DESC LIMIT 200`);
+  res.json(r.rows);
+});
+
+const STATUS_PEDIDO = ['novo', 'pago', 'enviado', 'entregue', 'cancelado'];
+app.put('/api/admin/pedidos/:id', superauth, async (req, res) => {
+  const status = String((req.body || {}).status || '');
+  if (!STATUS_PEDIDO.includes(status)) return res.status(400).json({ erro: 'Status inválido' });
+  const r = await pool.query('UPDATE pedidos SET status=$2 WHERE id=$1 RETURNING codigo, clinica_id, status, total::float8 AS total', [req.params.id, status]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Pedido não encontrado' });
+  const p = r.rows[0];
+  const aviso = { pago: 'Pagamento confirmado', enviado: 'Pedido enviado', entregue: 'Pedido entregue', cancelado: 'Pedido cancelado' }[status];
+  if (p.clinica_id && aviso) {
+    await notificar({
+      cid: p.clinica_id, tipo: 'info', titulo: `${aviso} — ${p.codigo}`,
+      texto: `Seu pedido na loja do PerFisio está como "${status}".`,
+      link: `/app/loja.html?pedido=${p.codigo}`,
+    });
+  }
+  res.json(p);
+});
+
 const TABLES = {
   fisios: ['nome', 'crefito', 'esp', 'cor', 'comissao', 'ativo',
     'publico', 'especialidades', 'domiciliar', 'bairro', 'cidade', 'lat', 'lng', 'preco', 'bio',
@@ -3312,10 +3810,55 @@ const POSTS = [
 
 /* o WordPress usava barra no fim; manda pra URL canônica sem barra
    (senão os links relativos da página quebram e o Google vê duas URLs) */
-const ROTAS_CONTEUDO = new Set(['/site-para-fisioterapeutas', '/blog', ...POSTS.map(p => `/blog/${p.slug}`)]);
+const ROTAS_CONTEUDO = new Set(['/site-para-fisioterapeutas', '/blog', '/loja', ...POSTS.map(p => `/blog/${p.slug}`)]);
 app.get(/^\/[a-z0-9-]+(\/[a-z0-9-]+)?\/$/, (req, res, next) => {
   const semBarra = req.path.slice(0, -1);
-  return ROTAS_CONTEUDO.has(semBarra) ? res.redirect(301, semBarra) : next();
+  // as páginas de produto são dinâmicas: /loja/{slug}/ também vai para a URL sem barra
+  const conhecida = ROTAS_CONTEUDO.has(semBarra) || semBarra.startsWith('/loja/');
+  return conhecida ? res.redirect(301, semBarra) : next();
+});
+
+/* ---------- LOJA ---------- */
+app.get('/loja', async (req, res, next) => {
+  try {
+    await servirSeo(res, 'loja.html', {
+      titulo: 'Loja do PerFisio — equipamento e material para fisioterapia',
+      descricao: `Eletroterapia, pilates, terapia manual, avaliação e consumíveis para a sua clínica. `
+        + `Fisioterapeutas que usam o PerFisio têm ${LOJA.desconto}% de desconto em todo o pedido.`,
+      url: urlPublica(req, '/loja'),
+      jsonld: {
+        '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'Loja do PerFisio',
+        url: urlPublica(req, '/loja'), inLanguage: 'pt-BR',
+      },
+    });
+  } catch (e) { next(e); }
+});
+
+app.get('/loja/:slug', async (req, res, next) => {
+  try {
+    const r = await pool.query(`SELECT ${PRODUTO_COLS} FROM produtos WHERE slug=$1 AND ativo`, [req.params.slug]);
+    if (!r.rowCount) return next();
+    const p = r.rows[0];
+    const outros = await pool.query(
+      `SELECT ${PRODUTO_COLS} FROM produtos WHERE ativo AND categoria=$1 AND id <> $2
+       ORDER BY destaque DESC, nome LIMIT 4`, [p.categoria, p.id]);
+    const url = urlPublica(req, `/loja/${p.slug}`);
+    await servirSeo(res, 'produto.html', {
+      titulo: `${p.nome}${p.marca ? ' · ' + p.marca : ''} — Loja do PerFisio`,
+      descricao: resumir(p.resumo || p.descricao || p.nome),
+      url, tipo: 'product',
+      jsonld: {
+        '@context': 'https://schema.org', '@type': 'Product', name: p.nome,
+        description: resumir(p.resumo || p.descricao || p.nome, 300),
+        category: p.categoria, ...(p.marca ? { brand: { '@type': 'Brand', name: p.marca } } : {}),
+        offers: {
+          '@type': 'Offer', url, price: p.preco, priceCurrency: 'BRL',
+          availability: p.estoque > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+        },
+      },
+      dados: { loja: LOJA, produto: p, relacionados: outros.rows },
+    });
+  } catch (e) { next(e); }
 });
 
 app.get('/site-para-fisioterapeutas', async (req, res, next) => {
@@ -3483,17 +4026,20 @@ app.get('/robots.txt', (req, res) => {
 
 app.get('/sitemap.xml', async (req, res) => {
   try {
-    const [cidades, fisios, clinicas] = await Promise.all([
+    const [cidades, fisios, clinicas, produtos] = await Promise.all([
       cidadesPublicas(),
       pool.query(`SELECT f.slug, f.cidade FROM fisios f JOIN clinicas c ON c.id = f.clinica_id
                   WHERE f.publico AND f.ativo AND c.ativa AND coalesce(f.slug,'') <> ''`),
       pool.query(`SELECT slug FROM clinicas WHERE ativa AND coalesce(slug,'') <> ''
                   AND (perfil->>'visivel')::boolean IS TRUE`),
+      pool.query(`SELECT slug FROM produtos WHERE ativo AND coalesce(slug,'') <> '' ORDER BY categoria, nome`),
     ]);
     const urls = [
       { loc: '/', prio: '1.0' },
       { loc: '/planos.html', prio: '0.8' },
       { loc: '/site-para-fisioterapeutas', prio: '0.9' },
+      { loc: '/loja', prio: '0.8' },
+      ...produtos.rows.map(p => ({ loc: `/loja/${p.slug}`, prio: '0.6' })),
       { loc: '/blog', prio: '0.6' },
       ...POSTS.map(p => ({ loc: `/blog/${p.slug}`, prio: '0.6' })),
       ...cidades.map(c => ({ loc: `/fisioterapeutas-em-${c.slug}`, prio: '0.9' })),
@@ -3510,7 +4056,7 @@ app.get('/sitemap.xml', async (req, res) => {
 /* Cada página pública tem UM endereço. As variantes que o express.static também serviria
    (/index.html, /blog.html, /planos…) levam 301 para a versão com canonical. */
 const HTML_CANONICO = new Map([
-  ['/index.html', '/'], ['/planos', '/planos.html'], ['/cadastro.html', '/cadastro'],
+  ['/index.html', '/'], ['/planos', '/planos.html'], ['/cadastro.html', '/cadastro'], ['/loja.html', '/loja'],
   ['/site-para-fisioterapeutas.html', '/site-para-fisioterapeutas'], ['/blog.html', '/blog'],
   ...POSTS.map(p => [`/${p.slug}.html`, `/blog/${p.slug}`]),
 ]);
@@ -3573,6 +4119,7 @@ async function seedSuperadmin() {
     await preencherSlugs();
     await grandfatherVerificacao();
     await seedSuperadmin();
+    await seedLoja();
     console.log('✅ Schema verificado/migrado');
   }
   app.listen(PORT, () => console.log(`PerFisio rodando na porta ${PORT}`));

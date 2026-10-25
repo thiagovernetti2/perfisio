@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Produto — Loja do PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="/assets/img/simbolo-perfisio.svg">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <link rel="stylesheet" href="/assets/css/site.css">
+  <style>
+    .pr-wrap { max-width: 1100px; margin: 0 auto; padding: 30px 6vw 0; }
+    .pr-trilha { font-size: .8rem; color: var(--text-soft); font-weight: 600; margin-bottom: 20px; }
+    .pr-trilha a { color: var(--primary-dark); }
+    .pr-topo { display: grid; grid-template-columns: 1.05fr 1fr; gap: 34px; align-items: start; }
+    .pr-art { aspect-ratio: 1 / 1; border-radius: 18px; border: 1px solid var(--line); display: grid; place-items: center;
+      background-image: linear-gradient(145deg, #fff 10%, color-mix(in srgb, var(--c, var(--primary)) 22%, #fff) 100%); }
+    .pr-art .i { width: 46%; height: 46%; color: var(--c, var(--primary)); vertical-align: 0; }
+    .pr-cat { font-size: .72rem; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-soft); }
+    .pr-nome { font-size: clamp(1.4rem, 3vw, 1.95rem); font-weight: 900; color: var(--ink); letter-spacing: -.6px; margin: 9px 0 10px; }
+    .pr-resumo { font-size: .95rem; color: var(--text-soft); line-height: 1.7; }
+    .pr-caixa { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; margin-top: 22px; box-shadow: var(--shadow); }
+    .pr-de { font-size: .84rem; color: var(--text-soft); text-decoration: line-through; }
+    .pr-preco { font-size: 1.95rem; font-weight: 900; color: var(--ink); letter-spacing: -1px; }
+    .pr-fisio { background: var(--primary-soft); color: var(--primary-dark); border-radius: 10px; padding: 11px 13px;
+      font-size: .84rem; font-weight: 700; line-height: 1.5; margin: 13px 0; display: flex; gap: 9px; }
+    .pr-fisio a { color: var(--primary-dark); text-decoration: underline; }
+    .pr-compra { display: flex; gap: 10px; align-items: center; margin-top: 14px; }
+    .pr-compra .btn { flex: 1; justify-content: center; padding: 12px; }
+    .pr-meta { font-size: .8rem; color: var(--text-soft); margin-top: 12px; line-height: 1.6; }
+    .pr-bloco { margin: 46px 0 0; }
+    .pr-bloco h2 { font-size: 1.1rem; font-weight: 800; color: var(--ink); margin-bottom: 12px; }
+    .pr-bloco p { font-size: .95rem; color: var(--text); line-height: 1.8; max-width: 760px; }
+    .pr-specs { list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px 22px; margin-top: 14px; }
+    .pr-specs li { font-size: .88rem; color: var(--text); display: flex; gap: 9px; align-items: flex-start; line-height: 1.55; }
+    .pr-specs .i { color: var(--primary); flex: none; margin-top: 2px; }
+    @media (max-width: 820px) { .pr-topo { grid-template-columns: 1fr; gap: 22px; } }
+  </style>
+</head>
+<body>
+  <header class="lp-header lp-loja">
+    <a class="logo" href="/"><img src="/assets/img/logo-perfisio.svg" alt="PerFisio" width="176" height="30"></a>
+    <nav>
+      <a href="/#profissionais">Encontrar fisioterapeuta</a>
+      <a href="/site-para-fisioterapeutas">Para fisioterapeutas</a>
+      <a href="/loja" style="color:var(--ink);">Loja</a>
+      <a href="/planos.html">Planos</a>
+      <button class="btn btn-ghost btn-sm" type="button" data-loja-cart aria-label="Abrir carrinho">
+        <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#carrinho"></use></svg> <span class="lj-rotulo">Carrinho</span></button>
+      <a href="/login.html" class="btn btn-primary btn-sm">Entrar</a>
+    </nav>
+  </header>
+
+  <div class="pr-wrap" id="pagina">
+    <div class="lj-vazio">Carregando produto...</div>
+  </div>
+
+  <footer class="lp-footer">
+    <b style="color:var(--ink);">PerFisio</b> © 2026 — Conectando pacientes e fisioterapeutas ·
+    <a href="/">Início</a> · <a href="/loja">Loja</a> · <a href="/planos.html">Planos</a> · <a href="/blog">Blog</a>
+  </footer>
+
+  <script src="/assets/js/app.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/loja.js"></script>
+  <script>
+    const pagina = document.getElementById('pagina');
+    let dados = window.__PF && window.__PF.produto ? window.__PF : null;
+
+    function desenhar() {
+      const p = dados.produto;
+      const r = Loja.resumo;
+      const economia = p.preco_de && p.preco_de > p.preco;
+      const specs = Array.isArray(p.especificacoes) ? p.especificacoes : [];
+      pagina.innerHTML = `
+        <div class="pr-trilha"><a href="/loja">Loja</a> › <a href="/loja?cat=${encodeURIComponent(p.categoria)}">${Loja.esc(p.categoria)}</a> › ${Loja.esc(p.nome)}</div>
+        <div class="pr-topo">
+          <div class="pr-art" style="--c:${Loja.esc(p.cor)}">${Loja.ICO(p.icone || 'caixa')}</div>
+          <div>
+            <div class="pr-cat">${Loja.esc(p.categoria)}${p.marca ? ' · ' + Loja.esc(p.marca) : ''}</div>
+            <h1 class="pr-nome">${Loja.esc(p.nome)}</h1>
+            <p class="pr-resumo">${Loja.esc(p.resumo || '')}</p>
+            <div class="pr-caixa">
+              ${economia ? `<div class="pr-de">${Loja.moeda(p.preco_de)}</div>` : ''}
+              <div class="pr-preco">${Loja.moeda(p.preco)}</div>
+              <div class="pr-fisio">
+                ${Loja.ICO('desconto')}
+                <span>${r.profissional
+                  ? `<b>${Loja.moeda(Loja.precoFisio(p))}</b> com os seus ${r.loja.desconto}% de quem usa o PerFisio — já aplicados no carrinho.`
+                  : `<b>${Loja.moeda(Loja.precoFisio(p))}</b> para fisioterapeuta que usa o PerFisio (−${r.loja.desconto}%).
+                     <a href="/login.html">Entre na sua conta</a> ou <a href="/cadastro">crie a sua grátis</a>.`}</span>
+              </div>
+              <div class="pr-compra">
+                <span class="lj-qtd" style="padding:3px 2px;">
+                  <button type="button" id="prMenos" aria-label="Menos um">${Loja.ICO('menos')}</button>
+                  <span id="prQtd">1</span>
+                  <button type="button" id="prMais" aria-label="Mais um">${Loja.ICO('mais')}</button>
+                </span>
+                <button class="btn btn-primary" type="button" id="prAdd">${Loja.ICO('carrinho')} Adicionar ao carrinho</button>
+              </div>
+              <div class="pr-meta">
+                ${p.estoque > 0 ? 'Em estoque · ' : 'Sob encomenda · '}
+                frete grátis acima de ${Loja.moeda(r.loja.freteGratis)} · nota fiscal em nome da clínica.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pr-bloco">
+          <h2>Sobre o produto</h2>
+          <p>${Loja.esc(p.descricao || p.resumo || '')}</p>
+          ${specs.length ? `<ul class="pr-specs">${specs.map(s => `<li>${Loja.ICO('check')}<span>${Loja.esc(s)}</span></li>`).join('')}</ul>` : ''}
+        </div>
+
+        ${dados.relacionados && dados.relacionados.length ? `
+          <div class="pr-bloco">
+            <h2>Também em ${Loja.esc(p.categoria)}</h2>
+            <div class="lj-grid">${dados.relacionados.map(x => Loja.cartao(x)).join('')}</div>
+          </div>` : ''}
+
+        <div class="pr-bloco" style="margin-bottom:10px;">
+          <div class="lj-faixa">
+            ${Loja.ICO('desconto')}
+            <span style="flex:1;min-width:260px;"><b>Fisioterapeuta que usa o PerFisio tem ${r.loja.desconto}% de desconto</b>
+              em todos os pedidos da loja — sem cupom e sem valor mínimo.</span>
+            <a href="/cadastro">Criar conta grátis →</a>
+          </div>
+        </div>`;
+
+      let qtd = 1;
+      const campo = document.getElementById('prQtd');
+      document.getElementById('prMenos').addEventListener('click', () => { qtd = Math.max(1, qtd - 1); campo.textContent = qtd; });
+      document.getElementById('prMais').addEventListener('click', () => { qtd = Math.min(99, qtd + 1); campo.textContent = qtd; });
+      document.getElementById('prAdd').addEventListener('click', () => { Loja.adicionar(p.id, qtd); Loja.abrir(); });
+    }
+
+    (async function iniciar() {
+      if (!dados) {
+        const slug = location.pathname.split('/').filter(Boolean).pop();
+        try { dados = await Loja.pedir('/api/public/loja/produtos/' + encodeURIComponent(slug)); }
+        catch (e) { pagina.innerHTML = '<div class="lj-vazio">Produto não encontrado. <a href="/loja">Ver a loja</a></div>'; return; }
+      }
+      Loja.registrar([dados.produto, ...(dados.relacionados || [])]);
+      desenhar();
+      document.addEventListener('loja:resumo', desenhar);
+      Loja.iniciar();
+    })();
+  </script>
+</body>
+</html>
