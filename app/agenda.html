@@ -160,13 +160,13 @@
       if (sub) sub.textContent = MULTI ? 'Suas sessões em todas as clínicas' : 'Suas sessões';
       const sel = document.getElementById('fFisio');
       sel.innerHTML = MULTI
-        ? VINCULOS.map(v => ` 30 `).join('')
-        : FISIOS.filter(f => f.id === EU.fisio_id).map(f => ` 31 `).join('');
+        ? VINCULOS.map(v => `<option value="${v.fisio_id}">${v.clinica_nome}</option>`).join('')
+        : FISIOS.filter(f => f.id === EU.fisio_id).map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
       sel.value = EU.fisio_id;
       sel.disabled = true;
       document.getElementById('fFisioWrap').style.display = 'none';
       if (MULTI) {
-        fClinica.innerHTML = VINCULOS.map(v => ` 32 `).join('');
+        fClinica.innerHTML = VINCULOS.map(v => `<option value="${v.clinica_id}">${v.clinica_nome}</option>`).join('');
         fClinica.value = EU.clinica_id;
         document.getElementById('fClinicaWrap').style.display = '';
         fClinica.addEventListener('change', trocarClinicaModal);
@@ -187,9 +187,9 @@
     // pacientes do select (no modo várias clínicas, só os da clínica escolhida)
     function montarPacSelect(selecionado) {
       const lista = PACS.filter(p => p.status !== 'inativo' && (!MULTI || p._c === fClinica.value));
-      fPaciente.innerHTML = ' 33 ' +
-        ' 34 ' +
-        lista.map(p => ` 35 `).join('');
+      fPaciente.innerHTML = '<option value="">— Sem paciente (turma/bloqueio) —</option>' +
+        '<option value="__novo__">＋ Cadastrar novo paciente…</option>' +
+        lista.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
       if (selecionado) fPaciente.value = selecionado;
     }
 
@@ -283,7 +283,7 @@
       [FISIOS, PACS, TRATS_ALL] = MULTI
         ? await Promise.all([somarClinicas('/api/fisios'), somarClinicas('/api/pacientes'), somarClinicas('/api/tratamentos')])
         : await Promise.all([PF.get('fisios'), PF.get('pacientes'), PF.get('tratamentos')]);
-      document.getElementById('fFisio').innerHTML = FISIOS.filter(f=>f.ativo).map(f => ` 36 `).join('');
+      document.getElementById('fFisio').innerHTML = FISIOS.filter(f=>f.ativo).map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
       if (SO_LEITURA) aplicarSomenteLeitura();
       montarPacSelect();
       document.getElementById('fPaciente').addEventListener('change', e => {
@@ -328,9 +328,9 @@
       if (!pacienteId) { wrap.style.display = 'none'; novoWrap.style.display = 'none'; selEl.innerHTML = ''; return; }
       const doPac = TRATS_ALL.filter(t => t.paciente_id === pacienteId);
       wrap.style.display = '';
-      selEl.innerHTML = ' 37 ' +
-        doPac.map(t => ` 38 `).join('') +
-        ' 39 ';
+      selEl.innerHTML = '<option value="">— Sem vínculo (avaliação livre) —</option>' +
+        doPac.map(t => `<option value="${t.id}">${t.titulo}${t.status === 'concluido' ? ' (concluído)' : ''}</option>`).join('') +
+        '<option value="__novo__">＋ Nova ocorrência…</option>';
       const ativos = doPac.filter(t => t.status === 'ativo');
       if (preferId && doPac.some(t => t.id === preferId)) selEl.value = preferId;
       else if (ativos.length) selEl.value = ativos[ativos.length - 1].id;

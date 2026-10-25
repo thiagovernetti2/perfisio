@@ -333,7 +333,7 @@
           '<div class="empty">Nenhum paciente seu por aqui ainda.<br><br>'
           + '<a class="btn btn-primary" href="agenda.html">+ Agendar a primeira sessão</a></div>';
       }
-      const fisioOpts = FISIOS.filter(f => f.ativo).map(f => ` 4 `).join('');
+      const fisioOpts = FISIOS.filter(f => f.ativo).map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
       document.getElementById('evFisio').innerHTML = fisioOpts;
       document.getElementById('tFisio').innerHTML = fisioOpts;
       if (!PACS.length) {
@@ -474,8 +474,8 @@
       // select do formulário SOAP: vincular evolução a uma sessão
       const ST = { agendada: 'agendada', realizada: '<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg> realizada', falta: 'falta', cancelada: 'cancelada' };
       const ordenadas = [...sess].sort((a, b) => (b.data + b.hora).localeCompare(a.data + a.hora));
-      evSessao.innerHTML = ' 5 ' +
-        ordenadas.map(s => ` 6 `).join('');
+      evSessao.innerHTML = '<option value="">— Sem vínculo com sessão —</option>' +
+        ordenadas.map(s => `<option value="${s.id}">${fmtSessao(s)} · ${s.tipo} · ${ST[s.status] || s.status}</option>`).join('');
       const realizadas = ordenadas.filter(s => s.status === 'realizada');
       if (urlSess && sess.some(s => s.id === urlSess)) { evSessao.value = urlSess; urlSess = null; }
       else if (realizadas.length) evSessao.value = realizadas[0].id;

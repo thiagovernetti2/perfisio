@@ -259,12 +259,12 @@
         PF.get('pagamentos'), PF.get('pacientes'), PF.get('pacotes'),
         PF.get('convenios'), PF.get('despesas'), PF.get('fisios'),
       ]);
-      document.getElementById('pgPaciente').innerHTML = ' 27 ' +
-        PACS.map(p => ` 28 `).join('');
-      document.getElementById('pgPacote').innerHTML = ' 29 ' +
-        PACOTES.map(p => ` 30 `).join('');
-      document.getElementById('dpFisio').innerHTML = ' 31 ' +
-        FISIOS.map(f => ` 32 `).join('');
+      document.getElementById('pgPaciente').innerHTML = '<option value="">— Sem paciente —</option>' +
+        PACS.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+      document.getElementById('pgPacote').innerHTML = '<option value="">— Livre —</option>' +
+        PACOTES.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+      document.getElementById('dpFisio').innerHTML = '<option value="">— Não é repasse —</option>' +
+        FISIOS.map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
       document.getElementById('pgPacote').addEventListener('change', atualizarCreditar);
       document.getElementById('pgPaciente').addEventListener('change', atualizarCreditar);
       document.getElementById('cmMes').value = mesAtual;

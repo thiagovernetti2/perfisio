@@ -355,8 +355,8 @@
       const [users, fisios] = await Promise.all([PF.get('usuarios'), PF.get('fisios').catch(() => [])]);
       /* só profissionais que ainda não têm login */
       const livres = fisios.filter(f => f.ativo && !users.some(u => u.fisio_id === f.id));
-      document.getElementById('uFisio').innerHTML = ' 4 '
-        + livres.map(f => ` 5 `).join('');
+      document.getElementById('uFisio').innerHTML = '<option value="">— Nenhum —</option>'
+        + livres.map(f => `<option value="${f.id}">${f.nome}</option>`).join('');
       const BADGE = { gestor: '<span class="badge primary">Gestor</span>', fisio: '<span class="badge blue">Fisioterapeuta</span>', recepcao: '<span class="badge amber">Recepção</span>' };
       const CORES = ['#0DA189','#2D7DD2','#7C5CBF','#D9820B'];
       document.getElementById('userRows').innerHTML = users.map((u, i) => `

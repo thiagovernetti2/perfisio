@@ -597,7 +597,7 @@
         <div class="field" style="margin-bottom:14px;max-width:460px;">
           <label>Onde você quer ser atendido?</label>
           <select onchange="bkLocal=this.value;bkRender()">
-            ${locais.map(l => ` 0 `).join('')}
+            ${locais.map(l => `<option value="${l.fisio_id}"${l.fisio_id === bkLocal ? ' selected' : ''}>${l.nome}${l.endereco ? ' — ' + l.endereco : ''}</option>`).join('')}
           </select>
         </div>` : '';
       el.innerHTML = `${aviso}${seletorLocal}
